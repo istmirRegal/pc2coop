@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "date": "2026-11-01",
+  "game": "Planet Coaster 2",
+  "store": "Steam",
+  "build_id": "26255360",
+  "file_version": "1.12.2.1035111",
+  "exe_sha256": "9da90ae2611bf41af532a30611082bd90cdda6b325e570ac63a469051e736c12",
+  "acse_version": "0.729",
+  "probe_version": "0.0.3",
+  "probe_ovl_sha256": "738764327526fd44bf63fefb80933a10b9364d43d8f81b271994d59779ddb562",
+  "observed_executable": "independent test-copy executable; path kept private",
+  "observed_ui_marker": "ACSE 0.729 PC2CoopProbe 0.0.3 Init OK",
+  "validation": "observed main-menu boot; onboarding completed by user",
+  "sandboxie_used": false,
+  "profile_isolation_verified": false,
+  "park_tested": false,
+  "multiplayer_tested": false
+}

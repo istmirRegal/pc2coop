@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "game": "Planet Coaster 2",
+  "build_id": "26255360",
+  "file_version": "1.12.2.1035111",
+  "exe_sha256": "9da90ae2611bf41af532a30611082bd90cdda6b325e570ac63a469051e736c12",
+  "acse_version": "0.729",
+  "probe_version": "0.0.9",
+  "probe_ovl_sha256": "a179631726c624aad769be3770c8bb114f7a1d36be487ac3c62ca1cddb2495c0",
+  "native_dll_sha256": "f15746e465ce24d4fc16efaa4593b18cf51234b4678cc453223eced161051218",
+  "qa_method": "fixed local bot commands through PID-bound inbox; ACSE park manager on game thread",
+  "test_park": "PC2Coop-Test",
+  "active_world": "temperateworld",
+  "resource": "AQ_Rock_04",
+  "prepared_position": [10, 5, 10],
+  "observations": {
+    "new_test_park_loaded": true,
+    "park_manager_initialized": true,
+    "commands_processed_after_world_transition": true,
+    "create_request_completed": true,
+    "preview_and_commit_completed": true,
+    "native_checkpoint_called": true,
+    "post_commit_part_exists": true,
+    "post_commit_resource_matches": true,
+    "separate_verify_command_passed": true,
+    "post_commit_world_position_verified": false,
+    "save_reload_verified": false
+  },
+  "limits": [
+    "One fixed-resource scripted creation on one real game client",
+    "No ordinary player edit capture demonstrated",
+    "No move/delete, persistent reload or multiplayer proof"
+  ]
+}

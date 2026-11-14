@@ -1,0 +1,48 @@
+# PC2Coop – Planet Coaster 2 live zusammen bauen
+
+Inoffizielle Multiplayer-Mod für Planet Coaster 2: mehrere Spieler bauen gleichzeitig im
+selben Park, über Steam-Einladungen, ohne Portfreigabe oder Zusatzprogramm.
+
+## Für Spieler
+
+1. Neueste ZIP unter [Releases](../../releases/latest) herunterladen und entpacken.
+2. Planet Coaster 2 beenden, `INSTALL.cmd` doppelklicken.
+3. Spiel starten: Hauptmenü → **Multiplayer**, oder im Park Pausemenü → **Multiplayer** (F7).
+   Der Host lädt einen Park und lädt Steam-Freunde ein; Freunde nehmen die Einladung an
+   und bekommen den Park automatisch.
+4. Neue Version: Spiel beenden, `UPDATE.cmd` doppelklicken.
+
+Alle Mitspieler brauchen dieselbe Mod-Version und dieselbe Spielversion
+(Steam-Build 26255360). Details, Stand der Synchronisation und bekannte Lücken:
+[alpha-dist/LIESMICH.txt](alpha-dist/LIESMICH.txt).
+
+## Wie es funktioniert
+
+- Läuft komplett im Spiel: Lua-Mod (über [ACSE](https://github.com/OpenNaja/ACSE)) plus
+  eine kleine DLL für Steam-Lobby, Einladungen und Nachrichten (Steam Networking Messages).
+- Der Host ist maßgeblich: er ordnet alle Änderungen, prüft gleichzeitige Bearbeitung
+  desselben Objekts und überträgt beim Beitritt seinen Park.
+- Bauänderungen werden aus den Editor-Aufrufen des Spiels mitgeschnitten und bei den
+  anderen genauso wieder abgespielt (Szenerie, Gelände, Wege, Fahrgeschäfte, ...).
+- Die Oberfläche (Spielerleiste, Lobby, Menüeinträge) ist in die Gameface-UI des Spiels
+  eingebaut.
+
+## Entwickeln
+
+- `probe/PC2CoopProbe/` – Mod-Quellcode (Lua) und UI (`ui/UIGameface/js/pc2coop`).
+- `native/` – DLL (C++), gebaut mit `tools/build_native.py` (MSVC Build Tools).
+- `tools/build_ui.py`, `tools/build_probe.py` (Cobra Tools) – Mod-Paket bauen.
+- `tools/package_release.py` – Spieler-ZIP plus `.sha256` für ein GitHub-Release.
+- `tests/` – Tests gegen nachgebildete Spiel-APIs (`python -m pytest tests`; die Lua-Tests
+  brauchen `lupa`).
+- `tools/game_bot.py` – steuert eine Testkopie des Spiels über feste QA-Befehle.
+
+Release: Version in `probe/.../database/pc2coopprobeluadatabase.lua`,
+`probe/.../pc2coop/session.lua` und `tools/cobra_worker.py` erhöhen, bauen,
+`tools/package_release.py` ausführen, ZIP und `.sha256` als Release-Assets hochladen.
+
+## Lizenz
+
+Eigener Code: MIT ([LICENSE](LICENSE)). ACSE: GPL-3.0, Quellcode liegt jedem Release bei.
+Keine Spieldateien enthalten. Planet Coaster 2 ist eine Marke von Frontier Developments;
+dieses Projekt ist nicht mit Frontier verbunden.

@@ -1,0 +1,412 @@
+"""Sync module against a fake editor API: capture, remote apply, echo suppression."""
+from pathlib import Path
+import unittest
+try:
+    from lupa.lua53 import LuaRuntime
+except ImportError:
+    LuaRuntime = None
+
+SOURCE = Path(__file__).resolve().parents[1]/'probe/PC2CoopProbe/Main/pc2coop/sync.lua'
+
+FAKE_GAME = r'''
+local parts, nextPart, nextEntity = {}, 988, 50000
+local function vec(x, y, z) return {GetX=function() return x end, GetY=function() return y end, GetZ=function() return z end} end
+local function quat(x, y, z, w)
+    local q = {GetX=function() return x end, GetY=function() return y end, GetZ=function() return z end, GetW=function() return w end}
+    q.WithX=function(_, v) return quat(v, y, z, w) end; q.WithY=function(_, v) return quat(x, v, z, w) end
+    q.WithZ=function(_, v) return quat(x, y, v, w) end; q.WithW=function(_, v) return quat(x, y, z, v) end
+    return q
+end
+package.preload.Quaternion = function() return {Identity = quat(0, 0, 0, 1)} end
+package.preload.Vector3 = function() return {new=function(_, x, y, z) return vec(x, y, z) end} end
+package.preload.TransformQ = function() return {FromOrPos=function(q, p)
+    return {q=q, p=p, GetPos=function(self) return self.p end, GetOr=function(self) return self.q end} end} end
+
+-- Userdata stand-in: every hierarchy shares one metatable whose __index holds methods.
+local H = {}
+local meta = {__index = H}
+H.__index = H
+local function newEdit(part) return {part = part, scale = 1,
+    SetTransform=function(self, t) self.t = t end, SetScale=function(self, s) self.scale = s end,
+    GetScale=function(self) return self.scale end, Destroy=function(self) self.destroyed = true end} end
+function H.CreateNewPart(self, resource) nextPart = nextPart + 1; local e = newEdit(nextPart); e.resource = resource; e.new = true; self.ops[#self.ops+1] = e; return e end
+function H.EditExistingPart(self, part) local e = newEdit(part); self.ops[#self.ops+1] = e; return e end
+function H.EditExistingParts(self, set) local out = {}; for _, p in ipairs(set:GetPartIDCollection()) do out[#out+1] = H.EditExistingPart(self, p) end; return out end
+function H.DestroyExistingParts(self, set) return H.EditExistingParts(self, set) end
+function H.StartEditingPart_Scenery(self, e) return e end
+function H.StartEditingParts_Scenery(self, es) return es end
+function H.GetFullUndoChangeList(self) return {hierarchy = self} end
+local function newHierarchy() return setmetatable({ops = {}}, meta) end
+
+local previews, waits = {}, {}
+local undo = {}
+function undo.IsPreviewingChangeList() return false end
+function undo.IsBusy() return false end
+function undo.IsOperationComplete() return true end
+function undo.PreviewChangeList(cl) local token = {cl = cl}; return {}, token end
+function undo.CanCommitPreview() return true end
+function undo.CancelPreview() return {} end
+function undo.Checkpoint() end
+function undo.CommitPreview(token)
+    if token.cl.hierarchy.terrain then
+        for _, c in ipairs(token.cl.hierarchy.terrain.calls) do
+            if type(c) == "table" then
+                paths[#paths+1] = string.format("%s %g,%g -> %g,%g merge=%s", c.data, c.start:GetX(), c.start:GetZ(),
+                    c.pos:GetX(), c.pos:GetZ(), tostring(token.cl.hierarchy.mergeError))
+            else terrainCalls[#terrainCalls+1] = c end
+        end
+    end
+    for _, c in ipairs(token.cl.hierarchy.composites or {}) do
+        if c.ride and c.t then rides[#rides+1] = string.format("%s %g,%g", c.ride, c.t:GetPos():GetX(), c.t:GetPos():GetZ()) end
+    end
+    for _, e in ipairs(token.cl.hierarchy.ops) do
+        if e.destroyed then parts[e.part] = nil
+        else
+            local r = e.resource or (parts[e.part] and parts[e.part].resource)
+            local t = e.t or {p = vec(1, 2, 3), q = quat(0, 0, 0, 1)}
+            nextEntity = nextEntity + 1
+            parts[e.part] = {resource = r, p = t.p, q = t.q, entity = nextEntity}
+        end
+    end
+    return {}
+end
+
+local entities = {}
+local placement = {}
+function placement:PlacementPartExists(p) return parts[p] ~= nil end
+function placement:GetPartResourceName(p) return parts[p].resource end
+function placement:PlacementIDToEntityID(p) entities[parts[p].entity] = p; return parts[p].entity end
+function placement:EntityIDToPlacementID(entity) for p, v in pairs(parts) do if v.entity == entity then return p end end end
+function placement:HasPartsRequiringUpdate() return false end
+local scenery = {}
+function scenery:GetMoveObjectPartIDs(e) return {e.part} end
+function scenery:CreateBuildingPartSet() local ids = {}; return {Add=function(_, p) ids[#ids+1] = p end, GetPartIDCollection=function() return ids end} end
+local camera = {}
+function camera:GetPosYPRZoom() return vec(1, 2, 3), vec(0.5, -0.2, 0), 4 end
+function camera:GetCurrentModeName() return "StandardOrbit" end
+function camera:GetPlacementFocusPos() return vec(10, 5, 10) end
+function camera:SetPosYPR(p, ypr) camera.jumped = {p:GetX(), ypr:GetY()} end
+function H.GetTerrainEditOperation(self) self.terrain = self.terrain or {calls = {}}; return self.terrain end
+terrainCalls = {}
+local gameterrain = {}
+function gameterrain:AddPushPullToChangeList(op, pos, size, intensity, hardness)
+    op.calls[#op.calls+1] = string.format("pushpull %g %g %g %g %g %g", pos:GetX(), pos:GetY(), pos:GetZ(), size, intensity, hardness)
+end
+function gameterrain:SetTerrainEditOpCollisionFlags(op, a, b, c, d, e, f) op.calls[#op.calls+1] = "flags" end
+function gameterrain:CreateLake(pos, kind) return {hierarchy = {ops = {}, terrain = {calls = {"lake " .. kind}}}} end
+-- Paths: a spline move object inside a hierarchy; its end point is set directly on it.
+paths = {}
+local volumes = {}
+function volumes:CreateMoveObjectForVolumeSpline(h, transform, curved, classic, right, stub)
+    local mo = {h = h, start = transform:GetPos()}
+    mo.GetPosition = function(self) return self.pos end
+    mo.SetPosition = function(self, p) self.pos = p end
+    h.terrain = h.terrain or {calls = {}}
+    table.insert(h.terrain.calls, mo)
+    return mo
+end
+function volumes:SetSplinePathData(mo, outline, render, edge, width, depth, clip, grounded, supports, colour, edgeColour)
+    mo.data = outline .. "/" .. render .. "/" .. width .. "/" .. tostring(colour[1])
+end
+function H.SetErrorOnPathMergeUnchangedModifyVolumes(self, value) self.mergeError = value end
+function H.BeginVolumeModificationsBlock(self) self.block = true end
+function H.EndVolumeModificationsBlock(self) self.block = false end
+function H.SetPerformTerrainModificationsModifyVolumes(self, value) self.terrainFollows = value end
+-- Flat rides: a composite object of the hierarchy holds the ride; placed at commit.
+rides = {}
+function H.CreateCompositeObject(self, opts)
+    local c = {t = nil}
+    c.SetTransform = function(me, t) me.t = t end
+    c.GetTransform = function(me) return me.t end
+    c.AlignCompositeRotation = function() end
+    self.composites = self.composites or {}
+    table.insert(self.composites, c)
+    return c
+end
+local flatrides = {}
+function flatrides:CreateFlatRideEditToken(name) return {ride = name} end
+function flatrides:AddFlatRide(h, composite, token, terrain, everyFrame) composite.ride = token.ride end
+mgmt = {}
+local park = {}
+function park:SetParkName(name) mgmt[#mgmt+1] = "name " .. name end
+local facilities = {}
+function facilities:SetOpen(entity, open) mgmt[#mgmt+1] = "open " .. tostring(entity) .. " " .. tostring(open) end
+local apis = {editors = {CreateUndoOperationsHierarchy = function() return newHierarchy() end}, gameterrain = gameterrain,
+    volumes = volumes, flatrides = flatrides,
+    park = park, facilities = facilities,
+    placement = placement, scenery = scenery, CameraModeManager = camera}
+api = {undo = undo, world = {GetWorldAPIs = function() return apis end},
+    entity = {CreateRequestCompletionToken=function() return {} end, HaveRequestsCompleted=function() return true end},
+    transform = {CalculateWorldTransform=function(entity)
+        local p = parts[entities[entity]]
+        return {GetPos=function() return p.p end, GetOr=function() return p.q end}
+    end},
+    player = {GetPlayerName=function() return "Tester" end},
+    spatial = {Flag_Scenery = 4, SphereQuery=function(position, radius)
+        local out = {}
+        for _, v in pairs(parts) do out[#out+1] = v.entity end
+        return out
+    end}}
+game = {parts = parts, newHierarchy = newHierarchy, camera = camera}
+'''
+
+
+@unittest.skipIf(LuaRuntime is None, 'Optional lupa.lua53 runtime is not installed')
+class SyncTests(unittest.TestCase):
+    def setUp(self):
+        self.lua = LuaRuntime(unpack_returned_tuples=True)
+        self.lua.execute(FAKE_GAME)
+        self.lua.execute('records = {}')
+        recorder = (SOURCE.parent / 'recorder.lua').read_text(encoding='utf8')
+        self.lua.eval('function(s) package.preload["pc2coop.recorder"] = function() return assert(load(s, "recorder", "t", _G))() end end')(recorder)
+        replay = (SOURCE.parent / 'replay.lua').read_text(encoding='utf8')
+        self.lua.eval('function(s) package.preload["pc2coop.replay"] = function() return assert(load(s, "replay", "t", _G))() end end')(replay)
+        loader = self.lua.eval('function(s) return assert(load(s, "sync", "t", _G))() end')
+        self.sync = loader(SOURCE.read_text(encoding='utf8'))
+        self.lua.globals().sync = self.sync
+        self.lua.execute('sync.Init(function(s) records[#records+1] = s end); for i = 1, 3 do sync.Tick() end')
+        self.lua.execute('sync.Receive("S|Tester")')
+
+    def records(self, prefix):
+        return [r for r in self.lua.eval('records').values() if r.startswith(prefix)]
+
+    def tick(self, n=5):
+        self.lua.execute(f'for i = 1, {n} do sync.Tick() end')
+
+    def local_build(self):
+        self.lua.execute('''
+            local h = api.world.GetWorldAPIs().editors:CreateUndoOperationsHierarchy()
+            local e = h:StartEditingPart_Scenery(h:CreateNewPart("AQ_Rock_04"))
+            e:SetTransform(require("TransformQ").FromOrPos(require("Quaternion").Identity, require("Vector3"):new(10, 5, 10)))
+            local wait, preview = api.undo.PreviewChangeList(h:GetFullUndoChangeList())
+            api.undo.CommitPreview(preview)
+        ''')
+        self.tick()
+
+    def test_local_create_is_reported_once(self):
+        self.local_build()
+        ups = self.records('sync:up|')
+        self.assertEqual(len(ups), 1, self.lua.eval('records').values())
+        self.assertIn('||0|AQ_Rock_04|10|5|10|0|0|0|1|1', ups[0])
+        self.tick(200)
+        self.assertEqual(len(self.records('sync:up|')), 1)
+
+    def test_remote_upsert_move_delete_without_echo(self):
+        self.lua.execute('sync.Receive("U|1|g1|Alice|1|Fern|30|0.5|30|0|0.7071|0|0.7071|1.5")')
+        self.tick(20)
+        self.lua.execute('sync.Receive("U|2|g1|Alice|2|Fern|35|0.5|32|0|0|0|1|1")')
+        self.tick(20)
+        self.assertEqual(len(self.records('sync:applied|')), 2)
+        self.assertEqual(self.lua.eval('(function() local n=0; for _ in pairs(game.parts) do n=n+1 end; return n end)()'), 1)
+        self.lua.execute('sync.Receive("D|3|g1|Alice|3")')
+        self.tick(20)
+        self.assertEqual(self.lua.eval('next(game.parts)'), None)
+        self.assertEqual(self.records('sync:up|') + self.records('sync:del|'), [])
+
+    def test_ack_maps_local_part_and_later_move_carries_global_id(self):
+        self.local_build()
+        part = self.records('sync:up|')[0].split('|')[1]
+        self.lua.execute(f'sync.Receive("M|1|g7|{part}|1")')
+        self.tick(3)
+        self.lua.execute(f'''
+            local h = api.world.GetWorldAPIs().editors:CreateUndoOperationsHierarchy()
+            local e = h:StartEditingPart_Scenery(h:EditExistingPart({part}))
+            e:SetTransform(require("TransformQ").FromOrPos(require("Quaternion").Identity, require("Vector3"):new(20, 5, 15)))
+            local wait, preview = api.undo.PreviewChangeList(h:GetFullUndoChangeList())
+            api.undo.CommitPreview(preview)
+        ''')
+        self.tick()
+        self.assertIn(f'sync:up|{part}|g7|1|AQ_Rock_04|20|5|15', self.records('sync:up|')[-1])
+
+    def test_duplicate_and_old_sequences_are_ignored(self):
+        self.lua.execute('sync.Receive("U|1|g1|A|1|Fern|1|1|1|0|0|0|1|1")')
+        self.tick(20)
+        self.lua.execute('sync.Receive("U|1|g1|A|1|Fern|1|1|1|0|0|0|1|1")')
+        self.tick(20)
+        self.assertEqual(len(self.records('sync:applied|')), 1)
+
+    def test_presence_and_camera_jump(self):
+        self.tick(40)
+        self.assertTrue(self.records('sync:pres|1|2|3|0.5|-0.2|4|StandardOrbit|schaut'))
+        self.lua.execute('sync.Receive("C|5|6|7|0.1|-0.3")')
+        self.assertEqual(list(self.lua.eval('game.camera.jumped').values()), [5, -0.3])
+
+
+    def terrain_stroke(self, commit=True):
+        self.lua.execute(f'''
+            local apis = api.world.GetWorldAPIs()
+            local h = apis.editors:CreateUndoOperationsHierarchy()
+            local op = h:GetTerrainEditOperation()
+            apis.gameterrain:SetTerrainEditOpCollisionFlags(op, true, false, false, false, true, false)
+            apis.gameterrain:AddPushPullToChangeList(op, require("Vector3"):new(1.5, 2, 3), 8, 0.25, 0.5)
+            local wait, preview = api.undo.PreviewChangeList(h:GetFullUndoChangeList())
+            if {"true" if commit else "false"} then api.undo.CommitPreview(preview) else api.undo.CancelPreview(preview) end
+        ''')
+        self.tick()
+
+    def test_committed_terrain_stroke_is_sent_cancelled_is_not(self):
+        self.terrain_stroke(commit=False)
+        self.assertEqual(self.records('sync:cmd|'), [])
+        self.terrain_stroke(commit=True)
+        cmds = self.records('sync:cmd|')
+        self.assertEqual(cmds, ['sync:cmd|gameterrain.SetTerrainEditOpCollisionFlags(@op,b1,b0,b0,b0,b1,b0);'
+                                'gameterrain.AddPushPullToChangeList(@op,v1.5:2:3,n8,n0.25,n0.5)'])
+
+    def test_remote_terrain_batches_replay_exactly_and_are_not_echoed(self):
+        batch = 'gameterrain.AddPushPullToChangeList(@op,v1.5:2:3,n8,n0.25,n0.5)'
+        self.lua.execute(f'sync.Receive("K|1|{batch}"); sync.Receive("K|2|{batch}")')
+        self.tick(20)
+        calls = list(self.lua.eval('terrainCalls').values())
+        self.assertEqual(calls, ['pushpull 1.5 2 3 8 0.25 0.5'] * 2)
+        self.assertEqual(self.records('sync:cmd|'), [])
+        self.assertTrue(self.records('sync:applied|2'))
+
+    def test_remote_lake_uses_returned_change_list(self):
+        self.lua.execute('sync.Receive("K|1|gameterrain.CreateLake(v4:0:4,sCalmLake)")')
+        self.tick(20)
+        self.assertEqual(list(self.lua.eval('terrainCalls').values()), ['lake CalmLake'])
+
+
+    def test_park_management_is_sent_immediately_and_replayed(self):
+        self.lua.execute('api.world.GetWorldAPIs().park:SetParkName("Mein Park Ü")')
+        self.assertEqual(self.records('sync:cmd|'), ['sync:cmd|!park.SetParkName(x4d65696e205061726b20c39c)'])
+        self.local_build()
+        part = self.records('sync:up|')[0].split('|')[1]
+        entity = self.lua.eval(f'api.world.GetWorldAPIs().placement:PlacementIDToEntityID({part})')
+        self.lua.execute(f'sync.Receive("M|1|g9|{part}|1")')
+        self.tick(5)
+        self.lua.execute(f'api.world.GetWorldAPIs().facilities:SetOpen({entity}, false)')
+        self.assertEqual(self.records('sync:cmd|')[-1], 'sync:cmd|!facilities.SetOpen(eg9,b0)')
+        self.lua.execute('api.world.GetWorldAPIs().facilities:SetOpen(424242, true)')
+        self.assertEqual(len(self.records('sync:cmd|')), 2)
+        self.lua.execute('sync.Receive("K|2|!facilities.SetOpen(eg9,b1);!park.SetParkName(x4869)")')
+        self.tick(20)
+        self.assertEqual(list(self.lua.eval('mgmt').values())[-2:], [f'open {entity} true', 'name Hi'])
+        self.assertEqual(len(self.records('sync:cmd|')), 2)
+
+
+    def test_path_segment_records_object_and_end_point_and_replays(self):
+        self.lua.execute('''
+            local apis = api.world.GetWorldAPIs()
+            local Q, V, T = require("Quaternion"), require("Vector3"), require("TransformQ")
+            -- A cancelled preview while the mouse moves, then the committed segment.
+            for i = 1, 2 do
+                local h = apis.editors:CreateUndoOperationsHierarchy()
+                local mo = apis.volumes:CreateMoveObjectForVolumeSpline(h, T.FromOrPos(Q.Identity, V:new(10, 0, 20)), false, false, true, false)
+                apis.volumes:SetSplinePathData(mo, "Path", "Path_01", "PathEdge_NoRails", 2, 1, 2, 5, true, {0.5}, {})
+                mo:SetPosition(V:new(30, 0, 20 + i))
+                local wait, preview = api.undo.PreviewChangeList(h:GetFullUndoChangeList())
+                if i == 1 then api.undo.CancelPreview(preview) else api.undo.CommitPreview(preview) end
+            end
+        ''')
+        self.tick()
+        cmds = self.records('sync:cmd|')
+        self.assertEqual(len(cmds), 1)
+        batch = cmds[0][len('sync:cmd|'):]
+        self.assertEqual(batch, 'r1=volumes.CreateMoveObjectForVolumeSpline(@h,t10:0:20:0:0:0:1,b0,b0,b1,b0);'
+                                'volumes.SetSplinePathData(@r1,sPath,sPath_01,sPathEdge_NoRails,n2,n1,n2,n5,b1,{1=n0.5},{});'
+                                '@preview;@r1.SetPosition(v30:0:22)')
+        self.lua.execute('paths = {}')
+        self.lua.eval('function(b) sync.Receive("K|1|" .. b) end')(batch.replace('v30:0:22', 'v40:0:22'))
+        self.tick(20)
+        self.assertEqual(list(self.lua.eval('paths').values()), ['Path/Path_01/2/0.5 10,20 -> 40,22 merge=true'])
+        self.assertEqual(len(self.records('sync:cmd|')), 1)
+
+
+if __name__ == '__main__':
+    unittest.main()
+
+
+@unittest.skipIf(LuaRuntime is None, 'Optional lupa.lua53 runtime is not installed')
+class SyncRobustnessTests(SyncTests):
+    def resize(self, part, scale):
+        # The capture hook notes the new scale; position and rotation stay the same.
+        self.lua.execute(f'''
+            sync.NoteScale({part}, {scale})
+            local h = api.world.GetWorldAPIs().editors:CreateUndoOperationsHierarchy()
+            local e = h:StartEditingPart_Scenery(h:EditExistingPart({part}))
+            e:SetTransform(require("TransformQ").FromOrPos(require("Quaternion").Identity, require("Vector3"):new(10, 5, 10)))
+            local wait, preview = api.undo.PreviewChangeList(h:GetFullUndoChangeList())
+            api.undo.CommitPreview(preview)
+        ''')
+        self.tick()
+
+    def test_pure_resize_is_reported(self):
+        self.local_build()
+        part = self.records('sync:up|')[0].split('|')[1]
+        self.resize(part, 2.5)
+        ups = self.records('sync:up|')
+        self.assertEqual(len(ups), 2)
+        self.assertTrue(ups[-1].endswith('|2.5'), ups[-1])
+
+    def test_remote_resize_back_to_one_is_applied(self):
+        self.lua.execute('sync.Receive("U|1|g1|A|1|Fern|1|1|1|0|0|0|1|2")')
+        self.tick(20)
+        self.lua.execute('''
+            local orig = game.newHierarchy
+            scales = {}
+            local H = getmetatable(orig()).__index
+            local edit = H.EditExistingPart
+            H.EditExistingPart = function(self, p)
+                local e = edit(self, p)
+                local set = e.SetScale
+                e.SetScale = function(me, s) scales[#scales+1] = s; return set(me, s) end
+                return e
+            end
+        ''')
+        self.lua.execute('sync.Receive("U|2|g1|A|2|Fern|1|1|1|0|0|0|1|1")')
+        self.tick(20)
+        self.assertEqual(list(self.lua.eval('scales').values()), [1])
+        self.assertEqual(self.records('sync:up|'), [])
+
+    def test_failed_remote_change_is_retried_then_reported(self):
+        self.lua.execute('fails = 0; local can = api.undo.CanCommitPreview; api.undo.CanCommitPreview = function(t) fails = fails + 1; return false end')
+        self.lua.execute('sync.Receive("U|1|g1|A|1|Fern|1|1|1|0|0|0|1|1")')
+        self.tick(20)
+        self.assertEqual(len(self.records('sync:apply-error|')), 1)
+        self.assertEqual(self.records('sync:desync|'), [])
+        self.tick(80)
+        self.assertEqual(len(self.records('sync:apply-error|')), 2)
+        self.assertEqual(len(self.records('sync:desync|')), 1)
+        self.assertIn('invalid-placement', self.records('sync:desync|')[0])
+
+    def test_transient_failure_succeeds_on_retry(self):
+        self.lua.execute('fails = 0; local can = api.undo.CanCommitPreview; api.undo.CanCommitPreview = function(t) fails = fails + 1; return fails > 1 end')
+        self.lua.execute('sync.Receive("U|1|g1|A|1|Fern|1|1|1|0|0|0|1|1")')
+        self.tick(100)
+        self.assertEqual(len(self.records('sync:applied|')), 1)
+        self.assertEqual(self.records('sync:desync|'), [])
+
+
+@unittest.skipIf(LuaRuntime is None, 'Optional lupa.lua53 runtime is not installed')
+class FlatRideTests(unittest.TestCase):
+    setUp = SyncTests.setUp
+    records = SyncTests.records
+    tick = SyncTests.tick
+
+    def test_flat_ride_is_recorded_and_replayed_at_its_final_place(self):
+        self.lua.execute('''
+            local apis = api.world.GetWorldAPIs()
+            local V, Q, T = require("Vector3"), require("Quaternion"), require("TransformQ")
+            local token = apis.flatrides:CreateFlatRideEditToken("FR_Teacups")
+            local h = apis.editors:CreateUndoOperationsHierarchy()
+            local c = h:CreateCompositeObject({})
+            apis.flatrides:AddFlatRide(h, c, token, 3, false)
+            c:SetTransform(T.FromOrPos(Q.Identity, V:new(10, 0, 20)))
+            local wait, preview = api.undo.PreviewChangeList(h:GetFullUndoChangeList())
+            c:SetTransform(T.FromOrPos(Q.Identity, V:new(60, 0, 300)))
+            api.undo.CommitPreview(preview)
+        ''')
+        self.tick()
+        cmds = self.records('sync:cmd|')
+        self.assertEqual(len(cmds), 1)
+        batch = cmds[0][len('sync:cmd|'):]
+        self.assertIn('r2=@composite', batch)
+        self.assertIn('flatrides.AddFlatRide(@h,@r2,@r1,n3,b0)', batch)
+        self.assertTrue(batch.endswith('@r2.SetTransform(t60:0:300:0:0:0:1)'), batch)
+        self.lua.execute('rides = {}')
+        shifted = batch.replace('SetTransform(t60:', 'SetTransform(t90:')
+        self.lua.eval('function(b) sync.Receive("K|1|" .. b) end')(shifted)
+        self.tick(20)
+        self.assertEqual(list(self.lua.eval('rides').values()), ['FR_Teacups 90,300'])
+        self.assertEqual(len(self.records('sync:cmd|')), 1)

@@ -1,0 +1,42 @@
+-- Original MIT code. Multiplayer while the main menu is open: the same session and Gameface
+-- layer as in a park, so friends can accept an invite (or be invited while browsing) and
+-- load the host's park straight from the menu. Hosting needs a park, so only joining here.
+local global = _G
+local Frontend = {}
+
+local state
+
+-- No world in the menu: nothing to sync until the host's park is loaded.
+local idleSync = {Receive = function() end, LocalPart = function() return nil end}
+
+function Frontend.Tick(menu)
+    if not state then
+        local diagnostic = global.require("pc2coop.diagnostic")
+        local session = global.require("pc2coop.session")
+        local ui = global.require("pc2coop.ui")
+        local write = function(tag) return function(message) diagnostic.Write(tag .. message) end end
+        session.Init(write("[PC2CoopSession] "), diagnostic, idleSync, menu.parkLoadSaveManager)
+        ui.Init(write("[PC2CoopUI] "), session, idleSync, nil)
+        ui.SetCanHost(false)
+        session.OnMenuKey = function() ui.Toggle() end
+        state = {session = session, ui = ui, menu = menu, diagnostic = diagnostic}
+        diagnostic.Write("[PC2CoopSession] frontend-init")
+    elseif state.menu ~= menu then
+        state.menu = menu
+        local diagnostic = state.diagnostic
+        state.session.Init(function(message) diagnostic.Write("[PC2CoopSession] " .. message) end, diagnostic,
+            idleSync, menu.parkLoadSaveManager)
+    end
+    local ok, failure = global.pcall(state.session.Tick)
+    if not ok then state.diagnostic.Write("[PC2CoopSession] frontend-tick-error|" .. global.tostring(failure)) end
+    global.pcall(state.ui.Tick)
+end
+
+function Frontend.Shutdown()
+    if not state then return end
+    global.pcall(state.ui.Shutdown)
+    global.pcall(state.ui.SetCanHost, true)
+    state = nil
+end
+
+return Frontend

@@ -1,0 +1,77 @@
+PC2Coop 1.4.1 - Planet Coaster 2 live zusammen bauen, ueber Steam
+
+Installation (jeder Spieler, einmalig)
+1. ZIP in einen eigenen Ordner entpacken.
+2. Planet Coaster 2 beenden, INSTALL.cmd doppelklicken. Der Steam-Ordner wird gesucht.
+   Falls nicht gefunden: INSTALL.cmd -GameDir "D:\SteamLibrary\steamapps\common\Planet Coaster 2"
+Das ist alles. Kein Zusatzprogramm, kein Browser, keine Netzwerk-Einrichtung.
+
+Aktualisieren
+Planet Coaster 2 beenden, UPDATE.cmd doppelklicken. Es holt die neueste Version von
+GitHub, prueft die Pruefsumme und installiert sie. Alle Mitspieler brauchen dieselbe
+Version: der Host lehnt andere Versionen ab und sagt euch, wer aktualisieren muss.
+Die neue Version liegt danach unter %LOCALAPPDATA%\PC2Coop\<Version>\PC2Coop.
+Windows-Hinweis: Meldet SmartScreen oder der Virenscanner die Datei
+PC2CoopDiagnostic.dll, liegt das daran, dass sie nicht signiert ist.
+
+Spielen
+1. Host: Planet Coaster 2 starten und einen Park laden (Sandbox, eigener Spielstand
+   oder Franchise-Park). Pausemenue -> "Multiplayer" (oder F7) -> "Raum hosten".
+2. Freunde einladen: im Multiplayer-Fenster bei jedem Steam-Freund auf "Einladen"
+   klicken oder "Steam-Overlay" nutzen.
+3. Freunde: Einladung in Steam annehmen - auch direkt aus dem Hauptmenue. Dort gibt es
+   ebenfalls die Kachel "Multiplayer". Der Park des Hosts wird automatisch uebertragen
+   und geladen; eine Anzeige in der Bildschirmmitte zeigt Uebertragung und Laden.
+4. Gemeinsam bauen. Oben rechts siehst du, wer im Park ist und was er tut; ueber
+   jedem Mitspieler schwebt ein Namensschild. Beitritte, Austritte und Chat
+   erscheinen unten links. "Nachricht" schreibt in den Chat, "Hinspringen" fliegt
+   zur Kamera eines Mitspielers.
+5. F8 oeffnet das Entwickler-Menue (Sync-Zustand, API-Rekorder, Namensschilder).
+
+Wenn etwas nicht ankommt
+Kann eine Aenderung eines Mitspielers bei dir nicht uebernommen werden, wird sie einmal
+wiederholt. Klappt es dann immer noch nicht, erscheint ein Hinweis, und im
+Multiplayer-Fenster gibt es "Neu synchronisieren": dein Spiel laedt dann den aktuellen
+Park des Hosts neu. Der Host sieht im Verlauf, wer nicht mehr synchron ist.
+
+Franchise
+Hostet ihr aus einem Franchise-Park, speichert der Host wie gewohnt: der gemeinsame
+Stand landet im Franchise. Danach kann jedes Franchise-Mitglied dort auch allein
+weiterbauen, wie es das Spiel vorsieht (Frontier erlaubt pro Park einen Bearbeiter
+gleichzeitig; im Co-op ist das der Host, die anderen bauen live ueber ihn mit).
+
+Stand dieser Version
+Live synchronisiert und im Spiel getestet:
+- Deko, Szenerie, Gebaeudeteile: platzieren, klonen, verschieben, drehen,
+  Groesse aendern, loeschen - auch waehrend jemand selbst etwas haelt.
+- Gelaende (Pinsel), Wege (Spline-Wege), Parkname.
+- Fahrgeschaefte: neu platzieren.
+Eingebaut, aber noch nicht im Spiel bestaetigt:
+- Wasser (Seen), weitere Parkverwaltung (Preise, Oeffnen/Schliessen, Kredite,
+  Forschung), Fahrgeschaefte verschieben, Ein- und Ausgaenge von Fahrgeschaeften.
+Noch NICHT synchronisiert (folgt):
+- Achterbahnen und Schienenfahrgeschaefte (Streckeneditor), Wasserrutschen,
+  Fahrgeschaefte loeschen, Bauplaene, Pools-Editor, Wege-Pinsel und -Stempel.
+  Diese Dinge sind beim Beitritt im uebertragenen Park enthalten, spaetere
+  Aenderungen daran aber nur beim jeweiligen Spieler.
+- Gaeste, Geld und Simulation laufen bei jedem lokal.
+
+Gleichzeitiges Bearbeiten desselben Objekts: der Host entscheidet, die spaetere
+Aenderung wird zurueckgesetzt.
+
+Voraussetzungen
+- Windows x64, eigene Steam-Lizenz Planet Coaster 2, alle mit Build 26255360
+  (Version 1.12.2.1035111). Nach einem Spielupdate verweigert der Installer die
+  Installation, bis eine passende Mod-Version erscheint.
+- Gleiche DLCs wie der Host, falls der Park DLC-Inhalte enthaelt.
+
+Probleme melden
+Log-Datei: <Spielordner>\Win64\ovldata\PC2CoopProbe\pc2coop-diagnostic-*.log
+
+Entfernen
+PC2 beenden, UNINSTALL.cmd doppelklicken.
+
+Lizenz und Quellcode
+Eigener Code: MIT (LICENSE-PC2Coop.txt, source\).
+ACSE 0.729: GPL-3.0, vollstaendiger Quellcode unter source\third-party\ACSE\.
+Keine Spieldateien, Spielstaende oder fremden Assets enthalten.

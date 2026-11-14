@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "game": "Planet Coaster 2",
+  "store": "Steam",
+  "build_id": "26255360",
+  "file_version": "1.12.2.1035111",
+  "exe_sha256": "9da90ae2611bf41af532a30611082bd90cdda6b325e570ac63a469051e736c12",
+  "acse_version": "0.729",
+  "probe_version": "0.0.5",
+  "probe_ovl_sha256": "a9adfafcf728d3014d4c8c766181b872f44855352a7c1328af4fc11ee5d84e5e",
+  "native_dll_sha256": "1f81c7476e2f88fb400b10ae68d69f45534ba96ababcceb2d0f7239a8790f935",
+  "observations": {
+    "main_menu_visible": true,
+    "lua_to_native_file_log": true,
+    "binary_utf8_and_nul_log_match": true,
+    "full_executable_hash_guard_matched": true,
+    "mapped_function_prefix_guard_matched": true,
+    "game_string_routine_rva": "0x1e29f50",
+    "native_to_lua_greeting": true,
+    "native_to_lua_empty_string": true,
+    "native_to_lua_utf8_and_nul": true,
+    "retained_fixed_strings_checked": 256,
+    "lua_collectgarbage_completed": true
+  },
+  "limits": [
+    "Fixed-string callback test only; no world mutations",
+    "No persistent placement, save/reload, networking or multiplayer test",
+    "Two earlier string-probe builds terminated before completion; last trace was hash-begin",
+    "Moving large hash buffers off the callback stack preceded the successful run; no crash dump diagnosis"
+  ]
+}

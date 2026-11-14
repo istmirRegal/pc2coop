@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+/local/
+/build/
+/dist/
+*.ovl
+*.ovs
+*.aux
+.pytest_cache/
+*.ppuipkg
+*.tmp.zip

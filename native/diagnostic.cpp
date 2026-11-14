@@ -1,0 +1,133 @@
+// Original PC2Coop code, MIT. Zero-result Lua callbacks: no Lua ABI access.
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <cstdio>
+#include <cstring>
+
+namespace {
+HMODULE module_handle = nullptr;
+SRWLOCK file_lock = SRWLOCK_INIT;
+HANDLE log_file = INVALID_HANDLE_VALUE;
+unsigned long bytes_written = 0;
+constexpr unsigned long file_limit = 4 * 1024 * 1024;
+struct Record {
+    char bytes[4096];
+    unsigned int size = 0;
+    int high = -1;
+    bool active = false;
+    bool overflow = false;
+};
+thread_local Record record;
+
+void append(const char* bytes, DWORD size) noexcept {
+    AcquireSRWLockExclusive(&file_lock);
+    if (log_file != INVALID_HANDLE_VALUE && bytes_written + size <= file_limit) {
+        DWORD written = 0;
+        if (WriteFile(log_file, bytes, size, &written, nullptr)) bytes_written += written;
+    }
+    ReleaseSRWLockExclusive(&file_lock);
+}
+
+int nibble(unsigned int value) noexcept {
+    if (!record.active || record.overflow) return 0;
+    if (record.high < 0) {
+        record.high = static_cast<int>(value);
+    } else if (record.size < sizeof(record.bytes)) {
+        record.bytes[record.size++] = static_cast<char>((record.high << 4) | value);
+        record.high = -1;
+    } else {
+        record.overflow = true;
+    }
+    return 0;
+}
+}
+
+void pc2_net_command(const char* bytes, unsigned int size) noexcept;
+
+void pc2_diagnostic_event(const char* message) noexcept {
+    append(message, static_cast<DWORD>(std::strlen(message)));
+    append("\n", 1);
+}
+
+bool pc2_diagnostic_inbox(char* data, DWORD capacity, DWORD* size) noexcept {
+    static FILETIME last_write{};
+    static DWORD last_size = 0;
+    wchar_t path[2048];
+    DWORD length = GetModuleFileNameW(module_handle, path, 2048);
+    if (!length || length >= 2048) return false;
+    wchar_t* slash = wcsrchr(path, L'\\');
+    if (!slash || swprintf_s(slash+1, 2048-(slash+1-path),
+            L"pc2coop-inbox-%lu.txt", GetCurrentProcessId()) <= 0) return false;
+    HANDLE file = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                             nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (file == INVALID_HANDLE_VALUE) return false;
+    BY_HANDLE_FILE_INFORMATION info{};
+    bool ok = GetFileInformationByHandle(file, &info) && !info.nFileSizeHigh
+        && info.nFileSizeLow > 0 && info.nFileSizeLow <= capacity;
+    if (ok && CompareFileTime(&last_write, &info.ftLastWriteTime) == 0 && last_size == info.nFileSizeLow) ok = false;
+    if (ok) ok = ReadFile(file, data, capacity, size, nullptr) && *size == info.nFileSizeLow;
+    if (ok) { last_write = info.ftLastWriteTime; last_size = info.nFileSizeLow; }
+    CloseHandle(file);
+    return ok;
+}
+
+BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID) {
+    if (reason == DLL_PROCESS_ATTACH) module_handle = instance;
+    return TRUE;
+}
+
+extern "C" __declspec(dllexport) int pc2_bootstrap(void*) noexcept {
+    // Called by Lua after LoadLibrary has finished; no work in the loader lock.
+    AcquireSRWLockExclusive(&file_lock);
+    if (log_file == INVALID_HANDLE_VALUE) {
+        wchar_t path[32768];
+        DWORD size = GetModuleFileNameW(module_handle, path, 32768);
+        if (size && size < 32768) {
+            wchar_t* slash = wcsrchr(path, L'\\');
+            if (slash && swprintf_s(slash + 1, 32768 - (slash + 1 - path),
+                    L"pc2coop-diagnostic-%lu.log", GetCurrentProcessId()) > 0) {
+                log_file = CreateFileW(path, GENERIC_WRITE, FILE_SHARE_READ, nullptr,
+                                      CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+            }
+        }
+    }
+    ReleaseSRWLockExclusive(&file_lock);
+    char header[128];
+    int size = sprintf_s(header, "PC2COOP diagnostic=1 pid=%lu thread=%lu no-lua-abi=1\n",
+                         GetCurrentProcessId(), GetCurrentThreadId());
+    if (size > 0) append(header, static_cast<DWORD>(size));
+    return 0;
+}
+
+extern "C" __declspec(dllexport) int pc2_log_begin(void*) noexcept {
+    record = Record{};
+    record.active = true;
+    return 0;
+}
+
+extern "C" __declspec(dllexport) int pc2_log_end(void*) noexcept {
+    if (record.active) {
+        if (record.overflow || record.high >= 0) {
+            constexpr char rejected[] = "[diagnostic record rejected]\n";
+            append(rejected, sizeof(rejected) - 1);
+        } else {
+            append(record.bytes, record.size);
+            append("\n", 1);
+        }
+    }
+    record.active = false;
+    return 0;
+}
+
+// Same nibble record as the log, but handed to the Steam transport as one command.
+extern "C" __declspec(dllexport) int pc2_net_end(void*) noexcept {
+    if (record.active && !record.overflow && record.high < 0) pc2_net_command(record.bytes, record.size);
+    record.active = false;
+    return 0;
+}
+
+#define NIBBLE(name, value) extern "C" __declspec(dllexport) int pc2_nibble_##name(void*) noexcept { return nibble(value); }
+NIBBLE(0, 0) NIBBLE(1, 1) NIBBLE(2, 2) NIBBLE(3, 3)
+NIBBLE(4, 4) NIBBLE(5, 5) NIBBLE(6, 6) NIBBLE(7, 7)
+NIBBLE(8, 8) NIBBLE(9, 9) NIBBLE(a, 10) NIBBLE(b, 11)
+NIBBLE(c, 12) NIBBLE(d, 13) NIBBLE(e, 14) NIBBLE(f, 15)

@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "game": "Planet Coaster 2",
+  "store": "Steam",
+  "appid": "2688950",
+  "build_id": "26255360",
+  "file_version": "1.12.2.1035111",
+  "architecture": "x64",
+  "exe_size": 301397504,
+  "exe_sha256": "9da90ae2611bf41af532a30611082bd90cdda6b325e570ac63a469051e736c12",
+  "observed_archive_header_version": 20,
+  "observed_archive_compression": "ZLIB",
+  "observed_lua_header": "1b4c7561530219930d0a1a0a04040804",
+  "mod_compatibility": "ACSE 0.729 + PC2CoopProbe 0.0.2 and 0.0.3 database-init boot only",
+  "native_addresses": {},
+  "in_game_qa": "observed-main-menu-boot; no gameplay or multiplayer tests"
+}
