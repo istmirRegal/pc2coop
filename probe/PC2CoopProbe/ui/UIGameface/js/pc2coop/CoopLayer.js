@@ -17,8 +17,10 @@ let requestCounter = 0;
 let currentState = {};
 const listeners = new Set();
 
+// Literal text for the game's translated components. ':' separates the token's fields, so
+// a colon inside the text is replaced (a dialog with one in its description did not show).
 function literal(text) {
-    return '[STRING_LITERAL:Value=|' + String(text).replace(/[|\[\]]/g, '') + '|]';
+    return '[STRING_LITERAL:Value=|' + String(text).replace(/[|\[\]]/g, '').replace(/\s*:\s*/g, ' - ') + '|]';
 }
 
 export function request(command, argument) {

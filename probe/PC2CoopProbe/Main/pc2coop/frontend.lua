@@ -35,6 +35,7 @@ end
 
 -- The menu's session instance (the menu's require does not cache modules).
 function Frontend.Session() return state and state.session end
+function Frontend.Ui() return state and state.ui end
 
 function Frontend.Shutdown()
     if not state then return end

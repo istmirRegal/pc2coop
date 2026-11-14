@@ -475,6 +475,18 @@ local function execute(command, manager)
         global.pcall(function() after=#(global.api.world.GetWorldAPIs().ridestation:GetAllStations() or {}) end)
         emit("qa:replay-last:stations " .. before .. "->" .. after)
         emit("qa:replay-last:done")
+    elseif command=="stale-invite-test" then
+        -- Accepts an invite to a lobby that does not exist, like an old Steam invite.
+        local session=frontend and frontendCoop().Session() or global.require("pc2coop.session")
+        session._onNet("invite:accepted|109775240000000001|0|alt")
+        emit("qa:stale-invite-test:sent")
+    elseif command=="lobby-close" then
+        if frontend then frontendCoop().Ui().SetOpen(false) else global.require("pc2coop.ui").SetOpen(false) end
+        emit("qa:lobby-close:done")
+    elseif command=="join-dismiss" then
+        local session=frontend and frontendCoop().Session() or global.require("pc2coop.session")
+        session.DismissJoin()
+        emit("qa:join-dismiss:done")
     elseif command=="join-load-test" then
         -- Main menu only: opens pc2coop-join.bin/.trn next to the exe the way a join does.
         local session=frontend and frontendCoop().Session()
@@ -498,7 +510,7 @@ local function execute(command, manager)
         global.require("pc2coop.recorder").SetEnabled(true)
         emit("qa:recorder:on")
     elseif command=="lobby-test" then
-        global.require("pc2coop.ui").SetOpen(true)
+        if frontend then frontendCoop().Ui().SetOpen(true) else global.require("pc2coop.ui").SetOpen(true) end
         emit("qa:lobby-test:open")
     elseif command=="chat-test" then
         global.require("pc2coop.session").SendChat("Hallo zusammen, das ist ein Test")
