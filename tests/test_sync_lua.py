@@ -47,7 +47,9 @@ function undo.PreviewChangeList(cl) local token = {cl = cl}; return {}, token en
 function undo.CanCommitPreview() return true end
 function undo.CancelPreview() return {} end
 function undo.Checkpoint() end
+commits = 0
 function undo.CommitPreview(token)
+    commits = commits + 1
     if token.cl.hierarchy.terrain then
         for _, c in ipairs(token.cl.hierarchy.terrain.calls) do
             if type(c) == "table" then
@@ -227,7 +229,7 @@ class SyncTests(unittest.TestCase):
 
     def test_presence_and_camera_jump(self):
         self.tick(40)
-        self.assertTrue(self.records('sync:pres|1|2|3|0.5|-0.2|4|StandardOrbit|schaut'))
+        self.assertTrue(self.records('sync:pres|1.0|2.0|3.0|0.5|-0.2|4|StandardOrbit|schaut|10.0|5.0|10.0'))
         self.lua.execute('sync.Receive("C|5|6|7|0.1|-0.3")')
         self.assertEqual(list(self.lua.eval('game.camera.jumped').values()), [5, -0.3])
 
@@ -410,3 +412,55 @@ class FlatRideTests(unittest.TestCase):
         self.tick(20)
         self.assertEqual(list(self.lua.eval('rides').values()), ['FR_Teacups 90,300'])
         self.assertEqual(len(self.records('sync:cmd|')), 1)
+
+
+@unittest.skipIf(LuaRuntime is None, 'Optional lupa.lua53 runtime is not installed')
+class RunTests(unittest.TestCase):
+    """A friend's blueprint arrives as many scenery changes; they must not take one commit each."""
+    setUp = SyncTests.setUp
+    records = SyncTests.records
+    tick = SyncTests.tick
+
+    def part_count(self):
+        return self.lua.eval('(function() local n=0; for _ in pairs(game.parts) do n=n+1 end; return n end)()')
+
+    def receive(self, lines):
+        self.lua.eval('function(t) sync.Receive(t) end')(chr(10).join(lines))
+
+    def test_many_upserts_share_commits_and_deletes_too(self):
+        self.receive([f'U|{i}|g{i}|Vici|1|Pipe|{i}|0|5|0|0|0|1|1' for i in range(1, 101)])
+        self.tick(60)
+        self.assertEqual(self.part_count(), 100)
+        self.assertEqual(self.lua.eval('commits'), 2)       # 64 + 36
+        self.assertEqual(self.records('sync:applied|')[-1], 'sync:applied|100')
+        self.assertEqual(self.records('sync:up|'), [])
+        self.receive([f'D|{100 + i}|g{i}|Vici|2' for i in range(1, 101)])
+        self.tick(60)
+        self.assertEqual(self.part_count(), 0)
+        self.assertEqual(self.lua.eval('commits'), 4)
+        self.assertEqual(self.records('sync:del|'), [])
+
+    def test_same_object_twice_in_a_run_ends_at_the_last_state(self):
+        self.receive(['U|1|g1|Vici|1|Pipe|1|0|5|0|0|0|1|1', 'U|2|g2|Vici|1|Pipe|2|0|5|0|0|0|1|1',
+                      'U|3|g1|Vici|2|Pipe|40|0|5|0|0|0|1|1'])
+        self.tick(30)
+        self.assertEqual(self.part_count(), 2)
+        xs = sorted(self.lua.eval('(function() local t={} for _, v in pairs(game.parts) do t[#t+1]=v.p:GetX() end return t end)()').values())
+        self.assertEqual(xs, [2, 40])
+
+    def test_one_refused_part_does_not_block_the_rest_of_the_run(self):
+        # The fake refuses any commit that contains the resource "Bad".
+        self.lua.execute('''
+            local can = api.undo.CanCommitPreview
+            api.undo.CanCommitPreview = function(token)
+                for _, e in ipairs(token.cl.hierarchy.ops) do if e.resource == "Bad" then return false end end
+                return true
+            end
+        ''')
+        lines = [f'U|{i}|g{i}|Vici|1|{"Bad" if i == 7 else "Pipe"}|{i}|0|5|0|0|0|1|1' for i in range(1, 21)]
+        self.receive(lines)
+        self.tick(400)
+        self.assertEqual(self.part_count(), 19)
+        self.assertEqual(len(self.records('sync:run-split|')), 1)
+        self.assertEqual(len(self.records('sync:desync|')), 1)
+        self.assertIn('sync:desync|7|', self.records('sync:desync|')[0])

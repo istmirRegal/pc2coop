@@ -72,6 +72,7 @@ struct Api {
     void (*SetSteamID64)(Identity*, u64) = nullptr;
     u64 (*GetSteamID64)(const Identity*) = nullptr;
     void (*InitRelay)(void*) = nullptr;
+    bool (*SetGlobalConfigInt32)(void*, int, int) = nullptr;   // optional
     int (*GetFriendCount)(void*, int) = nullptr;
     u64 (*GetFriendByIndex)(void*, int, int) = nullptr;
     int (*GetFriendPersonaState)(void*, u64) = nullptr;
@@ -144,8 +145,16 @@ void refresh_members() {
     members = now;
 }
 
-void entered(u64 id, bool ok) {
-    if (!ok) { queue("lobby:error|enter-failed"); return; }
+// Steam reports a JoinLobby twice: as the LobbyEnter callback and as the call result.
+u64 failed_join = 0;
+void entered(u64 id, unsigned int response) {
+    if (response != 1) {
+        // 2 = lobby no longer exists (old invite), 4 = full, 5 = error, 0 = no answer
+        if (id != failed_join || id == 0) queue("lobby:join-failed|" + std::to_string(response));
+        failed_join = id;
+        return;
+    }
+    if (lobby == id) return;
     lobby = id;
     u64 owner = api.GetLobbyOwner(api.Matchmaking(), lobby);
     std::string connect = "+connect_lobby " + id_text(lobby);
@@ -209,7 +218,7 @@ void on_created(const LobbyCreated& data, bool failure) {
     api.SetLobbyData(api.Matchmaking(), data.lobby, "pc2coop", "1");
     queue("lobby:created|" + id_text(data.lobby));
 }
-void on_enter(const LobbyEnter& data) { entered(data.lobby, data.response == 1); }
+void on_enter(const LobbyEnter& data) { entered(data.lobby, data.response); }
 void on_chat_update(const LobbyChatUpdate& data) { if (data.lobby == lobby) refresh_members(); }
 void on_join_requested(const LobbyJoinRequested& data) {
     queue("invite:accepted|" + id_text(data.lobby) + "|" + id_text(data.friend_id) + "|" + friend_name(data.friend_id));
@@ -224,7 +233,7 @@ void on_session_request(const SessionRequest& data) {
 
 CallResult<LobbyCreated, 513>* created_result = nullptr;
 CallResult<LobbyEnter, 504>* enter_result = nullptr;
-void on_enter_result(const LobbyEnter& data, bool failure) { entered(data.lobby, !failure && data.response == 1); }
+void on_enter_result(const LobbyEnter& data, bool failure) { entered(failure ? 0 : data.lobby, failure ? 0 : data.response); }
 
 bool initialise() {
     if (ready || failed) return ready;
@@ -266,6 +275,14 @@ bool initialise() {
     }
     pc2_diagnostic_event("net-stage:steam-bound");
     api.InitRelay(api.Utils());
+    // Reliable data defaults to 256 KB/s, which makes the park transfer take a minute or
+    // more. Allow 1 MB/s; the outbox below handles "buffer full" either way.
+    if (bind(api.SetGlobalConfigInt32, "SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32")) {
+        constexpr int kSendRateMin = 10, kSendRateMax = 11;   // ESteamNetworkingConfigValue
+        bool a = api.SetGlobalConfigInt32(api.Utils(), kSendRateMin, 1024 * 1024);
+        bool b = api.SetGlobalConfigInt32(api.Utils(), kSendRateMax, 1024 * 1024);
+        pc2_diagnostic_event(a && b ? "net-stage:send-rate-1MB" : "net-stage:send-rate-default");
+    }
     self_id = api.GetSteamID(api.User());
     static Callback<LobbyEnter, 504> enter_cb(on_enter);
     static Callback<LobbyChatUpdate, 506> chat_cb(on_chat_update);
@@ -323,7 +340,7 @@ std::wstring game_path(const std::string& name) {
 // (messages, file chunks) is kept. Files are read one chunk at a time, only when Steam has
 // room. A peer that accepts nothing for kStallMs is given up on, loudly.
 constexpr ULONGLONG kStallMs = 60000;
-struct OutFile { std::string as; std::wstring path; long long total = 0; long long offset = 0; };
+struct OutFile { std::string as; std::wstring path; long long total = 0; long long offset = 0; long long reported = 0; };
 struct OutItem { std::string data; std::shared_ptr<OutFile> file; };
 struct Outbox { u64 id = 0; std::deque<OutItem> items; ULONGLONG progress = 0; };
 std::vector<Outbox> outbox;
@@ -381,6 +398,11 @@ void pump_outbox() {
             }
             entry.progress = now;
             if (!item.file) { items.pop_front(); continue; }
+            if (item.file->offset - item.file->reported >= 1024 * 1024 && item.file->offset < item.file->total) {
+                item.file->reported = item.file->offset;
+                queue("file:sending|" + id_text(entry.id) + "|" + item.file->as + "|" + std::to_string(item.file->offset)
+                      + "|" + std::to_string(item.file->total));
+            }
             if (item.file->offset >= item.file->total) {
                 queue("file:sent|" + id_text(entry.id) + "|" + item.file->as + "|" + std::to_string(item.file->total));
                 items.pop_front();
@@ -406,6 +428,12 @@ void send_file(u64 to, const std::string& name, const std::string& as) {
     pump_outbox();
 }
 
+// True while this game loads the transferred park (the Lua side stores phase=loading).
+bool files_locked() {
+    for (const auto& kv : memory) if (kv.first == "phase") return kv.second == "loading";
+    return false;
+}
+
 void receive_chunk(u64 from, const char* data, size_t size) {
     // 0x02 <name>|<total>|<offset>|<bytes>
     std::string head(data + 1, size - 1 < 160 ? size - 1 : 160);
@@ -417,6 +445,7 @@ void receive_chunk(u64 from, const char* data, size_t size) {
     long long total = strtoll(head.substr(a + 1, b - a - 1).c_str(), nullptr, 10);
     long long offset = strtoll(head.substr(b + 1, c - b - 1).c_str(), nullptr, 10);
     if (!safe_name(name) || total <= 0 || total > 256LL * 1024 * 1024 || offset < 0 || offset >= total) return;
+    if (files_locked()) return;
     const char* body = data + 1 + c + 1;
     size_t length = size - (1 + c + 1);
     HANDLE file = CreateFileW(game_path(name).c_str(), GENERIC_WRITE, 0, nullptr, offset == 0 ? CREATE_ALWAYS : OPEN_EXISTING, 0, nullptr);
@@ -462,6 +491,7 @@ void command(const char* bytes, unsigned int size) {
     } else if (verb == "invite") {
         if (lobby) api.ActivateInviteDialog(api.Friends(), lobby);
     } else if (verb == "join") {
+        failed_join = 0;
         enter_result->Set(api.JoinLobby(api.Matchmaking(), parse_id(rest)));
     } else if (verb == "leave") {
         if (lobby) api.LeaveLobby(api.Matchmaking(), lobby);

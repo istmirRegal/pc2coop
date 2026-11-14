@@ -108,6 +108,8 @@ local actions = {
     invite = function(arg) session.InviteFriend(arg) end,
     leave = function() session.Leave() end,
     resync = function() session.Resync() end,
+    retry_join = function() session.Resync() end,
+    cancel_join = function() session.DismissJoin() end,
     chat = function(arg) session.SendChat(arg) end,
     jump = function(arg)
         for _, p in global.pairs(session.View().players or {}) do

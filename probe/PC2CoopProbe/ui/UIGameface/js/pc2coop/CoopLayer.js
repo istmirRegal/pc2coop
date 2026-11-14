@@ -70,7 +70,14 @@ class StateComponent extends preact.Component {
     }
 }
 
-const ACTIVITY = { baut: 'baut', schaut: 'schaut zu', empfaengt: 'synchronisiert', '-': 'lädt' };
+const ACTIVITY = { baut: 'baut', schaut: 'schaut zu', empfaengt: 'synchronisiert', laedt: 'lädt den Park', '-': 'verbindet' };
+
+// What a player is doing; a joiner shows how far the park transfer is ("holt45").
+function activityText(act) {
+    const receiving = /^holt(\d+)$/.exec(act || '');
+    if (receiving) return 'empfängt den Park ' + receiving[1] + ' %';
+    return ACTIVITY[act] || '';
+}
 
 // Small round player chips, always visible while in a session.
 class PlayerBar extends StateComponent {
@@ -87,7 +94,7 @@ class PlayerBar extends StateComponent {
                 preact.h('div', { style: { color: '#ffffff', fontSize: '16px' } },
                     p.name + (p.me ? ' (du)' : '')),
                 p.host && preact.h(Icon, { src: 'img/icons/crown.svg', style: { width: '18px', height: '18px', marginLeft: '7px' } }),
-                preact.h('div', { style: { color: '#9fd8f0', fontSize: '13px', marginLeft: '9px' } }, ACTIVITY[p.act] || ''))));
+                preact.h('div', { style: { color: '#9fd8f0', fontSize: '13px', marginLeft: '9px' } }, activityText(p.act)))));
     }
 }
 
@@ -153,6 +160,7 @@ class Lobby extends StateComponent {
         buttons.push({ label: literal('Schließen'), onSelect: this.close, inputName: 'UI_Cancel' });
         const join = coop.join || {};
         const status = !coop.available ? 'Steam ist nicht verfügbar.'
+            : join.phase === 'failed' ? join.reason
             : join.phase && join.phase !== 'live' ? joinText(join)
             : !coop.role && !coop.canHost ? 'Nimm eine Steam-Einladung an, um direkt beizutreten. Zum Hosten zuerst einen Park laden.'
             : !coop.role ? 'Hoste deinen Park und lade Freunde über Steam ein. Sie bekommen deinen Park automatisch.'
@@ -163,6 +171,8 @@ class Lobby extends StateComponent {
         const row = (children, key) => preact.h('div', { key, style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '5px 0', borderBottom: '1px solid rgba(0, 120, 170, 0.18)' } }, children);
         const friends = (coop.friends || []).slice(0, 30);
+        const inSession = {};
+        (coop.players || []).forEach((p) => { inSession[p.sid] = true; });
         return preact.h(Dialog, { modifiers: 'dialogApp', title: literal('Multiplayer'), description: literal(status), buttons },
             preact.h('div', { style: { width: '760px', maxHeight: '560px', overflowY: 'auto', textAlign: 'left', color: '#20435a',
                 fontSize: '16px' } },
@@ -171,7 +181,7 @@ class Lobby extends StateComponent {
                     preact.h('div', { style: { display: 'flex', alignItems: 'center' } },
                         preact.h('div', { style: { width: '14px', height: '14px', borderRadius: '7px', background: '#' + p.color, marginRight: '8px' } }),
                         p.name + (p.me ? ' (du)' : '') + (p.host ? ' - Host' : ''),
-                        preact.h('span', { style: { color: '#6a8899', marginLeft: '10px' } }, ACTIVITY[p.act] || '')),
+                        preact.h('span', { style: { color: '#6a8899', marginLeft: '10px' } }, activityText(p.act))),
                     !p.me && p.x !== undefined ? preact.h(Button, { label: literal('Hinspringen'), onSelect: () => request('jump', p.sid) }) : null,
                 ], 'p' + p.sid)),
                 coop.available && section('Steam-Freunde'),
@@ -180,8 +190,10 @@ class Lobby extends StateComponent {
                     preact.h('div', null, f.name,
                         preact.h('span', { style: { color: f.pc2 ? '#00a65a' : '#6a8899', marginLeft: '10px' } },
                             f.pc2 ? 'spielt Planet Coaster 2' : (FRIEND_STATE[f.state] || ''))),
-                    coop.role ? preact.h(Button, { label: literal(f.invited ? 'Eingeladen' : 'Einladen'), disabled: f.invited,
-                        onSelect: () => request('invite', f.sid) }) : null,
+                    !coop.role ? null
+                        : inSession[f.sid] ? preact.h('span', { style: { color: '#00a65a' } }, 'ist dabei')
+                        : preact.h(Button, { label: literal(f.invited ? 'Eingeladen' : 'Einladen'), disabled: f.invited,
+                            onSelect: () => request('invite', f.sid) }),
                 ], 'f' + f.sid)),
                 coop.role && (coop.chat || []).length > 0 && section('Chat'),
                 (coop.chat || []).slice(-8).map((c, i) => preact.h('div', { key: 'c' + i, style: { padding: '2px 0' } },
@@ -202,7 +214,7 @@ class JoinProgress extends StateComponent {
     render(props, state) {
         const coop = state.coop || {};
         const join = coop.join;
-        if (!join || !join.phase || join.phase === 'live' || coop.open) return null;
+        if (!join || !join.phase || join.phase === 'live' || join.phase === 'failed' || coop.open) return null;
         const share = join.phase === 'awaiting' ? (join.progress || 0) : join.phase === 'loading' ? 1 : 0.02;
         return preact.h('div', { style: { position: 'absolute', left: '50%', top: '42%', width: '520px', marginLeft: '-260px',
             padding: '22px 28px', borderRadius: '14px', background: 'rgba(14, 33, 48, 0.9)', color: '#ffffff', textAlign: 'center' } },
@@ -213,13 +225,27 @@ class JoinProgress extends StateComponent {
     }
 }
 
+// Joining failed (old invite, park could not be loaded): say why and offer the way out.
+class JoinFailed extends StateComponent {
+    render(props, state) {
+        const coop = state.coop || {};
+        const join = coop.join;
+        if (!join || join.phase !== 'failed' || coop.open) return null;
+        const buttons = [];
+        if (join.retry) buttons.push({ label: literal('Erneut versuchen'), onSelect: () => request('retry_join') });
+        buttons.push({ label: literal(join.retry ? 'Abbrechen' : 'Schließen'), onSelect: () => request('cancel_join'), inputName: 'UI_Cancel' });
+        return preact.h(Dialog, { modifiers: 'dialogApp', title: literal('Multiplayer'), description: literal(join.reason || 'Beitritt fehlgeschlagen.'), buttons });
+    }
+}
+
 class CoopLayer extends preact.Component {
     render() {
         return preact.h('div', { style: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' } },
             preact.h(PlayerBar, null),
             preact.h(Toasts, null),
             preact.h(JoinProgress, null),
-            preact.h('div', { style: { pointerEvents: 'auto' } }, preact.h(Lobby, null)));
+            preact.h('div', { style: { pointerEvents: 'auto' } }, preact.h(Lobby, null)),
+            preact.h('div', { style: { pointerEvents: 'auto' } }, preact.h(JoinFailed, null)));
     }
 }
 

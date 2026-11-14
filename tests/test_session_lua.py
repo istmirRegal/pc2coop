@@ -44,6 +44,7 @@ class Peer:
         self.lua.globals().session = self.session
         self.lua.execute('session.Init(function(m) logs[#logs+1] = m end, net, sync, manager)')
         self.memory = {}
+        self.sent_files = []
         self.loaded = 0
         self.event(f'net:ready|{sid}|{name}')
 
@@ -97,6 +98,8 @@ class SessionTests(unittest.TestCase):
                     elif verb == 'file':
                         target, local, remote = rest.split('|')
                         self.peers[target].event(f'file:done|{sid}|{remote}|100')
+                        peer.event(f'file:sent|{target}|{remote}|100')
+                        peer.sent_files.append((target, remote))
                     elif verb == 'kv':
                         key, _, value = rest.partition('|')
                         peer.memory[key] = value
@@ -257,3 +260,102 @@ class VersionTests(SessionTests):
         toasts = [t['text'] for t in old.lua.eval('session.Toasts()').values()]
         self.assertTrue(any('UPDATE.cmd' in t for t in toasts), toasts)
         self.assertIsNone(old.lua.eval('session.View().role'))
+
+
+class JoinRobustnessTests(SessionTests):
+    """What went wrong in the first real two-player test (double transfer, false "joined")."""
+
+    def join_state(self, peer):
+        state = peer.lua.eval('session.JoinState()')
+        return dict(state.items()) if state is not None else None
+
+    def host_feed(self):
+        return list(self.peers['100'].lua.eval('session.View().feed').values())
+
+    def test_steam_reporting_the_lobby_twice_transfers_the_park_once(self):
+        host = self.peers['100']
+        host.sent_files.clear()
+        new = self.peers['800'] = Peer('800', 'Vici')
+        new.event('lobby:entered|L1|100|Host')
+        new.event('lobby:entered|L1|100|Host')
+        host.event('member:join|800|Vici')
+        self.pump(12)
+        self.assertEqual(host.sent_files, [('800', 'pc2coop-join.trn'), ('800', 'pc2coop-join.bin')])
+        self.assertEqual(len(new.lua.eval('loads')), 1)
+        self.assertEqual(self.join_state(new)['phase'], 'live')
+
+    def test_asking_again_while_the_park_is_on_its_way_does_not_restart_it(self):
+        host = self.peers['100']
+        version = host.lua.eval('session.VERSION')
+        host.event(f'msg|900|hello|Doppelt|-1|needpark|{version}')
+        host.event(f'msg|900|hello|Doppelt|-1|needpark|{version}')
+        for _ in range(4):
+            host.tick()
+        files = [c for c in host.commands() if c.startswith('file|900|')]
+        self.assertEqual(len(files), 2, files)
+        self.assertEqual(sum('Doppelt tritt bei' in line for line in self.host_feed()), 1)
+
+    def test_load_that_ends_in_the_menu_is_a_failure_not_a_join(self):
+        new = self.peers['810'] = Peer('810', 'Vici')
+        new.lua.execute('session.SetContext("menu")')
+        new.event('lobby:entered|L1|100|Host')
+        self.peers['100'].event('member:join|810|Vici')
+        self.pump(12)
+        state = self.join_state(new)
+        self.assertEqual((state['phase'], state['retry']), ('failed', True))
+        self.assertIn('Vici konnte den Park nicht laden', self.host_feed())
+        self.assertNotIn('Vici ist beigetreten', self.host_feed())
+        acts = {p['name']: p['act'] for p in self.peers['100'].lua.eval('session.View().players').values()}
+        self.assertEqual(acts['Vici'], 'laedt')
+        # Retry; this time the game opens the park.
+        new.lua.execute('session.Resync(); session.SetContext("park")')
+        self.pump(12)
+        self.assertEqual(self.join_state(new)['phase'], 'live')
+        self.assertIn('Vici ist beigetreten', self.host_feed())
+
+    def test_old_invite_says_so_and_can_be_dismissed(self):
+        new = Peer('820', 'Vici')
+        new.event('invite:accepted|L9|100|Host')
+        new.event('lobby:join-failed|2')
+        new.tick()
+        state = self.join_state(new)
+        self.assertEqual((state['phase'], state['retry']), ('failed', False))
+        self.assertIn('abgelaufen', state['reason'])
+        new.lua.execute('session.DismissJoin()')
+        self.assertIsNone(self.join_state(new))
+
+    def test_invited_wears_off_and_clears_when_the_friend_joins(self):
+        host = self.peers['100']
+        for event in ('friends:begin|2', 'friend|900|Bob|1|1', 'friend|901|Cleo|1|0', 'friends:end', 'invite:sent|900', 'invite:sent|901'):
+            host.event(event)
+        host.tick()
+        invited = lambda: {f['name']: f['invited'] for f in host.lua.eval('session.Friends()').values()}
+        self.assertEqual(invited(), {'Bob': True, 'Cleo': True})
+        version = host.lua.eval('session.VERSION')
+        host.event(f'msg|901|hello|Cleo|-1|needpark|{version}')
+        host.tick()
+        self.assertEqual(invited(), {'Bob': True, 'Cleo': False})
+        host.lua.execute('for i = 1, 1600 do session.Tick() end')
+        self.assertEqual(invited(), {'Bob': False, 'Cleo': False})
+
+    def test_where_a_player_looks_is_relayed_at_once(self):
+        self.peers['200'].local_change('sync:pres|1.0|2.0|3.0|0.5|-0.2|4|Orbit|baut|10.0|5.0|12.0')
+        host = self.peers['100']
+        for sid, command in [('200', c) for c in self.peers['200'].commands()]:
+            verb, _, rest = command.partition('|')
+            target, _, payload = rest.partition('|')
+            host.event(f'msg|{sid}|{payload}')
+        host.tick()
+        relayed = [c for c in host.commands() if c.startswith('send|300|p|200|')]
+        self.assertEqual(relayed, ['send|300|p|200|10|5|12|baut'])
+        self.peers['300'].event('msg|100|p|200|10|5|12|baut')
+        self.peers['300'].tick()
+        alex = [p for p in self.peers['300'].lua.eval('session.View().players').values() if p['sid'] == '200'][0]
+        self.assertEqual((alex['fx'], alex['fz'], alex['act']), (10, 12, 'baut'))
+
+    def test_host_back_in_the_menu_ends_the_session(self):
+        host = self.peers['100']
+        host.lua.execute('session.SetContext("menu"); session.Init(function(m) logs[#logs+1] = m end, net, sync, manager)')
+        self.pump(2)   # the simulated DLL answers "status" with the lobby the host is still in
+        self.assertIsNone(host.lua.eval('session.View().role'))
+        self.assertTrue(any('Sitzung beendet' in t['text'] for t in host.lua.eval('session.Toasts()').values()))

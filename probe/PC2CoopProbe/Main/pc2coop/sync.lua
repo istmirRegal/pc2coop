@@ -32,6 +32,8 @@ local task
 local frames = 0
 local reconcileCursor
 local groupSize = 1
+local grouped = false     -- the running task applies inbound[1..groupSize] in one commit
+local MAX_RUN = 64        -- scenery changes applied together (a blueprint has 100+ parts)
 local cmdSent = 0
 local lastCmd = ""
 local lastPresence, lastPresenceFrame = nil, 0
@@ -117,8 +119,9 @@ local function baseline()
             end
         end
     end
-    baselineCount = count
-    emit("sync:baseline|" .. count)
+    baselineCount = 0
+    for _ in global.pairs(known) do baselineCount = baselineCount + 1 end
+    emit("sync:baseline|" .. baselineCount .. "|new=" .. count)
 end
 
 local function diffAfterLocalCommit(focus)
@@ -401,6 +404,18 @@ local function waitFor(predicate, label)
     global.error("timeout-" .. label)
 end
 
+local function parse(line)
+    local f = {}
+    for field in global.string.gmatch(line, "[^|]+") do f[#f+1] = field end
+    return f
+end
+
+local function number(v)
+    local n = global.tonumber(v)
+    if not n or n ~= n or global.math.abs(n) > 1e6 then global.error("bad-number") end
+    return n
+end
+
 local function transformOf(op)
     local Quaternion, Vector3, TransformQ = global.require("Quaternion"), global.require("Vector3"), global.require("TransformQ")
     local q = Quaternion.Identity:WithX(op.qx):WithY(op.qy):WithZ(op.qz):WithW(op.qw)
@@ -472,6 +487,74 @@ local function applyUpsert(op)
     known[part] = fingerprint(readPart(part), part)
 end
 
+-- A run of remote upserts in one change list and one commit, the way the game itself
+-- places a blueprint. Later entries for the same object replace earlier ones.
+local function applyUpserts(run)
+    local w, api = apis(), global.api
+    local hierarchy = w.editors:CreateUndoOperationsHierarchy()
+    local last, items = {}, {}
+    for i, f in global.ipairs(run) do last[f[3]] = i end
+    for i, f in global.ipairs(run) do
+        revision[f[3]] = global.tonumber(f[5])
+        if last[f[3]] == i then
+            local op = {gid = f[3], resource = f[6], x = number(f[7]), y = number(f[8]), z = number(f[9]),
+                qx = number(f[10]), qy = number(f[11]), qz = number(f[12]), qw = number(f[13]), scale = number(f[14] or 1)}
+            local part = globalToLocal[op.gid]
+            local token = api.entity.CreateRequestCompletionToken()
+            local object
+            if part and w.placement:PlacementPartExists(part) then
+                object = hierarchy:EditExistingPart(part, nil, token)
+            else
+                object, part = hierarchy:CreateNewPart(op.resource, token), nil
+            end
+            items[#items+1] = {op = op, part = part, object = object, token = token}
+        end
+    end
+    for _, item in global.ipairs(items) do
+        waitFor(function() return api.entity.HaveRequestsCompleted(item.token) end, "edit")
+        local edit = hierarchy:StartEditingPart_Scenery(item.object)
+        edit:SetTransform(transformOf(item.op))
+        if item.op.scale then global.pcall(function() edit:SetScale(item.op.scale) end) end
+        local ids = w.scenery:GetMoveObjectPartIDs(edit)
+        global.assert(global.type(ids) == "table" and #ids >= 1, "no-part")
+        item.part = item.part or ids[1]
+    end
+    commit(w, hierarchy)
+    for _, item in global.ipairs(items) do
+        globalToLocal[item.op.gid], localToGlobal[item.part] = item.part, item.op.gid
+        scaleHint[item.part] = item.op.scale
+    end
+    -- Let placement settle before recording, so engine snapping is not echoed back.
+    for _ = 1, 5 do global.coroutine.yield() end
+    for _, item in global.ipairs(items) do known[item.part] = fingerprint(readPart(item.part), item.part) end
+end
+
+local function applyDeletes(run)
+    local w = apis()
+    local selection, count = w.scenery:CreateBuildingPartSet(), 0
+    local parts = {}
+    for _, f in global.ipairs(run) do
+        revision[f[3]] = nil
+        local part = globalToLocal[f[3]]
+        if part and not parts[part] and w.placement:PlacementPartExists(part) then
+            selection:Add(part)
+            count = count + 1
+        end
+        if part then parts[part] = true end
+    end
+    if count > 0 then
+        local hierarchy = w.editors:CreateUndoOperationsHierarchy()
+        local edits = hierarchy:StartEditingParts_Scenery(hierarchy:DestroyExistingParts(selection))
+        for _, edit in global.ipairs(edits) do edit:Destroy() end
+        commit(w, hierarchy)
+    end
+    for _, f in global.ipairs(run) do
+        local part = globalToLocal[f[3]]
+        if part then localToGlobal[part], known[part] = nil, nil end
+        globalToLocal[f[3]] = nil
+    end
+end
+
 local function applyDelete(op)
     local w = apis()
     local part = globalToLocal[op.gid]
@@ -485,18 +568,6 @@ local function applyDelete(op)
     end
     if part then localToGlobal[part], known[part] = nil, nil end
     globalToLocal[op.gid] = nil
-end
-
-local function parse(line)
-    local f = {}
-    for field in global.string.gmatch(line, "[^|]+") do f[#f+1] = field end
-    return f
-end
-
-local function number(v)
-    local n = global.tonumber(v)
-    if not n or n ~= n or global.math.abs(n) > 1e6 then global.error("bad-number") end
-    return n
 end
 
 local function camera(f)
@@ -573,9 +644,13 @@ end
 local function presence()
     local cam = apis().CameraModeManager
     local pos, ypr, zoom = cam:GetPosYPRZoom()
-    local line = "sync:pres|" .. fmt(pos:GetX()) .. "|" .. fmt(pos:GetY()) .. "|" .. fmt(pos:GetZ()) .. "|"
+    local okFocus, focus = global.pcall(focusPosition)
+    if not okFocus or focus == nil then focus = pos end
+    local short = function(n) return global.string.format("%.1f", n) end
+    local line = "sync:pres|" .. short(pos:GetX()) .. "|" .. short(pos:GetY()) .. "|" .. short(pos:GetZ()) .. "|"
         .. fmt(ypr:GetX()) .. "|" .. fmt(ypr:GetY()) .. "|" .. fmt(zoom or 0) .. "|"
-        .. global.tostring(cam:GetCurrentModeName()) .. "|" .. activity()
+        .. global.tostring(cam:GetCurrentModeName()) .. "|" .. activity() .. "|"
+        .. short(focus:GetX()) .. "|" .. short(focus:GetY()) .. "|" .. short(focus:GetZ())
     if line ~= lastPresence or frames - lastPresenceFrame >= 120 then
         lastPresence, lastPresenceFrame = line, frames
         emit(line)
@@ -614,11 +689,18 @@ function Sync.Tick()
         if not ok then
             local head = inbound[1]
             local seq = head and head.seq or 0
+            if grouped and head and head.fields[1] ~= "K" and groupSize > 1 then
+                -- One part of the run was refused: apply them one by one, so only that part fails.
+                emit("sync:run-split|" .. global.tostring(seq) .. "|" .. groupSize .. "|" .. global.tostring(failure))
+                for i = 1, groupSize do if inbound[i] then inbound[i].single = true end end
+                task, applying, grouped = nil, false, false
+                return
+            end
             emit("sync:apply-error|" .. global.tostring(seq) .. "|" .. global.tostring(failure))
             if head and not head.retried then
                 -- Often transient (placement still settling, a validation race): retry once.
                 head.retried, head.after = true, frames + 60
-                task, applying = nil, false
+                task, applying, grouped = nil, false, false
                 return
             end
             -- Dropping it means this game no longer matches the host: say so, never silently.
@@ -626,9 +708,9 @@ function Sync.Tick()
             for _ = 1, global.math.max(1, groupSize) do
                 if inbound[1] then lastSeq = inbound[1].seq; global.table.remove(inbound, 1) end
             end
-            task, applying = nil, false
+            task, applying, grouped = nil, false, false
         elseif global.coroutine.status(task) == "dead" then
-            if groupSize > 1 or (inbound[1] and inbound[1].fields[1] == "K") then
+            if grouped then
                 for _ = 1, groupSize do
                     lastSeq = inbound[1].seq
                     global.table.remove(inbound, 1)
@@ -637,7 +719,7 @@ function Sync.Tick()
             else
                 global.table.remove(inbound, 1)
             end
-            task, applying = nil, false
+            task, applying, grouped = nil, false, false
         end
     elseif active and not paused and #inbound > 0 and not raw.IsBusy()
         and (not inbound[1].after or frames >= inbound[1].after) then
@@ -649,7 +731,7 @@ function Sync.Tick()
             while #batches < 20 and inbound[#batches + 1] and inbound[#batches + 1].fields[1] == "K" do
                 batches[#batches + 1] = inbound[#batches + 1].fields[3]
             end
-            groupSize = #batches
+            groupSize, grouped = #batches, true
             task = global.coroutine.create(function()
                 local paused = pauseLocalPreview()
                 local w = apis()
@@ -660,8 +742,22 @@ function Sync.Tick()
                 resumeLocalPreview(paused)
                 if not ok then global.error(failure, 0) end
             end)
+        elseif (fields[1] == "U" or fields[1] == "D") and not inbound[1].single then
+            -- Consecutive scenery changes of one kind (a friend's blueprint) share one commit.
+            local kind, run = fields[1], {}
+            while #run < MAX_RUN and inbound[#run + 1] and inbound[#run + 1].fields[1] == kind
+                and not inbound[#run + 1].single do
+                run[#run + 1] = inbound[#run + 1].fields
+            end
+            groupSize, grouped = #run, true
+            task = global.coroutine.create(function()
+                local paused = pauseLocalPreview()
+                local ok, failure = global.pcall(kind == "U" and applyUpserts or applyDeletes, run)
+                resumeLocalPreview(paused)
+                if not ok then global.error(failure, 0) end
+            end)
         else
-            groupSize = 1
+            groupSize, grouped = 1, false
             task = global.coroutine.create(function()
                 local paused = pauseLocalPreview()
                 local ok, failure = global.pcall(runOp, fields)
@@ -670,13 +766,13 @@ function Sync.Tick()
             end)
         end
     end
-    if active and frames % 15 == 0 then global.pcall(presence) end
+    if active and frames % 8 == 0 then global.pcall(presence) end
     if active and frames % 60 == 30 then global.pcall(reconcile) end
 end
 
 function Sync.Stop()
     if D and D.handlers == Handlers then D.handlers = nil end
-    active, task, applying, inbound, pending = false, nil, false, {}, {}
+    active, task, applying, inbound, pending, grouped = false, nil, false, {}, {}, false
     localToGlobal, globalToLocal, revision, known, scaleHint, lastSeq, wrapped = {}, {}, {}, {}, {}, 0, false
     Replay.Stop()
     emit("sync:not-ready")

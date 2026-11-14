@@ -11,7 +11,7 @@ local global = _G
 local Session = {}
 
 -- Mod version; must match the database's probeVersion (checked by the tests).
-Session.VERSION = "1.4.3"
+Session.VERSION = "1.5.0"
 local COLORS = {"ff6b6b", "4dabf7", "51cf66", "fcc419", "cc5de8", "ff922b", "22b8cf", "f06595"}
 local net, sync
 local emit = function() end
@@ -35,6 +35,10 @@ local toastId = 0
 local joining, hostName = false, nil  -- joiner: invite accepted / host shown while loading
 local progress = {}       -- joiner: file name -> {received, total}
 local desync = nil        -- reason when a remote change could not be applied here
+local context = "park"    -- "menu" while the main menu is open: nothing to build in
+local helloLobby = nil    -- lobby this module instance already announced itself to
+local joinFailure = nil   -- why joining or loading the host's park failed (shown to the player)
+local INVITE_FRAMES = 1500  -- an invite button stays "Eingeladen" this long (about 25 s)
 local lastRoster = 0
 local frames = 0
 
@@ -256,8 +260,11 @@ local function join(sid, name, mode)
     players[sid].name, players[sid].color = clean(name), color
     stats[players[sid].name] = stats[players[sid].name] or {created = 0, edited = 0, deleted = 0}
     if sid ~= me then send(sid, "welcome|" .. color) end
+    for _, fr in global.ipairs(friends) do if fr.sid == sid then fr.invitedAt = nil end end
     if mode == "needpark" then
-        players[sid].pending = {}
+        -- Asked again while the park is still on its way: it arrives, nothing to restart.
+        if players[sid].sending then return end
+        players[sid].pending, players[sid].sending, players[sid].sent = {}, true, 0
         addFeed(players[sid].name .. " tritt bei und laedt den Park")
         tasks[#tasks+1] = global.coroutine.create(function() sendPark(sid) end)
     elseif mode == "loaded" and players[sid].pending then
@@ -297,8 +304,17 @@ local function hostChange(sid, f)
     elseif f[1] == "del" and #f >= 4 then
         deliver(authorityDelete(sid, f[2], f[3], global.tonumber(f[4])))
     elseif f[1] == "pres" and players[sid] then
-        players[sid].pres = {x = global.tonumber(f[2]), y = global.tonumber(f[3]), z = global.tonumber(f[4]),
-            yaw = global.tonumber(f[5]), pitch = global.tonumber(f[6]), act = clean(f[9])}
+        local pr = {x = global.tonumber(f[2]), y = global.tonumber(f[3]), z = global.tonumber(f[4]),
+            yaw = global.tonumber(f[5]), pitch = global.tonumber(f[6]), act = clean(f[9]),
+            fx = global.tonumber(f[10]), fy = global.tonumber(f[11]), fz = global.tonumber(f[12])}
+        players[sid].pres = pr
+        -- Where a player looks goes to the others right away; the roster is too slow for that.
+        if pr.fx then
+            local line = "p|" .. sid .. "|" .. num(pr.fx) .. "|" .. num(pr.fy) .. "|" .. num(pr.fz) .. "|" .. pr.act
+            for _, other in global.ipairs(order) do
+                if other ~= me and other ~= sid and players[other] and not players[other].pending then send(other, line) end
+            end
+        end
     elseif f[1] == "cmd" and f[2] then
         -- Replayed edit (terrain, lakes, ...): host orders it and forwards it to everyone else.
         if #f[2] <= 3000 then deliver(others(sid, "K|" .. f[2])) end
@@ -313,8 +329,13 @@ local function rosterLine()
         local p = players[sid]
         if p then
             local pr = p.pres or {}
-            parts[#parts+1] = global.table.concat({sid, p.name, p.color, pr.act or "-", num(pr.x or 0), num(pr.y or 0),
-                num(pr.z or 0), num(pr.yaw or 0), global.tostring(p.base or -1)}, ",")
+            -- A joiner has no presence yet: show how far the park transfer is instead.
+            local act = pr.act or "-"
+            if p.sending then act = "holt" .. global.math.floor((p.sent or 0) * 100)
+            elseif p.pending then act = "laedt" end
+            parts[#parts+1] = global.table.concat({sid, p.name, p.color, act, num(pr.x or 0), num(pr.y or 0),
+                num(pr.z or 0), num(pr.yaw or 0), global.tostring(p.base or -1),
+                num(pr.fx or pr.x or 0), num(pr.fy or pr.y or 0), num(pr.fz or pr.z or 0)}, ",")
         end
     end
     local st = {}
@@ -328,7 +349,8 @@ local function parseRoster(payload)
     for _, entry in global.ipairs(split(f[2] or "", ";")) do
         local p = split(entry, ",")
         list[#list+1] = {sid = p[1], name = p[2], color = p[3], act = p[4], x = global.tonumber(p[5]),
-            y = global.tonumber(p[6]), z = global.tonumber(p[7]), yaw = global.tonumber(p[8]), base = global.tonumber(p[9])}
+            y = global.tonumber(p[6]), z = global.tonumber(p[7]), yaw = global.tonumber(p[8]), base = global.tonumber(p[9]),
+            fx = global.tonumber(p[10]), fy = global.tonumber(p[11]), fz = global.tonumber(p[12])}
     end
     local st = {}
     for _, entry in global.ipairs(split(f[3] or "", ";")) do
@@ -372,6 +394,9 @@ local function onMessage(from, payload)
             if f[3] then hostChange(from, {"base", f[3]}) end
         elseif kind == "desync" and players[from] then
             addFeed(players[from].name .. " ist nicht mehr synchron")
+        elseif kind == "loadfailed" and players[from] then
+            players[from].sending = false
+            addFeed(players[from].name .. " konnte den Park nicht laden")
         elseif kind == "chat" and players[from] then
             Session._BroadcastChat(players[from].name, players[from].color, global.string.sub(payload, 6))
         elseif players[from] then
@@ -384,6 +409,13 @@ local function onMessage(from, payload)
             toGame(lines)
         elseif kind == "roster" then
             parseRoster(payload)
+        elseif kind == "p" then
+            local f = split(payload, "|")
+            for _, pl in global.ipairs(roster.players or {}) do
+                if pl.sid == f[2] then
+                    pl.fx, pl.fy, pl.fz, pl.act = global.tonumber(f[3]), global.tonumber(f[4]), global.tonumber(f[5]), f[6]
+                end
+            end
         elseif kind == "park" then
             local f = split(payload, "|")
             transfer.world, transfer.name = f[2], f[3]
@@ -404,6 +436,22 @@ local function onMessage(from, payload)
     end
 end
 
+-- Joiner: ask the host for its park (first join, retry, resync).
+local function requestPark()
+    remember("lobby", lobbyId)
+    remember("phase", "awaiting")
+    transfer, progress, joinFailure, desync = {}, {}, nil, nil
+    emit("session:awaiting-park|" .. lobbyId .. "|" .. global.tostring(hostName))
+    send(hostId, "hello|" .. myName .. "|-1|needpark|" .. Session.VERSION)
+end
+
+local function failJoin(reason, tellHost)
+    joinFailure = reason
+    if lobbyId then remember("phase", "failed") end
+    emit("session:join-failed|" .. reason)
+    if tellHost and hostId then send(hostId, "loadfailed|") end
+end
+
 local function onNet(event)
     local f = split(event, "|")
     local kind = f[1]
@@ -411,33 +459,56 @@ local function onNet(event)
         me, myName = f[2], clean(f[3])
         emit("session:net-ready|" .. me .. "|" .. myName)
     elseif kind == "lobby:entered" then
-        lobbyId, hostId = f[2], f[3]
+        -- Steam can report one entry twice; this module instance answers it once.
+        if helloLobby == f[2] then return end
+        lobbyId, hostId, helloLobby = f[2], f[3], f[2]
         joining, hostName = false, clean(f[4] or "")
+        local phase = memory.lobby == lobbyId and memory.phase or nil
         if hostId == me then
+            if context == "menu" then
+                -- Back in the main menu: there is no park to share any more.
+                toast("Sitzung beendet: du hast den Park verlassen.")
+                Session.Leave()
+                return
+            end
             role = "host"
             join(me, myName)
             remember("lobby", lobbyId)
             remember("phase", "host")
             emit("session:hosting|" .. lobbyId)
             sync.Receive("S|" .. myName)
+        elseif context == "menu" and phase == "loading" then
+            -- The game came back to the menu instead of opening the park.
+            role = "client"
+            failJoin("Der Park des Hosts konnte nicht geladen werden.", true)
+        elseif context == "menu" and phase == "failed" then
+            role = "client"
+            joinFailure = joinFailure or "Der Park des Hosts konnte nicht geladen werden."
+        elseif context == "menu" and phase == "live" then
+            role = "client"
+            toast("Du hast die Sitzung verlassen.")
+            Session.Leave()
+        elseif context == "park" and phase == "loading" then
+            role = "client"
+            remember("phase", "live")
+            emit("session:joined|" .. lobbyId .. "|" .. hostName)
+            sync.Receive("S|" .. myName)
+            send(hostId, "hello|" .. myName .. "|-1|loaded|" .. Session.VERSION)
+            toast("Bereit: du baust jetzt im Park von " .. hostName .. ".", "51cf66")
+        elseif context == "park" and phase == "live" then
+            role = "client"
+            sync.Receive("S|" .. myName)
+            send(hostId, "hello|" .. myName .. "|-1|live|" .. Session.VERSION)
         else
             role = "client"
-            if memory.phase == "loading" and memory.lobby == lobbyId then
-                remember("phase", "live")
-                emit("session:joined|" .. lobbyId .. "|" .. clean(f[4]))
-                sync.Receive("S|" .. myName)
-                send(hostId, "hello|" .. myName .. "|-1|loaded|" .. Session.VERSION)
-            elseif memory.phase == "live" and memory.lobby == lobbyId then
-                sync.Receive("S|" .. myName)
-                send(hostId, "hello|" .. myName .. "|-1|live|" .. Session.VERSION)
-            else
-                remember("lobby", lobbyId)
-                remember("phase", "awaiting")
-                transfer = {}
-                emit("session:awaiting-park|" .. lobbyId .. "|" .. clean(f[4]))
-                send(hostId, "hello|" .. myName .. "|-1|needpark|" .. Session.VERSION)
-            end
+            requestPark()
         end
+    elseif kind == "lobby:join-failed" then
+        joining = false
+        local code = global.tonumber(f[2]) or 0
+        local reasons = {[2] = "Diese Einladung ist abgelaufen: die Sitzung gibt es nicht mehr. Lass dich neu einladen.",
+            [4] = "Die Sitzung ist voll.", [6] = "Die Sitzung ist nur fuer Steam-Freunde des Hosts."}
+        failJoin(reasons[code] or ("Beitritt nicht moeglich (Steam-Code " .. code .. "). Lass dich neu einladen."), false)
     elseif kind == "member:join" then
         emit("session:member|" .. f[2] .. "|" .. clean(f[3]))
     elseif kind == "member:leave" then
@@ -449,8 +520,12 @@ local function onNet(event)
     elseif kind == "msg" then
         onMessage(f[2], global.string.sub(event, #f[1] + #f[2] + 3))
     elseif kind == "invite:accepted" then
+        if role and lobbyId == f[2] then
+            toast("Du bist bereits in dieser Sitzung.")
+            return
+        end
         if role then Session.Leave() end
-        joining, progress = true, {}
+        joining, progress, joinFailure = true, {}, nil
         net.NetCommand("join|" .. f[2])
         emit("session:joining|" .. f[2])
     elseif kind == "key:menu" then
@@ -460,10 +535,10 @@ local function onNet(event)
     elseif kind == "friends:begin" then
         friendsLoading = {}
     elseif kind == "friend" then
-        local invited = false
-        for _, old in global.ipairs(friends) do if old.sid == f[2] then invited = old.invited end end
+        local invitedAt
+        for _, old in global.ipairs(friends) do if old.sid == f[2] then invitedAt = old.invitedAt end end
         friendsLoading[#friendsLoading+1] = {sid = f[2], name = clean(f[3]), state = global.tonumber(f[4]) or 0,
-            pc2 = f[5] == "1", invited = invited}
+            pc2 = f[5] == "1", invitedAt = invitedAt}
     elseif kind == "friends:end" then
         -- Playing Planet Coaster 2 first, then online, then the rest; alphabetical within.
         global.table.sort(friendsLoading, function(a, b)
@@ -474,7 +549,9 @@ local function onNet(event)
         end)
         friends = friendsLoading
     elseif kind == "invite:sent" then
-        for _, fr in global.ipairs(friends) do if fr.sid == f[2] then fr.invited = true; toast("Einladung an " .. fr.name .. " gesendet") end end
+        for _, fr in global.ipairs(friends) do
+            if fr.sid == f[2] then fr.invitedAt = frames; toast("Einladung an " .. fr.name .. " gesendet") end
+        end
     elseif kind == "invite:failed" then
         toast("Einladung konnte nicht gesendet werden")
     elseif kind == "kv" then
@@ -486,7 +563,15 @@ local function onNet(event)
         progress[f[3]] = {total, total}
         transfer[f[3]] = true
         Session._TryLoad()
+    elseif kind == "file:sending" and players[f[2]] then
+        -- Host: terrain first, then the park; both about the same size.
+        local share = (global.tonumber(f[4]) or 0) / global.math.max(1, global.tonumber(f[5]) or 1)
+        players[f[2]].sent = (f[3] == "pc2coop-join.bin" and 0.5 or 0) + share * 0.5
+    elseif kind == "file:sent" and players[f[2]] then
+        if f[3] == "pc2coop-join.bin" then players[f[2]].sending, players[f[2]].sent = false, 1
+        else players[f[2]].sent = 0.5 end
     elseif kind == "net:peer-stalled" then
+        if players[f[2]] then players[f[2]].sending = false end
         -- Steam accepted nothing for this player for a minute: the data for them is gone.
         local who = players[f[2]] and players[f[2]].name or "Ein Mitspieler"
         addFeed("Verbindung zu " .. who .. " haengt - bitte neu beitreten")
@@ -494,7 +579,7 @@ local function onNet(event)
     elseif kind == "lobby:created" then
         emit("session:lobby-created|" .. f[2])
     elseif kind == "lobby:left" then
-        role, hostId, lobbyId = nil, nil, nil
+        role, hostId, lobbyId, helloLobby = nil, nil, nil, nil
     else
         emit("session:" .. event)
     end
@@ -504,9 +589,20 @@ end
 
 function Session.Init(logger, diagnostic, syncModule, parkManager)
     emit, net, sync, manager = logger, diagnostic, syncModule, parkManager
+    helloLobby = nil   -- a new menu or park: the DLL reports the lobby again
     emit("session:init|" .. global.tostring(net.NetStatus and net.NetStatus()))
     -- Module state was reset (new park); the DLL still knows lobby and phase.
     if Session.Available() then net.NetCommand("status") end
+end
+
+-- Opens the transferred park file (next to the game's exe) as a sandbox park.
+function Session._LoadPark(world, name)
+    global.pcall(function()
+        local nextData = global.api.game.GetEnvironment():RequireInterface("Interfaces.INextWorldDataManager")
+        nextData:SetGameMode("Sandbox", "ScenarioEdit")
+        nextData:SetParkName(name or "PC2 Co-op")
+    end)
+    return manager:RequestLoadParkFromFile("/run/pc2coop-join.bin", world, nil, name, false)
 end
 
 -- Joiner: load the host's park once both files and the description arrived.
@@ -516,18 +612,25 @@ function Session._TryLoad()
     transfer.started = true
     remember("phase", "loading")
     emit("session:loading-park|" .. transfer.world)
-    global.pcall(function()
-        local nextData = global.api.game.GetEnvironment():RequireInterface("Interfaces.INextWorldDataManager")
-        nextData:SetGameMode("Sandbox", "ScenarioEdit")
-        nextData:SetParkName(transfer.name or "PC2 Co-op")
-    end)
-    local ok, failure = manager:RequestLoadParkFromFile("/run/pc2coop-join.bin", transfer.world, nil, transfer.name, false)
-    if not ok then emit("session:load-failed|" .. global.tostring(failure)); remember("phase", "awaiting") end
+    local ok, failure = Session._LoadPark(transfer.world, transfer.name)
+    if not ok then
+        transfer.started = false
+        failJoin("Die uebertragene Park-Datei ist ungueltig (" .. global.tostring(failure) .. ").", true)
+    end
 end
 
 function Session.Available() return net and net.HasNet() end
 
-function Session.Friends() return friends end
+-- "Eingeladen" wears off, so a friend who missed the invite can be invited again.
+function Session.Friends()
+    for _, fr in global.ipairs(friends) do
+        fr.invited = fr.invitedAt ~= nil and frames - fr.invitedAt < INVITE_FRAMES
+    end
+    return friends
+end
+
+-- "menu": the main menu is open (joining only). "park": a park is loaded.
+function Session.SetContext(value) context = value == "menu" and "menu" or "park" end
 function Session.Chat() return chat end
 function Session.Toasts() return toasts end
 function Session.RefreshFriends() net.NetCommand("friends") end
@@ -571,6 +674,7 @@ function Session.Invite() net.NetCommand("invite") end
 -- Joiner progress for the UI: phase ("joining", "awaiting", "loading", "live"), share of the
 -- park files received (0..1) and the host's name. Nil when not joining or in a session.
 function Session.JoinState()
+    if joinFailure then return {phase = "failed", reason = joinFailure, retry = role == "client" and hostId ~= nil, host = hostName} end
     if joining then return {phase = "joining", progress = 0} end
     if role ~= "client" then return nil end
     local got, total = 0, 0
@@ -583,14 +687,20 @@ function Session.Desync() return desync end
 -- Joiner: fetch the host's current park again (after a change failed to apply here).
 function Session.Resync()
     if role ~= "client" or not hostId then return end
-    desync, transfer, progress = nil, {}, {}
-    remember("phase", "awaiting")
-    send(hostId, "hello|" .. myName .. "|-1|needpark|" .. Session.VERSION)
+    requestPark()
     emit("session:resync")
 end
 
+-- Close the "joining failed" notice; also leaves the lobby the failed join is still in.
+function Session.DismissJoin()
+    local inLobby = role ~= nil
+    joinFailure, joining = nil, false
+    if inLobby then Session.Leave() end
+end
+
 function Session.Leave()
-    joining, progress, desync = false, {}, nil
+    joining, progress, desync, joinFailure, helloLobby = false, {}, nil, nil, nil
+    for _, fr in global.ipairs(friends) do fr.invitedAt = nil end
     net.NetCommand("leave")
     sync.Receive("X")
     role, hostId, lobbyId, players, order, roster = nil, nil, nil, {}, {}, {}
@@ -604,8 +714,11 @@ function Session.View()
             local p = players[sid]
             if p then
                 local pr = p.pres or {}
-                list[#list+1] = {sid = sid, name = p.name, color = p.color, act = pr.act, x = pr.x, y = pr.y, z = pr.z,
-                    yaw = pr.yaw, base = p.base}
+                local act = pr.act
+                if p.sending then act = "holt" .. global.math.floor((p.sent or 0) * 100)
+                elseif p.pending then act = "laedt" end
+                list[#list+1] = {sid = sid, name = p.name, color = p.color, act = act, x = pr.x, y = pr.y, z = pr.z,
+                    yaw = pr.yaw, base = p.base, fx = pr.fx, fy = pr.fy, fz = pr.fz}
             end
         end
         return {role = role, me = me, host = me, lobby = lobbyId, players = list, stats = stats, conflicts = conflicts, feed = feed}

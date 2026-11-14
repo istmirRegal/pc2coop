@@ -15,6 +15,7 @@ function Frontend.Tick(menu)
         local session = global.require("pc2coop.session")
         local ui = global.require("pc2coop.ui")
         local write = function(tag) return function(message) diagnostic.Write(tag .. message) end end
+        session.SetContext("menu")
         session.Init(write("[PC2CoopSession] "), diagnostic, idleSync, menu.parkLoadSaveManager)
         ui.Init(write("[PC2CoopUI] "), session, idleSync, nil)
         ui.SetCanHost(false)
@@ -31,6 +32,9 @@ function Frontend.Tick(menu)
     if not ok then state.diagnostic.Write("[PC2CoopSession] frontend-tick-error|" .. global.tostring(failure)) end
     global.pcall(state.ui.Tick)
 end
+
+-- The menu's session instance (the menu's require does not cache modules).
+function Frontend.Session() return state and state.session end
 
 function Frontend.Shutdown()
     if not state then return end

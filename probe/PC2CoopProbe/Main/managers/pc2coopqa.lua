@@ -23,6 +23,7 @@ Manager.Init=function(self,properties,environment)
         end
         global.pcall(self.session.OnSyncLine, message)
     end)
+    self.session.SetContext("park")
     self.session.Init(function(message) self.diagnostic.Write("[PC2CoopSession] " .. message) end,
         self.diagnostic, self.sync, self.parkManager)
     self.labels=global.require("pc2coop.labels")
@@ -51,21 +52,21 @@ Manager.Advance=function(self,delta)
     ok,failure=global.pcall(self.session.Tick)
     if not ok then self.diagnostic.Write("[PC2CoopSession] session:tick-error|" .. global.tostring(failure)) end
     global.pcall(self.ui.Tick)
-    -- Name tags of the other players, refreshed a few times per second.
-    self.labelFrames=self.labelFrames+1
-    if self.labelFrames%10==0 then
-        global.pcall(function()
-            local view=self.session.View()
-            if not view.role or not self.menu.labelsEnabled then return end
-            local tags={}
+    -- Name tags of the other players at the spot they look at, eased every frame.
+    global.pcall(function()
+        local view=self.session.View()
+        local tags={}
+        if view.role and self.menu.labelsEnabled then
             for _,p in global.pairs(view.players) do
-                if p.sid~=view.me and p.x and p.act~="-" then
-                    tags[#tags+1]={name=p.name,activity=p.act,x=p.x,y=p.y,z=p.z}
+                local act=global.tostring(p.act or "-")
+                local joining=act=="-" or act=="laedt" or global.string.sub(act,1,4)=="holt"
+                if p.sid~=view.me and (p.fx or p.x) and not joining then
+                    tags[#tags+1]={key=p.sid,name=p.name,activity=act,x=p.fx or p.x,y=(p.fy or p.y)+3,z=p.fz or p.z}
                 end
             end
-            self.labels.Show(tags)
-        end)
-    end
+        end
+        self.labels.Show(tags,delta)
+    end)
 end
 
 Manager.Shutdown=function(self)

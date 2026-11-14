@@ -1,4 +1,4 @@
-PC2Coop 1.4.3 - Planet Coaster 2 live zusammen bauen, ueber Steam
+PC2Coop 1.5.0 - Planet Coaster 2 live zusammen bauen, ueber Steam
 
 Installation (jeder Spieler, einmalig)
 1. ZIP in einen eigenen Ordner entpacken.
@@ -22,10 +22,21 @@ Spielen
 3. Freunde: Einladung in Steam annehmen - auch direkt aus dem Hauptmenue. Dort gibt es
    ebenfalls die Kachel "Multiplayer". Der Park des Hosts wird automatisch uebertragen
    und geladen; eine Anzeige in der Bildschirmmitte zeigt Uebertragung und Laden.
-4. Gemeinsam bauen. Oben rechts siehst du, wer im Park ist und was er tut; ueber
-   jedem Mitspieler schwebt ein Namensschild. Beitritte, Austritte und Chat
-   erscheinen unten links. "Nachricht" schreibt in den Chat, "Hinspringen" fliegt
-   zur Kamera eines Mitspielers.
+   Der Host sieht oben rechts, wie weit die Uebertragung ist. Niemand muss vorher
+   selbst einen Park oder das Franchise oeffnen.
+4. Gemeinsam bauen. Oben rechts siehst du, wer im Park ist und was er tut; ueber der
+   Stelle, auf die ein Mitspieler schaut, schwebt sein Namensschild. Beitritte,
+   Austritte und Chat erscheinen unten links. "Nachricht" schreibt in den Chat,
+   "Hinspringen" fliegt zur Kamera eines Mitspielers.
+
+Was ihr braucht: Steam-Freundschaft (die Sitzung ist nur fuer Steam-Freunde des Hosts
+sichtbar). Ein Frontier-Konto oder das Franchise braucht ihr dafuer nicht.
+
+Wenn der Beitritt nicht klappt
+- "Einladung abgelaufen": die Sitzung gibt es nicht mehr (alte Einladung). Lass dich
+  neu einladen. Ein "Eingeladen"-Knopf wird nach etwa 25 Sekunden wieder aktiv.
+- "Park konnte nicht geladen werden": "Erneut versuchen" holt den Park noch einmal.
+- Wer ins Hauptmenue zurueckgeht, verlaesst die Sitzung; geht der Host, endet sie.
 5. F8 oeffnet das Entwickler-Menue (Sync-Zustand, API-Rekorder, Namensschilder).
 
 Wenn etwas nicht ankommt

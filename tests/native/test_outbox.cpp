@@ -82,6 +82,17 @@ int main() {
         return fail("messages lost or out of order");
     DeleteFileW(game_path("pc2coop-host-test.bin").c_str());
     DeleteFileW(game_path("pc2coop-join-test.bin").c_str());
+
+    // While the joiner loads the park, late chunks must not rewrite its files.
+    remember("phase", "loading");
+    std::string late = std::string("\x02pc2coop-join-test.bin|10|0|") + "0123456789";
+    receive_chunk(1111, late.data(), late.size());
+    if (GetFileAttributesW(game_path("pc2coop-join-test.bin").c_str()) != INVALID_FILE_ATTRIBUTES)
+        return fail("file rewritten while loading");
+    remember("phase", "awaiting");
+    receive_chunk(1111, late.data(), late.size());
+    if (read_all(game_path("pc2coop-join-test.bin")) != "0123456789") return fail("chunk refused although not loading");
+    DeleteFileW(game_path("pc2coop-join-test.bin").c_str());
     std::printf("PASS\n");
     return 0;
 }

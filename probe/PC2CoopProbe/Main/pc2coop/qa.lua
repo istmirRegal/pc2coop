@@ -475,18 +475,20 @@ local function execute(command, manager)
         global.pcall(function() after=#(global.api.world.GetWorldAPIs().ridestation:GetAllStations() or {}) end)
         emit("qa:replay-last:stations " .. before .. "->" .. after)
         emit("qa:replay-last:done")
+    elseif command=="join-load-test" then
+        -- Main menu only: opens pc2coop-join.bin/.trn next to the exe the way a join does.
+        local session=frontend and frontendCoop().Session()
+        if not session then emit("qa:join-load-test:rejected:not-in-frontend"); return end
+        local ok,failure=session._LoadPark("temperateworld","PC2Coop-Test")
+        emit("qa:join-load-test:requested=" .. global.tostring(ok) .. ";" .. global.tostring(failure))
     elseif command=="transfer-test" then
-        -- Sends this park to ourselves over Steam (loopback), like a join does. Needs coop-host.
+        -- Saves this park the way the host does for a joiner (pc2coop-host-qa.bin/.trn next
+        -- to the exe). join-load-test opens such files from the main menu.
         local manager=global.api.game.GetEnvironment():RequireInterface("Interfaces.IParkLoadSaveManager")
-        local me=global.require("pc2coop.session").View().me
-        if not me then emit("qa:transfer-test:no-session"); return end
         local okT=manager:SaveTerrainToFile("/run/pc2coop-host-qa.trn",true)
         local okP=manager:SaveParkToFile("/run/pc2coop-host-qa.bin",true,false)
-        emit("qa:transfer-test:saved=" .. global.tostring(okT) .. "/" .. global.tostring(okP))
-        local diag=global.require("pc2coop.diagnostic")
-        diag.NetCommand("file|" .. me .. "|pc2coop-host-qa.trn|pc2coop-qa.trn")
-        diag.NetCommand("file|" .. me .. "|pc2coop-host-qa.bin|pc2coop-qa.bin")
-        emit("qa:transfer-test:queued")
+        emit("qa:transfer-test:saved=" .. global.tostring(okT) .. "/" .. global.tostring(okP)
+            .. ";world=" .. global.tostring(global.api.world.GetActive()))
     elseif command=="last-cmd" then
         emit("qa:last-cmd=" .. global.tostring(global.require("pc2coop.sync").Stats().lastCmd))
     elseif command=="sync-stats" then
@@ -509,12 +511,16 @@ local function execute(command, manager)
         labels.Init(emit)
         local Vector3=global.require("Vector3")
         global.api.world.GetWorldAPIs().CameraModeManager:RequestMode("Focus",{vFocusPos=Vector3:new(10,5,10)})
+        -- Alex walks 12 m in steps of 4 m; the tag must glide, not jump.
         local tags={{name="Alex",activity="baut",x=10,y=9,z=10},{name="Sam",activity="schaut",x=16,y=9,z=10}}
-        for i=1,120 do
-            labels.Show(tags)
+        labels.Pin(tags)
+        for i=1,180 do
+            if i%45==0 then tags[1].x=tags[1].x+4 end
             global.coroutine.yield()
         end
         emit("qa:label-test:shown")
+        for i=1,240 do global.coroutine.yield() end
+        labels.Pin(nil)
     elseif command=="list-rocks" then
         -- Part IDs near the test rock position; used to check ID stability across reloads.
         local apis=global.api.world.GetWorldAPIs()
