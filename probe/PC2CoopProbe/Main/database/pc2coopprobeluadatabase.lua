@@ -2,7 +2,7 @@
 local global = _G
 local api = global.api
 local LuaDB = {}
-local probeVersion = "1.4.1"
+local probeVersion = "1.4.2"
 local diagnostic
 local viewHookResult = "not-run"
 

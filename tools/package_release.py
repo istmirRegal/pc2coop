@@ -88,8 +88,8 @@ def main() -> int:
             "one OVL per folder (Init, Main, Extras), ZLIB, with the supplied Manifest.xml.\n", encoding="utf8")
         files = [{"path": f.relative_to(stage / "payload").as_posix(), "sha256": sha(f), "bytes": f.stat().st_size}
                  for f in sorted((stage / "payload").rglob("*")) if f.is_file()]
-        manifest = {"schema": 1, "version": version, "supported_steam_build": "26255360",
-                    "supported_exe_sha256": EXE_HASH, "acse_commit": ACSE_COMMIT, "files": files}
+        manifest = {"schema": 1, "version": version, "tested_steam_build": "26255360",
+                    "tested_exe_sha256": EXE_HASH, "acse_commit": ACSE_COMMIT, "files": files}
         (stage / "payload-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf8")
         temp_zip = out.with_suffix(".tmp.zip")
         with zipfile.ZipFile(temp_zip, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:

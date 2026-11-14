@@ -66,7 +66,7 @@ for name, data in expected.items():
 report = {
     'schema': 1,
     'package': 'PC2CoopProbe',
-    'probe_version': '1.4.1',
+    'probe_version': '1.4.2',
     'cobra_tools_commit': '2dd9d1445608d6171c1ec1f2333cefb4d81a1317',
     'python': sys.version.split()[0],
     'game': check.game,

@@ -55,7 +55,9 @@ function Install-IntoGame([string]$Folder, [string]$Package, [string]$ExpectedEx
     if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { $exe = Join-Path $game 'PlanetCoaster2.exe' }
     if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { throw 'PlanetCoaster2.exe wurde in diesem Ordner nicht gefunden.' }
     if ((File-Hash $exe) -ne $ExpectedExeHash) {
-        throw 'Diese PC2Coop-Version passt nur zu PC2 Steam-Build 26255360 (1.12.2.1035111). Andere EXE: nichts installiert.'
+        # The mod finds what it needs in the game at start-up; a new game build usually works.
+        Write-Host 'Hinweis: Diese Spielversion wurde mit PC2Coop noch nicht getestet (getestet: Build 26255360). Wird trotzdem installiert.' -ForegroundColor Yellow
+        Write-Host 'Klappt der Multiplayer nicht, bitte die Log-Datei aus Win64\ovldata\PC2CoopProbe an den Host schicken.' -ForegroundColor Yellow
     }
     $ovldata = Join-Path $game 'Win64\ovldata'
     if (-not (Test-Path -LiteralPath $ovldata -PathType Container)) { throw 'Win64\ovldata fehlt. Installation abgebrochen.' }

@@ -1,4 +1,4 @@
-PC2Coop 1.4.1 - Planet Coaster 2 live zusammen bauen, ueber Steam
+PC2Coop 1.4.2 - Planet Coaster 2 live zusammen bauen, ueber Steam
 
 Installation (jeder Spieler, einmalig)
 1. ZIP in einen eigenen Ordner entpacken.
@@ -60,9 +60,11 @@ Gleichzeitiges Bearbeiten desselben Objekts: der Host entscheidet, die spaetere
 Aenderung wird zurueckgesetzt.
 
 Voraussetzungen
-- Windows x64, eigene Steam-Lizenz Planet Coaster 2, alle mit Build 26255360
-  (Version 1.12.2.1035111). Nach einem Spielupdate verweigert der Installer die
-  Installation, bis eine passende Mod-Version erscheint.
+- Windows x64, eigene Steam-Lizenz Planet Coaster 2. Alle Mitspieler sollten dieselbe
+  Spielversion haben (Steam aktualisiert automatisch). Getestet mit Build 26255360
+  (1.12.2.1035111); neuere Builds werden installiert und funktionieren meist ebenfalls.
+  Findet die Mod im Spiel nicht, was sie braucht, bleibt der Multiplayer aus und die
+  Log-Datei enthaelt "game build not supported".
 - Gleiche DLCs wie der Host, falls der Park DLC-Inhalte enthaelt.
 
 Probleme melden
