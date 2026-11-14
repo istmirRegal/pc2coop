@@ -1,4 +1,4 @@
-PC2Coop 1.4.2 - Planet Coaster 2 live zusammen bauen, ueber Steam
+PC2Coop 1.4.3 - Planet Coaster 2 live zusammen bauen, ueber Steam
 
 Installation (jeder Spieler, einmalig)
 1. ZIP in einen eigenen Ordner entpacken.

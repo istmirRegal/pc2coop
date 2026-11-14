@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <cstring>
 #include <deque>
+#include <memory>
 #include <string>
 #include <vector>
 #include <cctype>
@@ -94,6 +95,8 @@ constexpr int kReliable = 8;      // k_nSteamNetworkingSend_Reliable
 constexpr int kChannel = 0;
 constexpr size_t kMaxQueued = 4096;
 
+void drop_outbox(unsigned long long id);
+
 void queue(std::string event) {
     AcquireSRWLockExclusive(&queue_lock);
     if (events.size() < kMaxQueued) events.push_back(std::move(event));
@@ -133,6 +136,7 @@ void refresh_members() {
         for (u64 m : now) still = still || m == id;
         if (!still && id != self_id) {
             queue("member:leave|" + id_text(id));
+            drop_outbox(id);
             Identity peer = identity(id);
             api.CloseSession(api.Messages(), &peer);
         }
@@ -313,24 +317,93 @@ std::wstring game_path(const std::string& name) {
     return path;
 }
 
+// Ordered outbox per peer. Steam refuses reliable sends while its send buffer is full
+// (k_EResultLimitExceeded = 25) or while the session is still connecting (observed: 35);
+// refused data waits here and every poll retries it, so nothing is dropped and the order
+// (messages, file chunks) is kept. Files are read one chunk at a time, only when Steam has
+// room. A peer that accepts nothing for kStallMs is given up on, loudly.
+constexpr ULONGLONG kStallMs = 60000;
+struct OutFile { std::string as; std::wstring path; long long total = 0; long long offset = 0; };
+struct OutItem { std::string data; std::shared_ptr<OutFile> file; };
+struct Outbox { u64 id = 0; std::deque<OutItem> items; ULONGLONG progress = 0; };
+std::vector<Outbox> outbox;
+
+Outbox& outbox_for(u64 id) {
+    for (auto& entry : outbox) if (entry.id == id) return entry;
+    outbox.push_back(Outbox{id, {}, GetTickCount64()});
+    return outbox.back();
+}
+
+void drop_outbox(u64 id) {
+    for (auto& entry : outbox) if (entry.id == id) entry.items.clear();
+}
+
+int raw_send(u64 id, const char* data, size_t size) {
+    Identity peer = identity(id);
+    return api.SendMessageToUser(api.Messages(), &peer, data, static_cast<unsigned int>(size), kReliable, kChannel);
+}
+
+// Sends the next chunk of a file. 1 = sent (offset advanced), anything else = try again later.
+int send_chunk(u64 id, OutFile& file) {
+    HANDLE handle = CreateFileW(file.path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
+    if (handle == INVALID_HANDLE_VALUE) return -1;
+    std::vector<char> buffer(kChunk + 128);
+    int header = sprintf_s(buffer.data(), 128, "\x02%s|%lld|%lld|", file.as.c_str(), file.total, file.offset);
+    LARGE_INTEGER at{};
+    at.QuadPart = file.offset;
+    DWORD read = 0;
+    bool ok = header > 0 && SetFilePointerEx(handle, at, nullptr, FILE_BEGIN)
+        && ReadFile(handle, buffer.data() + header, static_cast<DWORD>(kChunk), &read, nullptr) && read;
+    CloseHandle(handle);
+    if (!ok) return -1;
+    int result = raw_send(id, buffer.data(), static_cast<size_t>(header) + read);
+    if (result == 1) file.offset += read;
+    return result;
+}
+
+void pump_outbox() {
+    int budget = 32;
+    ULONGLONG now = GetTickCount64();
+    for (auto& entry : outbox) {
+        auto& items = entry.items;
+        if (items.empty()) { entry.progress = now; continue; }
+        while (!items.empty() && budget > 0) {
+            --budget;
+            OutItem& item = items.front();
+            int result = item.file ? send_chunk(entry.id, *item.file)
+                                   : raw_send(entry.id, item.data.data(), item.data.size());
+            if (result != 1) {
+                if (now - entry.progress < kStallMs) break;   // retry on the next poll
+                queue("net:peer-stalled|" + id_text(entry.id) + "|" + std::to_string(result) + "|"
+                      + std::to_string(items.size()));
+                items.clear();
+                break;
+            }
+            entry.progress = now;
+            if (!item.file) { items.pop_front(); continue; }
+            if (item.file->offset >= item.file->total) {
+                queue("file:sent|" + id_text(entry.id) + "|" + item.file->as + "|" + std::to_string(item.file->total));
+                items.pop_front();
+            }
+        }
+    }
+}
+
 void send_file(u64 to, const std::string& name, const std::string& as) {
     if (!safe_name(name) || !safe_name(as)) { queue("file:error|bad-name"); return; }
     HANDLE file = CreateFileW(game_path(name).c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
     if (file == INVALID_HANDLE_VALUE) { queue("file:error|open|" + name); return; }
     LARGE_INTEGER size{};
     GetFileSizeEx(file, &size);
-    if (size.QuadPart <= 0 || size.QuadPart > 256LL * 1024 * 1024) { CloseHandle(file); queue("file:error|size|" + name); return; }
-    std::vector<char> buffer(kChunk + 128);
-    long long offset = 0;
-    while (offset < size.QuadPart) {
-        int header = sprintf_s(buffer.data(), 128, "\x02%s|%lld|%lld|", as.c_str(), size.QuadPart, offset);
-        DWORD read = 0;
-        if (header <= 0 || !ReadFile(file, buffer.data() + header, static_cast<DWORD>(kChunk), &read, nullptr) || !read) break;
-        send_to(to, buffer.data(), static_cast<size_t>(header) + read);
-        offset += read;
-    }
     CloseHandle(file);
-    queue("file:sent|" + id_text(to) + "|" + as + "|" + std::to_string(offset));
+    if (size.QuadPart <= 0 || size.QuadPart > 256LL * 1024 * 1024) { queue("file:error|size|" + name); return; }
+    auto out = std::make_shared<OutFile>();
+    out->as = as;
+    out->path = game_path(name);
+    out->total = size.QuadPart;
+    outbox_for(to).items.push_back(OutItem{std::string(), out});
+    queue("file:queued|" + id_text(to) + "|" + as + "|" + std::to_string(size.QuadPart));
+    pump_outbox();
 }
 
 void receive_chunk(u64 from, const char* data, size_t size) {
@@ -368,9 +441,12 @@ void remember(const std::string& key, const std::string& value) {
 
 
 void send_to(u64 id, const char* data, size_t size) {
-    Identity peer = identity(id);
-    int result = api.SendMessageToUser(api.Messages(), &peer, data, static_cast<unsigned int>(size), kReliable, kChannel);
-    if (result != 1) queue("net:send-failed|" + id_text(id) + "|" + std::to_string(result));
+    auto& box = outbox_for(id);
+    if (box.items.empty()) {
+        box.progress = GetTickCount64();
+        if (raw_send(id, data, size) == 1) return;
+    }
+    box.items.push_back(OutItem{std::string(data, size), nullptr});
 }
 
 // Commands: host | invite | join|<lobby> | leave | send|<steamid>|<payload> | all|<payload>
@@ -393,6 +469,7 @@ void command(const char* bytes, unsigned int size) {
         lobby = 0;
         members.clear();
         memory.clear();
+        outbox.clear();
         api.SetRichPresence(api.Friends(), "connect", "");
         queue("lobby:left");
     } else if (verb == "send") {
@@ -487,6 +564,7 @@ extern "C" __declspec(dllexport) int pc2_net_poll(void* state) noexcept {
             return empty ? 0 : pc2_push_string(state, event.data(), event.size());
         }
         poll_hotkeys();
+        pump_outbox();
         Message* incoming[16];
         int count = api.ReceiveMessages(api.Messages(), kChannel, incoming, 16);
         for (int i = 0; i < count; ++i) {

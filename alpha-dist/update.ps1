@@ -7,6 +7,8 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
+# Release notes contain umlauts; the console's default code page would garble them.
+try { [Console]::OutputEncoding = [Text.Encoding]::UTF8 } catch {}
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 function Package-Version([string]$Folder) {

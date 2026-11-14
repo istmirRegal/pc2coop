@@ -11,7 +11,7 @@ local global = _G
 local Session = {}
 
 -- Mod version; must match the database's probeVersion (checked by the tests).
-Session.VERSION = "1.4.2"
+Session.VERSION = "1.4.3"
 local COLORS = {"ff6b6b", "4dabf7", "51cf66", "fcc419", "cc5de8", "ff922b", "22b8cf", "f06595"}
 local net, sync
 local emit = function() end
@@ -220,12 +220,15 @@ end
 
 local function sendPark(sid)
     -- The joiner gets the host's exact park; part ids survive save/load (verified).
-    local ok, failure = manager:SaveTerrainToFile("/run/pc2coop-host.trn", true)
+    -- One copy per joiner: the DLL streams it chunk by chunk while Steam has room, so a
+    -- second joiner must not overwrite a file that is still being sent.
+    local base = "pc2coop-host-" .. sid
+    local ok, failure = manager:SaveTerrainToFile("/run/" .. base .. ".trn", true)
     global.assert(ok, "terrain save failed: " .. global.tostring(failure))
-    ok, failure = manager:SaveParkToFile("/run/pc2coop-host.bin", true, false)
+    ok, failure = manager:SaveParkToFile("/run/" .. base .. ".bin", true, false)
     global.assert(ok, "park save failed: " .. global.tostring(failure))
-    net.NetCommand("file|" .. sid .. "|pc2coop-host.trn|pc2coop-join.trn")
-    net.NetCommand("file|" .. sid .. "|pc2coop-host.bin|pc2coop-join.bin")
+    net.NetCommand("file|" .. sid .. "|" .. base .. ".trn|pc2coop-join.trn")
+    net.NetCommand("file|" .. sid .. "|" .. base .. ".bin|pc2coop-join.bin")
     local parkName = global.api.world.GetWorldAPIs().park:GetParkName()
     send(sid, "park|" .. global.tostring(global.api.world.GetActive()) .. "|" .. clean(parkName))
     emit("session:park-sent|" .. sid)
@@ -483,6 +486,11 @@ local function onNet(event)
         progress[f[3]] = {total, total}
         transfer[f[3]] = true
         Session._TryLoad()
+    elseif kind == "net:peer-stalled" then
+        -- Steam accepted nothing for this player for a minute: the data for them is gone.
+        local who = players[f[2]] and players[f[2]].name or "Ein Mitspieler"
+        addFeed("Verbindung zu " .. who .. " haengt - bitte neu beitreten")
+        emit("session:peer-stalled|" .. f[2] .. "|" .. global.tostring(f[3]))
     elseif kind == "lobby:created" then
         emit("session:lobby-created|" .. f[2])
     elseif kind == "lobby:left" then

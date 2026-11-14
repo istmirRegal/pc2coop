@@ -475,6 +475,18 @@ local function execute(command, manager)
         global.pcall(function() after=#(global.api.world.GetWorldAPIs().ridestation:GetAllStations() or {}) end)
         emit("qa:replay-last:stations " .. before .. "->" .. after)
         emit("qa:replay-last:done")
+    elseif command=="transfer-test" then
+        -- Sends this park to ourselves over Steam (loopback), like a join does. Needs coop-host.
+        local manager=global.api.game.GetEnvironment():RequireInterface("Interfaces.IParkLoadSaveManager")
+        local me=global.require("pc2coop.session").View().me
+        if not me then emit("qa:transfer-test:no-session"); return end
+        local okT=manager:SaveTerrainToFile("/run/pc2coop-host-qa.trn",true)
+        local okP=manager:SaveParkToFile("/run/pc2coop-host-qa.bin",true,false)
+        emit("qa:transfer-test:saved=" .. global.tostring(okT) .. "/" .. global.tostring(okP))
+        local diag=global.require("pc2coop.diagnostic")
+        diag.NetCommand("file|" .. me .. "|pc2coop-host-qa.trn|pc2coop-qa.trn")
+        diag.NetCommand("file|" .. me .. "|pc2coop-host-qa.bin|pc2coop-qa.bin")
+        emit("qa:transfer-test:queued")
     elseif command=="last-cmd" then
         emit("qa:last-cmd=" .. global.tostring(global.require("pc2coop.sync").Stats().lastCmd))
     elseif command=="sync-stats" then
