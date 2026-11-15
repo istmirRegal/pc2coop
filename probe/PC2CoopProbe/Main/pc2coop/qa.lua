@@ -475,6 +475,283 @@ local function execute(command, manager)
         global.pcall(function() after=#(global.api.world.GetWorldAPIs().ridestation:GetAllStations() or {}) end)
         emit("qa:replay-last:stations " .. before .. "->" .. after)
         emit("qa:replay-last:done")
+    elseif command=="viz-probe" then
+        -- Research: which engine pieces can show another player's ghost, marker and locks?
+        local apis=testWorld(); if not apis then return end
+        local V,Q,T=global.require("Vector3"),global.require("Quaternion"),global.require("TransformQ")
+        local E,model=global.api.entity,global.api.model
+        local shared=global.require("pc2coop.shared")
+        emit("qa:viz:debugAllowed=" .. global.tostring(global.select(2,global.pcall(global.api.debug.IsDebugAllowed))))
+        local made={}
+        local function spawn(name,x,z,y)
+            local token=E.CreateRequestCompletionToken()
+            local ok,entity=global.pcall(E.InstantiatePrefab,name,nil,token,T.FromOrPos(Q.Identity,V:new(x,y or 0,z)))
+            local done=false
+            if ok then
+                for i=1,180 do if E.HaveRequestsCompleted(token) then done=true; break end; global.coroutine.yield() end
+            end
+            local part=ok and global.select(2,global.pcall(function() return apis.placement:EntityIDToPlacementID(entity) end))
+            local hasT=ok and global.select(2,global.pcall(function() return global.api.transform.HasTransform(entity) end))
+            emit("qa:viz:spawn:" .. name .. "=" .. global.tostring(ok) .. "/" .. global.tostring(entity) .. ";done=" .. global.tostring(done)
+                .. ";part=" .. global.tostring(part) .. ";transform=" .. global.tostring(hasT))
+            if ok and entity then made[#made+1]=entity end
+            return ok and entity or nil
+        end
+        local rock=spawn("AQ_Rock_04",0,20,1)
+        local rockGame=spawn("AQ_Rock_04_game",6,20,1)
+        local ring=spawn("Char_Props_PlacementRing",12,20,0.3)
+        local arrow=spawn("MovableTrackedRideArrow",18,20,1)
+        local gizmo=spawn("TranslateYGizmo",24,20,1)
+        -- A ride prefab ("FR_Teacups") instantiated this way ends the game process: never do that.
+        local cups=spawn("NAT_Tree_Conifer_Spruce_Black_Large_01",40,36,0)
+        local okH,failH=global.pcall(function()
+            model.SetHighlightBehaviour(3,model.HighlightDefault)
+            model.SetHighlightEdgeColour(3,V:new(1,0.25,0.6),1)
+            model.SetHighlightFillColour(3,V:new(1,0.25,0.6),0.45)
+            if rock then model.SetHighlighted(rock,3,true,true) end
+            if cups then model.SetHighlighted(cups,3,true,true) end
+        end)
+        emit("qa:viz:highlight=" .. global.tostring(okH) .. "/" .. global.tostring(failH))
+        -- A real placed rock, highlighted the same way (a "locked by someone else" look).
+        global.pcall(function()
+            local list=global.api.spatial.SphereQuery(V:new(10,5,10),6,global.api.spatial.Flag_Scenery)
+            emit("qa:viz:placed-nearby=" .. #list)
+            if list[1] then model.SetHighlighted(list[1],3,true,true) end
+        end)
+        shared.vizEntities=made
+        local okD,failD=true,nil
+        for i=1,420 do
+            okD,failD=global.pcall(function()
+                global.api.debug.DrawSphere(V:new(-8,3,20),2,"Red")
+                global.api.debug.DrawLine(V:new(-8,0,20),V:new(-8,12,26),"Green")
+            end)
+            if ring and i%10==0 then global.pcall(global.api.transform.SetPosition,ring,V:new(12+i*0.01,0.3,20)) end
+            global.coroutine.yield()
+        end
+        emit("qa:viz:debug-draw=" .. global.tostring(okD) .. "/" .. global.tostring(failD))
+        emit("qa:viz-probe:done")
+    elseif command=="scale-probe" then
+        -- Research: can a display-only entity be scaled, and which flat primitives exist?
+        local apis=testWorld(); if not apis then return end
+        local V,Q,T=global.require("Vector3"),global.require("Quaternion"),global.require("TransformQ")
+        local E,model,X=global.api.entity,global.api.model,global.api.transform
+        local function keys(t)
+            local out={}
+            if global.type(t)=="table" then
+                for k in global.pairs(t) do out[#out+1]=global.tostring(k) end
+                local mt=global.getmetatable(t)
+                if mt and global.type(mt.__index)=="table" then for k in global.pairs(mt.__index) do out[#out+1]="^" .. global.tostring(k) end end
+            end
+            global.table.sort(out)
+            return global.table.concat(out,",")
+        end
+        emit("qa:scale:transform-api=" .. keys(X))
+        emit("qa:scale:TransformQ=" .. keys(T))
+        emit("qa:scale:model-api=" .. keys(model))
+        emit("qa:scale:entity-api=" .. keys(E))
+        local okS,TS=global.pcall(global.require,"TransformQS")
+        emit("qa:scale:TransformQS=" .. global.tostring(okS) .. "/" .. keys(okS and TS or nil))
+        local function spawn(name,x,z,y)
+            local token=E.CreateRequestCompletionToken()
+            local ok,entity=global.pcall(E.InstantiatePrefab,name,nil,token,T.FromOrPos(Q.Identity,V:new(x,y or 0,z)))
+            if ok then for i=1,180 do if E.HaveRequestsCompleted(token) then break end; global.coroutine.yield() end end
+            emit("qa:scale:spawn:" .. name .. "=" .. global.tostring(ok) .. "/" .. global.tostring(entity))
+            return ok and entity or nil
+        end
+        local shapes={"pc_primitive_triangle_game","pc_primitive_circle_game","pc_primitive_cone_game","pc_primitive_circle_half_game","pc_primitive_rectangle_game"}
+        local made={}
+        for i,name in global.ipairs(shapes) do made[i]=spawn(name,-6+i*7,22,1.5) end
+        local first=made[1]
+        if first then
+            for _,try in global.ipairs({
+                {"SetScale",function() X.SetScale(first,4) end},
+                {"SetLocalScale",function() X.SetLocalScale(first,4) end},
+                {"SetUniformScale",function() X.SetUniformScale(first,4) end},
+                {"WithScale",function() X.SetTransform(first,X.GetTransform(first):WithScale(4)) end},
+                {"SetTransform3",function() X.SetTransform(first,T.FromOrPos(Q.Identity,V:new(1,1.5,22)),4) end},
+            }) do
+                local ok,failure=global.pcall(try[2])
+                emit("qa:scale:try:" .. try[1] .. "=" .. global.tostring(ok) .. "/" .. global.string.sub(global.tostring(failure),1,90))
+            end
+        end
+        global.pcall(function()
+            model.SetHighlightBehaviour(3,model.HighlightDefault)
+            model.SetHighlightEdgeColour(3,V:new(0.3,0.75,1),1)
+            model.SetHighlightFillColour(3,V:new(0.3,0.75,1),0.35)
+            for _,entity in global.pairs(made) do model.SetHighlighted(entity,3,true,true) end
+        end)
+        global.require("pc2coop.shared").vizEntities=made
+        emit("qa:scale-probe:done")
+    elseif command=="ghost-test" then
+        -- A made-up other player: looks around, carries a rock and a ride, edits the test rock.
+        local apis=testWorld(); if not apis then return end
+        local viz,labels=global.require("pc2coop.viz"),global.require("pc2coop.labels")
+        local locked={}
+        if createdPart and apis.placement:PlacementPartExists(createdPart) then
+            locked[apis.placement:PlacementIDToEntityID(createdPart)]=true
+        end
+        local player={sid="qa",name="Vici",color="f06595",x=10,y=45,z=-20,fx=10,fy=0,fz=30,
+            hold={label="AQ_Rock_04",gids="",items={
+                {resource="AQ_Rock_04",model=true,x=4,y=1,z=34,qx=0,qy=0,qz=0,qw=1,scale=1.5},
+                {resource="FR_Teacups",model=false,x=26,y=0,z=40,qx=0,qy=0,qz=0,qw=1,scale=1}}}}
+        local tag={key="qa",name="Vici",activity="haelt Rock 04",x=4,y=4,z=34}
+        viz.Pin({player},locked)
+        labels.Pin({tag})
+        for i=1,360 do
+            -- the player turns: the wedge sweeps, the ghost follows
+            player.fx=10+global.math.sin(i/60)*14
+            player.hold.items[1].x=4+global.math.sin(i/60)*6
+            tag.x=player.hold.items[1].x
+            if i==150 then emit("qa:ghost-test:shown;" .. global.tostring(viz.Stats().entities) .. " entities;failed=" .. global.tostring(viz.Stats().failed)) end
+            global.coroutine.yield()
+        end
+        viz.Pin(nil,nil)
+        labels.Pin(nil)
+        for i=1,30 do global.coroutine.yield() end
+        emit("qa:ghost-test:done;" .. global.tostring(viz.Stats().entities) .. " entities left")
+    elseif command=="held-delete-test" then
+        -- The crash case: the player holds an existing object while someone else deletes it.
+        local apis=testWorld(); if not apis then return end
+        local api,sync=global.api,global.require("pc2coop.sync")
+        if not createdPart or not apis.placement:PlacementPartExists(createdPart) then emit("qa:held-delete:no-rock"); return end
+        if not sync.Stats().active then emit("qa:held-delete:not-hosting"); return end
+        local part=createdPart
+        local gid=sync.EntityToGid(apis.placement:PlacementIDToEntityID(part))
+        local hierarchy=apis.editors:CreateUndoOperationsHierarchy()
+        local completion=api.entity.CreateRequestCompletionToken()
+        local object=hierarchy:EditExistingPart(part,nil,completion)
+        waitFor(function() return api.entity.HaveRequestsCompleted(completion) end,"held-edit")
+        local edit=hierarchy:StartEditingPart_Scenery(object)
+        edit:SetTransform(global.require("TransformQ").FromOrPos(global.require("Quaternion").Identity,global.require("Vector3"):new(13,5,13)))
+        local wait,token=api.undo.PreviewChangeList(hierarchy:GetFullUndoChangeList())
+        waitFor(function() return api.undo.IsOperationComplete(wait) end,"held-preview")
+        sync._SetHeld({[part]=true})
+        emit("qa:held-delete:holding;gid=" .. global.tostring(gid))
+        local seq=(sync.Stats().lastSeq or 0)+1
+        sync.Receive("D|" .. seq .. "|" .. gid .. "|Vici|0")
+        waitFor(function() return (sync.Stats().lastSeq or 0)>=seq end,"held-remote-delete")
+        for i=1,30 do global.coroutine.yield() end
+        local exists=apis.placement:PlacementPartExists(part)
+        -- The editor would now ask about, and end, its preview.
+        local valid
+        waitFor(function() valid=api.undo.CanCommitPreview(token);return valid~=nil end,"held-validate")
+        local wait2=api.undo.CancelPreview(token)
+        waitFor(function() return api.undo.IsOperationComplete(wait2) end,"held-cancel")
+        emit("qa:held-delete:done;exists=" .. global.tostring(exists) .. ";valid=" .. global.tostring(valid)
+            .. ";mayUndo=" .. global.tostring(sync.MayUndo(true)))
+    elseif command=="profile-test" then
+        local world=global.require("pc2coop.world")
+        local ok,failure=world.ApplyGuestProfile()
+        local line={}
+        global.pcall(function()
+            local env=global.api.world.GetScript(global.api.world.GetActive()).tEnvironment
+            local settings=env:RequireInterface("Interfaces.ISandboxSettingsManager"):GetCurrentSandboxSettings()
+            for _,key in global.ipairs({"bEnabledBreakdowns","bEnabledServiceBadges","bEnabledLightningConsequences","bEnablePlayerCash"}) do
+                line[#line+1]=key .. "=" .. global.tostring(settings[key])
+            end
+        end)
+        emit("qa:profile-test:" .. global.tostring(ok) .. "/" .. global.tostring(failure) .. ";" .. global.table.concat(line,","))
+    elseif command=="editor-hold-test" then
+        -- Enters the game's real flat ride placement tool (as the browser does) and checks
+        -- what the mod reads from it; then leaves the tool again. No mouse or keyboard.
+        local apis=testWorld(); if not apis then return end
+        local world=global.require("pc2coop.world")
+        local function report(label)
+            local a=world.Activity()
+            local h=a.held
+            emit("qa:editor-hold:" .. label .. ";ui=" .. global.tostring(a.ui) .. ";edit=" .. global.tostring(a.edit) .. ";text=" .. global.tostring(a.text)
+                .. ";held=" .. global.tostring(h ~= nil) .. (h and (";res=" .. global.tostring(h.resource) .. ";parts=" .. #h.parts
+                .. global.string.format(";at=%.1f,%.1f,%.1f", h.x, h.y, h.z)) or ""))
+        end
+        report("before")
+        global.require("Editors.Shared.BaseUIMode").SetNewMode("GamefaceRidePlacement","FlatRide")
+        global.require("Editors.Shared.BaseEditMode").SetNewMode("FlatRidePlacement","FR_Teacups",nil,true)
+        for i=1,150 do global.coroutine.yield() end
+        report("placing")
+        for i=1,60 do global.coroutine.yield() end
+        emit("qa:editor-hold:leave=" .. global.tostring(world.LeaveTool()))
+        for i=1,120 do global.coroutine.yield() end
+        report("after")
+        emit("qa:editor-hold:done")
+    elseif command=="ghost-sweep" then
+        -- Every scenery type seen in real sessions as a ghost, one after the other: none may
+        -- end the game. The name is logged before it is shown.
+        local apis=testWorld(); if not apis then return end
+        local viz=global.require("pc2coop.viz")
+        local names={"FX_Nozzle_Iridescent_Bubbles_Large","FX_Nozzle_Steam_Boiling_Small","NAT_Bush_Rock_Rose_Flowers_Large_01","NAT_Flower_Sunflower_Medium_01","PC_Flag_01","PC_Flag_Bunting_01","PC_Half_Wall_BreezeBlock_2m","PC_Half_Wall_Panel_4m","PC_SingleDoor_02","PC_Wall_Panel_Floor","PC_Wall_Panel_Merge_4m","PC_Wall_Panel_Merge_ShopFront","PC_Wall_Wood_Modern_Merge_2m","PC_Wall_Wood_Modern_Merge_Curve","RE_Balcony_WallTrim_03_4m","RE_Half_Wall_PlasterDivided_2m","RE_Planters_01_03","aq_pipes_1m","aq_pipes_2m","aq_pipes_4m","aq_pipes_cross","aq_pipes_tee","aq_sign_011","aq_sign_02","aq_supportbeams_pillar_03_4m","aq_wall_bevelled_pillar_01_1m","aq_wall_bevelled_pillar_01_base","fdlc1_coaster_support_2_small_4m","nat_bush_hedge_box_crown_01","nat_bush_hedge_box_helix_01","nat_bush_hedge_box_kingcoaster_01","nat_bush_hedge_box_large_4m_01","nat_bush_hedge_box_medium_2m_01","nat_bush_hedge_box_queensplash_01","nat_bush_hedge_box_small_1m_01","nat_bush_hedge_box_small_2m_01","nat_bush_hedge_box_small_4m_01","nat_bush_hedge_box_small_arch_01","nat_flower_beds_straight_4m","pc_3dfont_coaster_e","pc_3dfont_coaster_l","pc_3dfont_coaster_lowercase_l","pc_3dfont_coaster_p","pc_3dfont_coaster_s","pc_3dfont_coaster_u","pc_3dfont_noto_d","pc_3dfont_noto_e","pc_3dfont_noto_m","pc_3dfont_noto_n","pc_3dfont_noto_question_mark","pc_3dfont_noto_r","pc_awnings_01","pc_awnings_03","pc_decal_clipboard","pc_decal_vent_05","pc_decal_vent_06","pc_decal_vent_07","pc_dressing_exterior_outlet","pc_fence_mesh_metal_1m","pc_flume_supports_footer_02","pc_lighting_hanginglight_01","pc_lighting_spot_light_03","pc_lighting_walllamp_04","pc_lighting_walllamp_06","pc_lighting_walllamp_07","pc_modular_planter_cornercurve","pc_modular_planter_edge","pc_planter_02_03","pc_primitive_circle","pc_primitive_circle_half","pc_primitive_cube","pc_primitive_rectangle","pc_recyclingbin","pc_roof_steel_curve_inverse","pc_shopfascia_01","pc_sign_generic_29","pc_sign_generic_38","pc_sign_generic_40","pc_sign_generic_42","pc_sign_generic_44","pc_sign_generic_50","pc_sign_generic_post_02_1m","pc_sign_guest_61","pc_sign_textedit_02","pc_signage_billboard_03","pc_signage_billboard_03b","pc_signage_billboard_04","pc_statue_planetcoaster_01","pc_wall_molding_curve_inverse","pc_wall_molding_flat_4m","pc_wall_molding_round_corner","re_dancingflag_02","re_lighting_metallamp_01","re_pillars_01_1m","re_pillars_01_2m","re_wallpanels_19","re_wallpanels_23","Utility_PowerGenerator_Standard","facility_shops_photokiosk","facility_shops_hayasushi_sign_small","facility_shops_hayasushi"}
+        local player={sid="sweep",name="Vici",color="4dabf7",x=10,y=45,z=-20,fx=10,fy=0,fz=30,hold={label="x",gids="",items={}}}
+        viz.Pin({player},{})
+        local shown=0
+        for _,name in global.ipairs(names) do
+            emit("qa:sweep:" .. name)
+            player.hold.items={{resource=name,model=true,x=10,y=1,z=30,qx=0,qy=0,qz=0,qw=1,scale=1}}
+            for i=1,18 do global.coroutine.yield() end
+            if viz.Stats().entities>14 then shown=shown+1 end
+        end
+        viz.Pin(nil,nil)
+        for i=1,20 do global.coroutine.yield() end
+        emit("qa:ghost-sweep:done;" .. #names .. " names;" .. shown .. " shown as model;failed=" .. global.tostring(viz.Stats().failed)
+            .. ";left=" .. viz.Stats().entities)
+    elseif command=="viz-clean" then
+        local shared=global.require("pc2coop.shared")
+        local n=0
+        for _,entity in global.ipairs(shared.vizEntities or {}) do
+            if global.pcall(global.api.entity.DestroyEntity,entity) then n=n+1 end
+        end
+        shared.vizEntities=nil
+        emit("qa:viz-clean:destroyed=" .. n)
+    elseif command=="world-probe" then
+        -- Research: time control, park numbers, undo checkpoint data, editor mode object.
+        local world=global.require("pc2coop.world")
+        local shared=global.require("pc2coop.shared")
+        emit("qa:world:hud=" .. global.type(shared.hud))
+        local paused,index=world.Time()
+        emit("qa:world:time=" .. global.tostring(paused) .. "/" .. global.tostring(index))
+        local seen={}
+        shared.onTime=function(p,i) seen[#seen+1]=global.tostring(p) .. "/" .. global.tostring(i) end
+        local okSet,failSet=world.SetTime(true,2)
+        for i=1,20 do global.coroutine.yield() end
+        local p2,i2=world.Time()
+        emit("qa:world:set-time=" .. global.tostring(okSet) .. "/" .. global.tostring(failSet) .. ";now=" .. global.tostring(p2) .. "/" .. global.tostring(i2)
+            .. ";echoed=" .. #seen)
+        -- A change made through the HUD itself (as the player's button does) must be reported.
+        global.pcall(function() shared.hud:ChangeSimulationSpeedSettings(false,nil) end)
+        global.pcall(function() shared.hud:ChangeSimulationSpeedSettings(nil,1) end)
+        for i=1,10 do global.coroutine.yield() end
+        emit("qa:world:hud-change-reported=" .. global.table.concat(seen,","))
+        shared.onTime=nil
+        local numbers=world.Numbers()
+        emit("qa:world:numbers=" .. (numbers and (global.tostring(numbers.guests) .. "/" .. global.tostring(numbers.cash) .. "/" .. global.tostring(numbers.unlimited)) or "nil"))
+        local activity=world.Activity()
+        emit("qa:world:mode=" .. global.tostring(activity.ui) .. "/" .. global.tostring(activity.edit) .. ";text=" .. global.tostring(activity.text)
+            .. ";held=" .. global.tostring(activity.held ~= nil))
+        local undo=global.api.undo
+        local names={}
+        for k,v in global.pairs(undo) do names[#names+1]=global.tostring(k) end
+        global.table.sort(names)
+        emit("qa:world:undo-api=" .. global.table.concat(names,","))
+        global.pcall(function()
+            undo.Checkpoint({pc2coopOwner="Vici"})
+            local data=undo.GetCheckpointData()
+            emit("qa:world:checkpoint-data=" .. global.type(data) .. "/" .. global.tostring(global.type(data)=="table" and data.pc2coopOwner))
+            emit("qa:world:can-undo=" .. global.tostring(undo.CanUndo()))
+        end)
+        global.pcall(function()
+            local env=global.api.world.GetScript(global.api.world.GetActive()).tEnvironment
+            local sandbox=env:RequireInterface("Interfaces.ISandboxSettingsManager")
+            local keys={}
+            for k,v in global.pairs(sandbox:GetCurrentSandboxSettings() or {}) do
+                if global.type(v)=="boolean" then keys[#keys+1]=global.tostring(k) .. "=" .. global.tostring(v) end
+            end
+            global.table.sort(keys)
+            emit("qa:world:sandbox=" .. global.table.concat(keys,","))
+        end)
+        local notes={}
+        shared.onNotification=function(text) notes[#notes+1]=text end
+        for i=1,120 do global.coroutine.yield() end
+        emit("qa:world:notifications=" .. #notes .. ";" .. global.string.sub(global.table.concat(notes," // "),1,400))
+        shared.onNotification=nil
+        emit("qa:world-probe:done")
     elseif command=="stale-invite-test" then
         -- Accepts an invite to a lobby that does not exist, like an old Steam invite.
         local session=frontend and frontendCoop().Session() or global.require("pc2coop.session")

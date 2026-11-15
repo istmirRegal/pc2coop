@@ -79,8 +79,9 @@ function Labels.Show(tags, dt)
         for i, tag in global.ipairs(tags) do
             -- The label UI translates text; literal text uses the game's STRING_LITERAL form.
             -- No value: the label then shows only this text (CoasterLabelItem.js).
-            local activity = ACTIVITY[tag.activity or "-"] or ""
-            local text = tag.name .. (activity ~= "" and (" - " .. activity) or "")
+            local activity = ACTIVITY[tag.activity or "-"] or tag.activity or ""
+            -- The leading bullet marks the tag as the mod's (quieter look, see DebugToolImports.js).
+            local text = "\226\128\162 " .. tag.name .. (activity ~= "" and (" - " .. activity) or "")
             text = global.string.gsub(text, "[|%[%]]", "")
             if shown[i] ~= text then
                 manager:SetBillboardWidgetUIInfo(widgetType(), i, {sLabel = "[STRING_LITERAL:Value=|" .. text .. "|]",

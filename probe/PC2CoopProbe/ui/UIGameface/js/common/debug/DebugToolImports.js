@@ -12,6 +12,27 @@ function coopLog(message) {
     }
 }
 
+// The co-op name tags are drawn by the game's coaster label view (it imports this module).
+// Tags of the mod start with a bullet and get a quieter look than the game's own heat-map
+// labels, which stay as they are. Inline styles only: the label elements are re-used.
+if (String(window.location.href).indexOf('CoasterLabels.html') >= 0) {
+    const QUIET = { color: '#ffffff', backgroundColor: 'rgba(14, 33, 48, 0.6)', fontSize: '0.8em', lineHeight: '1.25rem',
+        paddingLeft: '0.5rem', paddingRight: '0.5rem', borderTopLeftRadius: '0.65rem', borderTopRightRadius: '0.65rem',
+        borderBottomLeftRadius: '0.65rem', borderBottomRightRadius: '0.65rem' };
+    setInterval(() => {
+        try {
+            const items = document.querySelectorAll('.CoasterLabelItem_root');
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                const mine = (item.textContent || '').charAt(0) === '\u2022';
+                if (mine === (item.__pc2coop === true)) continue;
+                item.__pc2coop = mine;
+                for (const key in QUIET) item.style[key] = mine ? QUIET[key] : '';
+            }
+        } catch (error) { /* labels keep the game's look */ }
+    }, 250);
+}
+
 export async function loadDebugDefaultTools() {
     try {
         await import('/js/common/debug/DivInspector.js');

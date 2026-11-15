@@ -9,9 +9,11 @@
 --   host -> client: ops\n<line>...   roster|<players>   feed|<text>   welcome|<color>
 local global = _G
 local Session = {}
+local World = global.require("pc2coop.world")
+local shared = global.require("pc2coop.shared")
 
 -- Mod version; must match the database's probeVersion (checked by the tests).
-Session.VERSION = "1.5.0"
+Session.VERSION = "1.6.0"
 local COLORS = {"ff6b6b", "4dabf7", "51cf66", "fcc419", "cc5de8", "ff922b", "22b8cf", "f06595"}
 local net, sync
 local emit = function() end
@@ -39,6 +41,12 @@ local context = "park"    -- "menu" while the main menu is open: nothing to buil
 local helloLobby = nil    -- lobby this module instance already announced itself to
 local joinFailure = nil   -- why joining or loading the host's park failed (shown to the player)
 local INVITE_FRAMES = 1500  -- an invite button stays "Eingeladen" this long (about 25 s)
+local locks = {}          -- host: gid -> sid of the player editing that object
+local holds = {}          -- everyone: sid -> {label, gids, items} of what a player holds
+local bursts = {}         -- host: "sid|verb" -> {name, verb, n, res, last}: one log line per burst
+local recent = {}         -- host: seq -> line given to the local game (to undo what it refuses)
+local park = nil          -- the host park's numbers: {guests, cash, unlimited}
+local lastNote = {}       -- host: notification text -> frame it was last passed on
 local lastRoster = 0
 local frames = 0
 
@@ -81,6 +89,12 @@ local function toGame(lines)
         if kind then
             seq = seq + 1
             numbered[#numbered+1] = kind .. "|" .. seq .. "|" .. rest
+        end
+    end
+    if role == "host" then
+        for _, line in global.ipairs(numbered) do
+            local n = global.tonumber(global.string.match(line, "^%a|(%d+)|"))
+            if n then recent[n] = line; recent[n - 300] = nil end
         end
     end
     if #numbered > 0 then sync.Receive(global.table.concat(numbered, "\n")) end
@@ -146,6 +160,24 @@ local function count(sid, key)
     stats[name][key] = stats[name][key] + 1
 end
 
+-- "Vici hat 143 Objekte platziert" instead of 143 lines.
+local function noteAction(sid, verb, res)
+    local key = sid .. "|" .. verb
+    local burst = bursts[key]
+    if not burst then burst = {name = nameOf(sid), verb = verb, n = 0}; bursts[key] = burst end
+    burst.n, burst.res, burst.last = burst.n + 1, res, frames
+end
+
+local function flushActions(force)
+    for key, burst in global.pairs(bursts) do
+        if force or frames - burst.last >= 45 then
+            bursts[key] = nil
+            if burst.n == 1 then addFeed(burst.name .. " hat " .. global.tostring(burst.res) .. " " .. burst.verb)
+            else addFeed(burst.name .. " hat " .. burst.n .. " Objekte " .. burst.verb) end
+        end
+    end
+end
+
 local function others(sid, line)
     local out = {}
     for _, other in global.ipairs(order) do
@@ -166,11 +198,31 @@ local function restore(sid, gid, reason)
     return out
 end
 
+-- The object is being edited by someone else: the change is refused and the author's
+-- game is put back to the shared state (from this host's world for untouched park objects).
+local function refuseLocked(sid, gid)
+    conflicts = conflicts + 1
+    local out = {{sid, "R|" .. gid .. "|gesperrt"}}
+    if objects[gid] then
+        out[#out+1] = {sid, upsertLine(gid)}
+    else
+        local state = sync.StateOf and sync.StateOf(gid)
+        if state then
+            out[#out+1] = {sid, global.table.concat({"U", gid, "Park", "0", state.res, num(state.p[1]), num(state.p[2]),
+                num(state.p[3]), num(state.q[1]), num(state.q[2]), num(state.q[3]), num(state.q[4]), num(state.s)}, "|")}
+        end
+    end
+    return out
+end
+
+local function lockedByOther(sid, gid) return gid ~= "" and locks[gid] ~= nil and locks[gid] ~= sid end
+
 local function validResource(res) return global.type(res) == "string" and global.string.match(res, "^[%w_%.%-]+$") and #res <= 96 end
 local function validGid(gid) return gid == "" or (global.string.match(gid, "^[%w_%.%-]+$") and #gid <= 64) end
 
 local function authorityUp(sid, part, gid, rev, res, p, q, s)
     if not validResource(res) or not validGid(gid) then return {} end
+    if lockedByOther(sid, gid) then return refuseLocked(sid, gid) end
     local name = nameOf(sid)
     local state = {res = res, p = p, q = q, s = s, last = name}
     if gid == "" then
@@ -178,19 +230,19 @@ local function authorityUp(sid, part, gid, rev, res, p, q, s)
         gid = global.string.format("%s-%d", global.string.sub(sid, -6), counter)
         state.rev, state.creator = 1, name
         count(sid, "created")
-        addFeed(name .. " hat " .. res .. " platziert")
+        noteAction(sid, "platziert", res)
     elseif objects[gid] then
         local current = objects[gid]
         if rev ~= current.rev then return restore(sid, gid, "veraltet") end
         state.rev, state.creator = current.rev + 1, current.creator
         count(sid, "edited")
-        addFeed(name .. " hat " .. res .. " bearbeitet")
+        noteAction(sid, "bearbeitet", res)
     elseif tombstones[gid] then
         return restore(sid, gid, "geloescht")
     elseif global.string.sub(gid, 1, 1) == "P" and rev == 0 then
         state.rev, state.creator = 1, "Park"
         count(sid, "edited")
-        addFeed(name .. " hat " .. res .. " bearbeitet")
+        noteAction(sid, "bearbeitet", res)
     else
         return {{sid, "R|" .. gid .. "|unbekannt"}}
     end
@@ -202,6 +254,7 @@ end
 
 local function authorityDelete(sid, part, gid, rev)
     if gid == "" or not validGid(gid) then return {} end
+    if lockedByOther(sid, gid) then return refuseLocked(sid, gid) end
     local res
     if objects[gid] then
         if rev ~= objects[gid].rev then return restore(sid, gid, "veraltet") end
@@ -270,6 +323,11 @@ local function join(sid, name, mode)
     elseif mode == "loaded" and players[sid].pending then
         addFeed(players[sid].name .. " ist beigetreten")
         catchUp(sid)
+        for holder, hold in global.pairs(holds) do
+            if holder ~= sid then send(sid, "h|" .. holder .. "|" .. hold.label .. "|" .. hold.gids .. "|" .. hold.raw) end
+        end
+        local paused, index = World.Time()
+        if paused ~= nil then send(sid, "time|" .. (paused and "1" or "0") .. "|" .. index .. "|") end
     else
         if not returning then addFeed(players[sid].name .. " ist beigetreten") end
         local snapshot = {}
@@ -278,12 +336,85 @@ local function join(sid, name, mode)
     end
 end
 
+local hostHold
+
 local function leave(sid)
     if players[sid] then
         addFeed(players[sid].name .. " hat die Sitzung verlassen")
+        if holds[sid] or global.next(locks) then hostHold(sid, "", "", "") end
         players[sid] = nil
         for i, other in global.ipairs(order) do if other == sid then global.table.remove(order, i); break end end
     end
+end
+
+local function parseItems(text)
+    local items = {}
+    for entry in global.string.gmatch(text or "", "[^;]+") do
+        local f = split(entry, ",")
+        local resource = f[1] or ""
+        local model = global.string.sub(resource, 1, 1) ~= "!"
+        if not model then resource = global.string.sub(resource, 2) end
+        local n = {}
+        for i = 2, 9 do n[i] = global.tonumber(f[i]) end
+        if n[2] and n[3] and n[4] and #items < 8 then
+            items[#items+1] = {resource = resource, model = model, x = n[2], y = n[3], z = n[4],
+                qx = n[5] or 0, qy = n[6] or 0, qz = n[7] or 0, qw = n[8] or 1, scale = n[9] or 1}
+        end
+    end
+    return items
+end
+
+-- Tells sync.lua which objects the others hold (their locks), by player name.
+local function publishLocks()
+    local map = {}
+    for sid, hold in global.pairs(holds) do
+        if sid ~= me then
+            local name = "?"
+            for _, pl in global.ipairs(role == "host" and {} or (roster.players or {})) do if pl.sid == sid then name = pl.name end end
+            if role == "host" and players[sid] then name = players[sid].name end
+            for gid in global.string.gmatch(hold.gids or "", "[^,]+") do map[gid] = name end
+        end
+    end
+    if sync.SetRemoteLocks then sync.SetRemoteLocks(map) end
+end
+
+local function setHold(sid, label, gids, items)
+    if label == nil or label == "" then holds[sid] = nil
+    else holds[sid] = {label = clean(label), gids = gids or "", items = parseItems(items), raw = items or ""} end
+    publishLocks()
+end
+
+local function releaseLocks(sid)
+    for gid, owner in global.pairs(locks) do if owner == sid then locks[gid] = nil end end
+end
+
+-- Host: a player picked something up or put it down.
+function hostHold(sid, label, gids, items)
+    releaseLocks(sid)
+    local denied
+    if label ~= "" then
+        for gid in global.string.gmatch(gids or "", "[^,]+") do
+            if validGid(gid) then
+                if locks[gid] and locks[gid] ~= sid then denied = locks[gid] else locks[gid] = sid end
+            end
+        end
+    end
+    if denied then
+        releaseLocks(sid)
+        label, gids, items = "", "", ""
+        if sid == me then Session._Denied(nameOf(denied)) else send(sid, "deny|" .. nameOf(denied)) end
+    end
+    setHold(sid, label, gids, items)
+    local line = "h|" .. sid .. "|" .. clean(label) .. "|" .. (gids or "") .. "|" .. (items or "")
+    for _, other in global.ipairs(order) do
+        if other ~= me and other ~= sid and players[other] and not players[other].pending then send(other, line) end
+    end
+end
+
+local function timeText(name, paused, index)
+    local speeds = {"x1", "x2", "x5"}
+    if paused then return name .. " hat das Spiel pausiert" end
+    return name .. " laesst das Spiel laufen (" .. (speeds[index] or "x1") .. ")"
 end
 
 local function numbers(fields, from, to)
@@ -315,6 +446,16 @@ local function hostChange(sid, f)
                 if other ~= me and other ~= sid and players[other] and not players[other].pending then send(other, line) end
             end
         end
+    elseif f[1] == "hold" and players[sid] then
+        hostHold(sid, f[2] or "", f[3] or "", f[4] or "")
+    elseif f[1] == "time" and players[sid] then
+        local paused, index = f[2] == "1", global.tonumber(f[3]) or 1
+        if sid ~= me then World.SetTime(paused, index) end
+        local line = "time|" .. (paused and "1" or "0") .. "|" .. index .. "|" .. nameOf(sid)
+        for _, other in global.ipairs(order) do
+            if other ~= me and other ~= sid and players[other] and not players[other].pending then send(other, line) end
+        end
+        addFeed(timeText(nameOf(sid), paused, index))
     elseif f[1] == "cmd" and f[2] then
         -- Replayed edit (terrain, lakes, ...): host orders it and forwards it to everyone else.
         if #f[2] <= 3000 then deliver(others(sid, "K|" .. f[2])) end
@@ -340,7 +481,11 @@ local function rosterLine()
     end
     local st = {}
     for name, v in global.pairs(stats) do st[#st+1] = name .. "," .. v.created .. "," .. v.edited .. "," .. v.deleted end
+    local n = World.Numbers()
+    local numbersText = n and (global.tostring(n.guests or 0) .. "," .. global.tostring(global.math.floor(n.cash or 0)) .. ","
+        .. (n.unlimited and "1" or "0")) or ""
     return "roster|" .. global.table.concat(parts, ";") .. "|" .. global.table.concat(st, ";") .. "|" .. conflicts
+        .. "|" .. numbersText
 end
 
 local function parseRoster(payload)
@@ -358,6 +503,8 @@ local function parseRoster(payload)
         st[p[1]] = {created = global.tonumber(p[2]), edited = global.tonumber(p[3]), deleted = global.tonumber(p[4])}
     end
     roster = {players = list, stats = st, conflicts = global.tonumber(f[4]) or 0}
+    local n = split(f[5] or "", ",")
+    park = n[1] and {guests = global.tonumber(n[1]) or 0, cash = global.tonumber(n[2]) or 0, unlimited = n[3] == "1"} or nil
 end
 
 -- Inputs ----------------------------------------------------------------------------------
@@ -366,6 +513,9 @@ end
 function Session.OnSyncLine(line)
     if not role then return end
     local kind, rest = global.string.match(line, "^sync:([%a%-]+)|?(.*)$")
+    if kind == "desync" and role == "host" and Session._HostRefused(global.tonumber(global.string.match(rest, "^(%d+)")), rest) then
+        return
+    end
     if kind == "desync" then
         local first = desync == nil
         desync = global.string.match(rest, "^[^|]*|(.*)$") or rest
@@ -373,7 +523,22 @@ function Session.OnSyncLine(line)
         if role == "client" and hostId then send(hostId, "desync|" .. global.string.sub(clean(desync), 1, 120)) end
         return
     end
-    if kind ~= "up" and kind ~= "del" and kind ~= "pres" and kind ~= "baseline" and kind ~= "cmd" then return end
+    if kind == "hold-denied" then Session._Denied(rest); return end
+    if kind == "hold-lost" then
+        toast("Ein Mitspieler hat das Objekt geaendert, das du gerade bearbeitet hast.", "ff922b")
+        return
+    end
+    if kind == "undo-blocked" then
+        toast("Rueckgaengig geht nur fuer deinen eigenen letzten Schritt - der neueste hier stammt von einem Mitspieler.", "ff922b")
+        return
+    end
+    if kind == "rejected" then
+        local reason = global.string.match(rest, "|(.*)$") or ""
+        if reason == "gesperrt" then toast("Zurueckgenommen: ein Mitspieler bearbeitet dieses Objekt gerade.", "ff922b")
+        elseif reason == "veraltet" then toast("Zurueckgenommen: ein Mitspieler war bei diesem Objekt schneller.", "ff922b") end
+        return
+    end
+    if kind ~= "up" and kind ~= "del" and kind ~= "pres" and kind ~= "baseline" and kind ~= "cmd" and kind ~= "hold" then return end
     local wire = (kind == "baseline" and "base" or kind) .. "|" .. rest
     if role == "host" then hostChange(me, split(wire, "|"))
     elseif hostId then send(hostId, wire) end
@@ -409,6 +574,18 @@ local function onMessage(from, payload)
             toGame(lines)
         elseif kind == "roster" then
             parseRoster(payload)
+        elseif kind == "h" then
+            local f = split(payload, "|")
+            setHold(f[2], f[3] or "", f[4] or "", f[5] or "")
+        elseif kind == "deny" then
+            Session._Denied(clean(split(payload, "|")[2] or "?"))
+        elseif kind == "time" then
+            local f = split(payload, "|")
+            local paused, index = f[2] == "1", global.tonumber(f[3]) or 1
+            World.SetTime(paused, index)
+            if f[4] and f[4] ~= "" then toast(timeText(clean(f[4]), paused, index)) end
+        elseif kind == "note" then
+            toast(global.string.sub(payload, 6), "fcc419")
         elseif kind == "p" then
             local f = split(payload, "|")
             for _, pl in global.ipairs(roster.players or {}) do
@@ -495,6 +672,7 @@ local function onNet(event)
             sync.Receive("S|" .. myName)
             send(hostId, "hello|" .. myName .. "|-1|loaded|" .. Session.VERSION)
             toast("Bereit: du baust jetzt im Park von " .. hostName .. ".", "51cf66")
+            World.ApplyGuestProfile()
         elseif context == "park" and phase == "live" then
             role = "client"
             sync.Receive("S|" .. myName)
@@ -589,6 +767,10 @@ end
 
 function Session.Init(logger, diagnostic, syncModule, parkManager)
     emit, net, sync, manager = logger, diagnostic, syncModule, parkManager
+    if context == "park" then
+        shared.onTime = function(paused, index) Session._LocalTime(paused, index) end
+        shared.onNotification = function(text) Session._ParkNote(text) end
+    end
     helloLobby = nil   -- a new menu or park: the DLL reports the lobby again
     emit("session:init|" .. global.tostring(net.NetStatus and net.NetStatus()))
     -- Module state was reset (new park); the DLL still knows lobby and phase.
@@ -683,6 +865,57 @@ function Session.JoinState()
 end
 
 function Session.Desync() return desync end
+function Session.Park() return park end
+function Session.Holds() return holds end
+
+function Session._Denied(name)
+    toast(global.tostring(name) .. " bearbeitet das gerade. Dein Werkzeug wurde zurueckgesetzt.", "ff922b")
+    World.LeaveTool()
+end
+
+-- The local player paused or changed the speed (reported by the HUD hook).
+function Session._LocalTime(paused, index)
+    if not role then return end
+    local wire = "time|" .. (paused and "1" or "0") .. "|" .. index
+    if role == "host" then hostChange(me, split(wire, "|")) elseif hostId then send(hostId, wire) end
+end
+
+-- Host: a notification of the host's park (ride broken down, ...) goes to everyone.
+function Session._ParkNote(text)
+    if role ~= "host" or global.type(text) ~= "string" then return end
+    if lastNote[text] and frames - lastNote[text] < 600 then return end
+    emit("session:park-note|" .. global.string.sub(text, 1, 160))
+    lastNote[text] = frames
+    text = global.string.gsub(global.string.sub(text, 1, 300), "[\n\r]", " ")
+    for _, sid in global.ipairs(order) do
+        if sid ~= me and players[sid] and not players[sid].pending then send(sid, "note|" .. text) end
+    end
+end
+
+-- Host: this game could not apply a change that the session already accepted (e.g. a
+-- friend built outside this park's boundary). The session is put back to what the host
+-- has, so the parks stay equal. Returns true when handled.
+function Session._HostRefused(seq, rest)
+    local line = seq and recent[seq]
+    if not line then return false end
+    local f = split(line, "|")
+    if f[1] ~= "U" then return false end
+    local gid = f[3]
+    local state = sync.StateOf and sync.StateOf(gid)
+    local why = global.string.find(rest, "invalid-placement", 1, true) and "hier nicht moeglich (z. B. ausserhalb der Parkgrenze)" or "beim Host nicht moeglich"
+    local owner = objects[gid] and objects[gid].last or "?"
+    if state then
+        local current = objects[gid] or {rev = 0, creator = "Park"}
+        objects[gid] = {res = state.res, p = state.p, q = state.q, s = state.s, rev = current.rev + 1, last = "Host", creator = current.creator}
+        deliver(others(me, upsertLine(gid)))
+        addFeed("Aenderung von " .. owner .. " zurueckgenommen: " .. why)
+    else
+        objects[gid], tombstones[gid] = nil, true
+        deliver(others(me, "D|" .. gid .. "|host|0"))
+        addFeed("Objekt von " .. owner .. " entfernt: " .. why)
+    end
+    return true
+end
 
 -- Joiner: fetch the host's current park again (after a change failed to apply here).
 function Session.Resync()
@@ -700,6 +933,8 @@ end
 
 function Session.Leave()
     joining, progress, desync, joinFailure, helloLobby = false, {}, nil, nil, nil
+    locks, holds, bursts, recent, park, lastNote = {}, {}, {}, {}, nil, {}
+    if sync.SetRemoteLocks then sync.SetRemoteLocks({}) end
     for _, fr in global.ipairs(friends) do fr.invitedAt = nil end
     net.NetCommand("leave")
     sync.Receive("X")
@@ -718,13 +953,15 @@ function Session.View()
                 if p.sending then act = "holt" .. global.math.floor((p.sent or 0) * 100)
                 elseif p.pending then act = "laedt" end
                 list[#list+1] = {sid = sid, name = p.name, color = p.color, act = act, x = pr.x, y = pr.y, z = pr.z,
-                    yaw = pr.yaw, base = p.base, fx = pr.fx, fy = pr.fy, fz = pr.fz}
+                    yaw = pr.yaw, base = p.base, fx = pr.fx, fy = pr.fy, fz = pr.fz, hold = holds[sid]}
             end
         end
-        return {role = role, me = me, host = me, lobby = lobbyId, players = list, stats = stats, conflicts = conflicts, feed = feed}
+        return {role = role, me = me, host = me, lobby = lobbyId, players = list, stats = stats, conflicts = conflicts, feed = feed,
+            park = World.Numbers()}
     end
+    for _, pl in global.ipairs(roster.players or {}) do pl.hold = holds[pl.sid] end
     return {role = role, me = me, host = hostId, lobby = lobbyId, players = roster.players or {}, stats = roster.stats or {},
-        conflicts = roster.conflicts or 0, feed = feed}
+        conflicts = roster.conflicts or 0, feed = feed, park = park}
 end
 
 function Session.Tick()
@@ -741,6 +978,7 @@ function Session.Tick()
         if not ok then emit("session:task-error|" .. global.tostring(failure)) end
         if not ok or global.coroutine.status(tasks[i]) == "dead" then global.table.remove(tasks, i) end
     end
+    if role == "host" then flushActions(false) end
     if role == "host" and frames - lastRoster >= 30 then
         lastRoster = frames
         local line = rosterLine()

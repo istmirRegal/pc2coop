@@ -16,6 +16,8 @@ local global = _G
 local Sync = {}
 local Replay = global.require("pc2coop.replay")
 local Recorder = global.require("pc2coop.recorder")
+local World = global.require("pc2coop.world")
+local shared = global.require("pc2coop.shared")
 
 local emit = function() end
 local active = false
@@ -34,6 +36,11 @@ local reconcileCursor
 local groupSize = 1
 local grouped = false     -- the running task applies inbound[1..groupSize] in one commit
 local MAX_RUN = 64        -- scenery changes applied together (a blueprint has 100+ parts)
+local heldParts = {}      -- local part -> true: what the local player holds in the editor right now
+local lastHold, lastHoldFrame = "", 0
+local activityText = nil  -- what the editor tool says the player is doing ("baut Wege")
+local remoteLocked = {}   -- gid -> name of the other player who holds that object
+local MAX_HOLD_ITEMS = 8  -- ghosts shown to the others per held selection
 local cmdSent = 0
 local lastCmd = ""
 local lastPresence, lastPresenceFrame = nil, 0
@@ -168,6 +175,12 @@ function Handlers.AfterCommit(entry, results)
     if entry then entry.wait = results[1]; pending[#pending+1] = entry end
 end
 
+function Handlers.AfterUndo(wait)
+    if ours() or not active then return end
+    local ok, focus = global.pcall(focusPosition)
+    pending[#pending+1] = {wait = wait, focus = ok and focus or nil}
+end
+
 local function installDispatcher()
     local hierarchy = apis().editors:CreateUndoOperationsHierarchy()
     local index = global.getmetatable(hierarchy).__index
@@ -271,6 +284,19 @@ local function installUndo()
             if wait() then return true end
             return r.IsBusy(...)
         end
+        -- Undo and redo change the world without a commit; the result is diffed like one.
+        for _, name in global.ipairs({"Undo", "Redo"}) do
+            local original = undo[name]
+            if global.type(original) == "function" then
+                r[name] = original
+                undo[name] = function(...)
+                    local results = global.table.pack(original(...))
+                    local h = d.handlers
+                    if h and h.AfterUndo then global.pcall(h.AfterUndo, results[1]) end
+                    return global.table.unpack(results, 1, results.n)
+                end
+            end
+        end
     end
     raw = d.raw
     d.handlers = Handlers
@@ -300,6 +326,37 @@ local function resumeLocalPreview(oldToken)
     D.tokens[oldToken] = token
     Replay.Remap(oldToken, token)
     emit("sync:preview-resumed")
+end
+
+-- A remote change touched the objects the player holds (it won the race at the host).
+-- Re-previewing the player's change list would bring back parts that no longer exist, so
+-- the player's token is pointed at an empty preview and the editor tool is left.
+local function abandonLocalPreview(oldToken)
+    if not oldToken then return end
+    local undo = global.api.undo
+    local hierarchy = apis().editors:CreateUndoOperationsHierarchy()
+    local changeList = hierarchy:GetFullUndoChangeList()
+    local wait, token = raw.PreviewChangeList(changeList)
+    for _ = 1, 600 do
+        if undo.IsOperationComplete(wait) then break end
+        global.coroutine.yield()
+    end
+    D.tokens[oldToken] = token
+    Replay.OnCancel(oldToken)
+    localPreview = {changeList = changeList, token = token}
+    heldParts = {}
+    emit("sync:hold-lost")
+    World.LeaveTool()
+end
+
+-- True when one of these remote lines changes an object the local player holds.
+local function touchesHeld(lines)
+    if global.next(heldParts) == nil then return false end
+    for _, f in global.ipairs(lines) do
+        local part = (f[1] == "U" or f[1] == "D") and globalToLocal[f[3]]
+        if part and heldParts[part] then return true end
+    end
+    return false
 end
 
 -- Internal checks must never wait on our own remote task.
@@ -363,6 +420,39 @@ function Sync.GidToEntity(gid)
     local part = globalToLocal[gid] or (first == "P" and global.tonumber(global.string.sub(gid, 2)))
     if not part or not apis().placement:PlacementPartExists(part) then return nil end
     return apis().placement:PlacementIDToEntityID(part)
+end
+
+-- Objects the other players hold right now: gid -> player name (from the host).
+function Sync.SetRemoteLocks(locks) remoteLocked = locks or {} end
+function Sync.RemoteLocks() return remoteLocked end
+function Sync.HeldParts() return heldParts end
+-- Test seam: the editor is not driven by tests, so they say what is held.
+function Sync._SetHeld(parts) heldParts = parts or {} end
+
+-- The player may only undo or redo a step of their own: the newest step on this game's
+-- undo stack can be another player's change, and undoing that would tear down their work.
+function Sync.MayUndo(isUndo)
+    if not active then return true end
+    local ok, data = global.pcall(function()
+        local undo = global.api.undo
+        if isUndo then return undo.GetCheckpointData() end
+        return undo.GetUndoneCheckpointData()
+    end)
+    if ok and global.type(data) == "table" and data.pc2coopRemote then
+        emit("sync:undo-blocked|" .. (isUndo and "undo" or "redo"))
+        return false
+    end
+    return true
+end
+
+-- The object's state in this game's world: {res, p, q, s}, or nil when it is not here.
+function Sync.StateOf(gid)
+    local part = globalToLocal[gid] or (global.string.sub(gid, 1, 1) == "P" and global.tonumber(global.string.sub(gid, 2)))
+    if not part then return nil end
+    local ok, state = global.pcall(readPart, part)
+    if not ok or not state then return nil end
+    return {res = state.resource, p = {state.x, state.y, state.z}, q = {state.qx, state.qy, state.qz, state.qw},
+        s = scaleHint[part] or 1}
 end
 
 local paused = false
@@ -449,7 +539,7 @@ local function finishList(w, preview, settleFrames)
     end
     local wait = undo.CommitPreview(preview)
     waitFor(function() return undo.IsOperationComplete(wait) end, "commit")
-    undo.Checkpoint({})
+    undo.Checkpoint({pc2coopRemote = true})
 end
 
 local function commitList(w, changeList) finishList(w, beginList(changeList), 0) end
@@ -637,8 +727,61 @@ end
 
 local function activity()
     if applying then return "empfaengt" end
+    if activityText then return activityText end
     if previewing() then return "baut" end
     return "schaut"
+end
+
+local function two(n) return global.string.format("%.2f", n) end
+
+-- What the player holds in the editor: reported as "sync:hold|label|gids|items" a few times
+-- per second, "sync:hold|" when it is put down. gids = shared objects being edited (locked
+-- for the others), items = "resource,x,y,z,qx,qy,qz,qw,scale;..." for their ghost view;
+-- a leading "!" marks something that must not be shown as a model (rides).
+local function hold()
+    local info = World.Activity()
+    activityText = info.text and global.string.gsub(info.text, "[|,;\n]", " ") or nil
+    local held = info.held
+    local line, parts = "", {}
+    if held then
+        local w = apis()
+        local gids, items = {}, {}
+        for i, part in global.ipairs(held.parts) do
+            if i > MAX_RUN then break end
+            parts[part] = true
+            local gid = localToGlobal[part]
+            if gid then gids[#gids+1] = gid end
+            if #items < MAX_HOLD_ITEMS then
+                global.pcall(function()
+                    local t = global.api.transform.CalculateWorldTransform(w.placement:PlacementIDToEntityID(part))
+                    local pos, q = t:GetPos(), t:GetOr()
+                    items[#items+1] = global.table.concat({w.placement:GetPartResourceName(part), two(pos:GetX()), two(pos:GetY()),
+                        two(pos:GetZ()), fmt(q:GetX()), fmt(q:GetY()), fmt(q:GetZ()), fmt(q:GetW()), two(held.scale or 1)}, ",")
+                end)
+            end
+        end
+        if #items == 0 then
+            local name = global.string.gsub(global.tostring(held.resource or "?"), "[^%w_%.%-]", "")
+            items[1] = global.table.concat({"!" .. name, two(held.x), two(held.y), two(held.z), fmt(held.qx), fmt(held.qy),
+                fmt(held.qz), fmt(held.qw), two(held.scale or 1)}, ",")
+        end
+        -- Someone else already works on one of these objects: step back at once.
+        for _, gid in global.ipairs(gids) do
+            if remoteLocked[gid] then
+                emit("sync:hold-denied|" .. global.tostring(remoteLocked[gid]))
+                heldParts = {}
+                World.LeaveTool()
+                return
+            end
+        end
+        local label = global.string.gsub(global.tostring(held.resource or global.string.match(items[1], "^!?([^,]*)") or "?"), "[|,;]", "")
+        line = label .. "|" .. global.table.concat(gids, ",") .. "|" .. global.table.concat(items, ";")
+    end
+    heldParts = parts
+    if line ~= lastHold or (line ~= "" and frames - lastHoldFrame >= 60) then
+        lastHold, lastHoldFrame = line, frames
+        emit("sync:hold|" .. line)
+    end
 end
 
 local function presence()
@@ -680,6 +823,7 @@ function Sync.Tick()
         end)
         wrapped = true
         emit(ok and "sync:hooks-installed" or ("sync:hook-error|" .. global.tostring(failure)))
+        shared.undoGuard = Sync.MayUndo
         global.pcall(function() playerName = global.api.player.GetPlayerName() or playerName end)
         emit("sync:ready|" .. global.tostring(playerName))
     end
@@ -752,21 +896,23 @@ function Sync.Tick()
             groupSize, grouped = #run, true
             task = global.coroutine.create(function()
                 local paused = pauseLocalPreview()
+                local hit = touchesHeld(run)
                 local ok, failure = global.pcall(kind == "U" and applyUpserts or applyDeletes, run)
-                resumeLocalPreview(paused)
+                if hit then abandonLocalPreview(paused) else resumeLocalPreview(paused) end
                 if not ok then global.error(failure, 0) end
             end)
         else
             groupSize, grouped = 1, false
             task = global.coroutine.create(function()
                 local paused = pauseLocalPreview()
+                local hit = touchesHeld({fields})
                 local ok, failure = global.pcall(runOp, fields)
-                resumeLocalPreview(paused)
+                if hit then abandonLocalPreview(paused) else resumeLocalPreview(paused) end
                 if not ok then global.error(failure, 0) end
             end)
         end
     end
-    if active and frames % 8 == 0 then global.pcall(presence) end
+    if active and frames % 8 == 0 then global.pcall(hold); global.pcall(presence) end
     if active and frames % 60 == 30 then global.pcall(reconcile) end
 end
 
@@ -774,6 +920,8 @@ function Sync.Stop()
     if D and D.handlers == Handlers then D.handlers = nil end
     active, task, applying, inbound, pending, grouped = false, nil, false, {}, {}, false
     localToGlobal, globalToLocal, revision, known, scaleHint, lastSeq, wrapped = {}, {}, {}, {}, {}, 0, false
+    heldParts, remoteLocked, lastHold, activityText = {}, {}, "", nil
+    shared.undoGuard = nil
     Replay.Stop()
     emit("sync:not-ready")
 end

@@ -73,12 +73,29 @@ function Ui.Toggle() Ui.SetOpen(not open) end
 -- Hosting needs a loaded park; the main menu can only join.
 function Ui.SetCanHost(value) canHost = value == true end
 
+-- The newest lines of the session log, oldest first.
+local function recentLog(feed)
+    local out = {}
+    feed = feed or {}
+    for i = global.math.max(1, #feed - 11), #feed do out[#out+1] = feed[i] end
+    return out
+end
+
+local function statsList(stats)
+    local out = {}
+    for name, v in global.pairs(stats or {}) do
+        out[#out+1] = {name = name, created = v.created or 0, edited = v.edited or 0, deleted = v.deleted or 0}
+    end
+    global.table.sort(out, function(a, b) return a.name < b.name end)
+    return out
+end
+
 local function buildState()
     local view = session.View()
     local players = {}
     for _, p in global.pairs(view.players or {}) do
         players[#players+1] = {sid = p.sid, name = p.name, color = p.color, act = p.act or "-", x = p.x,
-            me = p.sid == view.me, host = p.sid == view.host}
+            me = p.sid == view.me, host = p.sid == view.host, hold = p.hold and p.hold.label or false}
     end
     global.table.sort(players, function(a, b) return (a.host and 0 or 1) < (b.host and 0 or 1) end)
     local friends = {}
@@ -95,6 +112,7 @@ local function buildState()
         canHost = canHost, franchise = franchise, players = players, friends = friends,
         join = session.JoinState and session.JoinState() or false,
         desync = session.Desync and session.Desync() or false,
+        park = view.park or false, log = recentLog(view.feed), stats = statsList(view.stats),
         chat = session.Chat(), toasts = session.Toasts(),
     }
 end

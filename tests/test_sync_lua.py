@@ -40,13 +40,24 @@ local function newHierarchy() return setmetatable({ops = {}}, meta) end
 
 local previews, waits = {}, {}
 local undo = {}
-function undo.IsPreviewingChangeList() return false end
+function undo.IsPreviewingChangeList() return previewingNow == true end
 function undo.IsBusy() return false end
 function undo.IsOperationComplete() return true end
-function undo.PreviewChangeList(cl) local token = {cl = cl}; return {}, token end
+previewLists = {}
+function undo.PreviewChangeList(cl) local token = {cl = cl}; previewLists[#previewLists+1] = cl; return {}, token end
 function undo.CanCommitPreview() return true end
 function undo.CancelPreview() return {} end
-function undo.Checkpoint() end
+function undo.Checkpoint(data) checkpoint = data end
+function undo.GetCheckpointData() return checkpoint end
+function undo.GetUndoneCheckpointData() return undone end
+-- Undo of the newest placed part: the fake simply removes it.
+function undo.Undo()
+    local newest
+    for part in pairs(parts) do if not newest or part > newest then newest = part end end
+    if newest then parts[newest] = nil end
+    return {}
+end
+function undo.Redo() return {} end
 commits = 0
 function undo.CommitPreview(token)
     commits = commits + 1
@@ -137,6 +148,13 @@ local apis = {editors = {CreateUndoOperationsHierarchy = function() return newHi
     volumes = volumes, flatrides = flatrides,
     park = park, facilities = facilities,
     placement = placement, scenery = scenery, CameraModeManager = camera}
+-- The editor: the game hands out the current tool as a Lua object.
+editor = {mode = nil, ui = "Select", edit = "Select", left = 0}
+package.preload["Editors.Shared.BaseEditMode"] = function() return {GetModeHelperEntity = function() return 1 end} end
+package.preload["Editors.Shared.BaseUIMode"] = function() return {GetModeHelperEntity = function() return 2 end,
+    SetNewMode = function(name) editor.left = editor.left + 1; editor.mode, editor.ui, editor.edit = nil, name, name end} end
+apis.GameModeHelperComponent = {GetCurrentModeName = function() return editor.edit end, GetCurrentMode = function() return editor.mode end}
+apis.UIModeHelperComponent = {GetCurrentModeName = function() return editor.ui end}
 api = {undo = undo, world = {GetWorldAPIs = function() return apis end},
     entity = {CreateRequestCompletionToken=function() return {} end, HaveRequestsCompleted=function() return true end},
     transform = {CalculateWorldTransform=function(entity)
@@ -149,6 +167,7 @@ api = {undo = undo, world = {GetWorldAPIs = function() return apis end},
         for _, v in pairs(parts) do out[#out+1] = v.entity end
         return out
     end}}
+api.ui2 = {}
 game = {parts = parts, newHierarchy = newHierarchy, camera = camera}
 '''
 
@@ -159,6 +178,9 @@ class SyncTests(unittest.TestCase):
         self.lua = LuaRuntime(unpack_returned_tuples=True)
         self.lua.execute(FAKE_GAME)
         self.lua.execute('records = {}')
+        for name in ('shared', 'world'):
+            source = (SOURCE.parent / f'{name}.lua').read_text(encoding='utf8')
+            self.lua.eval('function(n, s) package.preload["pc2coop." .. n] = function() return assert(load(s, n, "t", _G))() end end')(name, source)
         recorder = (SOURCE.parent / 'recorder.lua').read_text(encoding='utf8')
         self.lua.eval('function(s) package.preload["pc2coop.recorder"] = function() return assert(load(s, "recorder", "t", _G))() end end')(recorder)
         replay = (SOURCE.parent / 'replay.lua').read_text(encoding='utf8')

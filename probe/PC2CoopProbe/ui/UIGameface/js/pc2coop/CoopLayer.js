@@ -7,6 +7,7 @@
 import { Icon } from '/js/common/components/Icon.js';
 import * as DS from '/js/common/core/DataStore.js';
 import * as Engine from '/js/common/core/Engine.js';
+import { translate } from '/js/common/core/Localisation.js';
 import * as preact from '/js/common/lib/preact.js';
 import { Button } from '/js/project/components/Button.js';
 import { Dialog } from '/js/project/components/Dialog.js';
@@ -75,10 +76,29 @@ class StateComponent extends preact.Component {
 const ACTIVITY = { baut: 'baut', schaut: 'schaut zu', empfaengt: 'synchronisiert', laedt: 'lädt den Park', '-': 'verbindet' };
 
 // What a player is doing; a joiner shows how far the park transfer is ("holt45").
-function activityText(act) {
+function activityText(act, hold) {
     const receiving = /^holt(\d+)$/.exec(act || '');
     if (receiving) return 'empfängt den Park ' + receiving[1] + ' %';
-    return ACTIVITY[act] || '';
+    if (hold) return 'hält ' + prettyName(hold);
+    return ACTIVITY[act] !== undefined ? ACTIVITY[act] : (act || '');
+}
+
+// "AQ_Rock_04" -> "Rock 04": resource names without their set prefix.
+function prettyName(resource) {
+    return String(resource).replace(/^[A-Za-z0-9]{2,5}_/, '').replace(/_/g, ' ');
+}
+
+// Park notifications arrive in the game's own text format and are translated here.
+function shown(text) {
+    if (typeof text === 'string' && text.charAt(0) === '[') {
+        try { return translate(text); } catch (error) { return text; }
+    }
+    return text;
+}
+
+function money(park) {
+    if (park.unlimited) return 'Geld unbegrenzt';
+    return 'Geld ' + Math.round(park.cash).toLocaleString('de-DE');
 }
 
 // Small round player chips, always visible while in a session.
@@ -96,7 +116,7 @@ class PlayerBar extends StateComponent {
                 preact.h('div', { style: { color: '#ffffff', fontSize: '16px' } },
                     p.name + (p.me ? ' (du)' : '')),
                 p.host && preact.h(Icon, { src: 'img/icons/crown.svg', style: { width: '18px', height: '18px', marginLeft: '7px' } }),
-                preact.h('div', { style: { color: '#9fd8f0', fontSize: '13px', marginLeft: '9px' } }, activityText(p.act)))));
+                preact.h('div', { style: { color: '#9fd8f0', fontSize: '13px', marginLeft: '9px' } }, activityText(p.act, p.hold)))));
     }
 }
 
@@ -129,7 +149,7 @@ class Toasts extends StateComponent {
         return preact.h('div', { style: { position: 'absolute', bottom: '120px', left: '24px', display: 'flex', flexDirection: 'column' } },
             state.visible.map((t) => preact.h('div', { key: t.id, style: { margin: '4px 0', padding: '10px 16px', maxWidth: '520px',
                 borderRadius: '10px', background: 'rgba(14, 33, 48, 0.82)', color: '#ffffff', fontSize: '17px',
-                borderLeft: '5px solid #' + (t.color || '00c6ff') } }, t.text)));
+                borderLeft: '5px solid #' + (t.color || '00c6ff') } }, shown(t.text))));
     }
 }
 
@@ -183,9 +203,19 @@ class Lobby extends StateComponent {
                     preact.h('div', { style: { display: 'flex', alignItems: 'center' } },
                         preact.h('div', { style: { width: '14px', height: '14px', borderRadius: '7px', background: '#' + p.color, marginRight: '8px' } }),
                         p.name + (p.me ? ' (du)' : '') + (p.host ? ' - Host' : ''),
-                        preact.h('span', { style: { color: '#6a8899', marginLeft: '10px' } }, activityText(p.act))),
+                        preact.h('span', { style: { color: '#6a8899', marginLeft: '10px' } }, activityText(p.act, p.hold))),
                     !p.me && p.x !== undefined ? preact.h(Button, { label: literal('Hinspringen'), onSelect: () => request('jump', p.sid) }) : null,
                 ], 'p' + p.sid)),
+                coop.role && coop.park && section('Park des Hosts'),
+                coop.role && coop.park && preact.h('div', null, (coop.park.guests || 0).toLocaleString('de-DE') + ' Besucher · ' + money(coop.park)),
+                coop.role && (coop.stats || []).length > 0 && section('Wer hat was gebaut'),
+                coop.role && (coop.stats || []).map((s) => preact.h('div', { key: 's' + s.name, style: { padding: '2px 0' } },
+                    s.name + ': ' + s.created + ' platziert, ' + s.edited + ' bearbeitet, ' + s.deleted + ' gelöscht')),
+                coop.role && (coop.log || []).length > 0 && section('Verlauf'),
+                coop.role && (coop.log || []).slice(-6).map((line, i) => preact.h('div', { key: 'l' + i, style: { padding: '2px 0', color: '#4a6b7d' } }, shown(line))),
+                coop.role && (coop.chat || []).length > 0 && section('Chat'),
+                (coop.chat || []).slice(-8).map((c, i) => preact.h('div', { key: 'c' + i, style: { padding: '2px 0' } },
+                    preact.h('span', { style: { color: '#' + (c.color || '20435a') } }, c.name + ': '), c.text)),
                 coop.available && section('Steam-Freunde'),
                 coop.available && friends.length === 0 && preact.h('div', null, 'Lade Freundesliste ...'),
                 friends.map((f) => row([
@@ -196,10 +226,7 @@ class Lobby extends StateComponent {
                         : inSession[f.sid] ? preact.h('span', { style: { color: '#00a65a' } }, 'ist dabei')
                         : preact.h(Button, { label: literal(f.invited ? 'Eingeladen' : 'Einladen'), disabled: f.invited,
                             onSelect: () => request('invite', f.sid) }),
-                ], 'f' + f.sid)),
-                coop.role && (coop.chat || []).length > 0 && section('Chat'),
-                (coop.chat || []).slice(-8).map((c, i) => preact.h('div', { key: 'c' + i, style: { padding: '2px 0' } },
-                    preact.h('span', { style: { color: '#' + (c.color || '20435a') } }, c.name + ': '), c.text))));
+                ], 'f' + f.sid))));
     }
 }
 

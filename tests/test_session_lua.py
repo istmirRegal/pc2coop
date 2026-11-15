@@ -20,6 +20,7 @@ function sync.Receive(text)
     end
 end
 function sync.BaselineCount() return 976 end
+function sync.SetRemoteLocks(map) sync.locks = map end
 function sync.LocalPart(gid) return nil end
 logs = {}
 loads = {}
@@ -30,7 +31,9 @@ function manager:RequestLoadParkFromFile(path, world, creator, name) loads[#load
 local nextData = {SetGameMode = function() end, SetParkName = function() end}
 api = {world = {GetActive = function() return "temperateworld" end,
     GetWorldAPIs = function() return {park = {GetParkName = function() return "Testpark" end}} end},
-    game = {GetEnvironment = function() return {RequireInterface = function() return nextData end} end}}
+    game = {GetEnvironment = function() return {RequireInterface = function() return nextData end} end},
+    ui2 = {GetDataStoreContext = function() return "simulation" end,
+        GetDataStoreElement = function(_, key) return ({numGuests = 1234, cash = 5000, hasUnlimitedCash = false})[key] end}}
 '''
 
 
@@ -39,6 +42,9 @@ class Peer:
         self.sid, self.name = sid, name
         self.lua = LuaRuntime(unpack_returned_tuples=True)
         self.lua.execute(FAKES)
+        for module in ('shared', 'world'):
+            source = (SOURCE.parent / f'{module}.lua').read_text(encoding='utf8')
+            self.lua.eval('function(n, s) package.preload["pc2coop." .. n] = function() return assert(load(s, n, "t", _G))() end end')(module, source)
         loader = self.lua.eval('function(s) return assert(load(s, "session", "t", _G))() end')
         self.session = loader(SOURCE.read_text(encoding='utf8'))
         self.lua.globals().session = self.session

@@ -1,4 +1,4 @@
-PC2Coop 1.5.0 - Planet Coaster 2 live zusammen bauen, ueber Steam
+PC2Coop 1.6.0 - Planet Coaster 2 live zusammen bauen, ueber Steam
 
 Installation (jeder Spieler, einmalig)
 1. ZIP in einen eigenen Ordner entpacken.
@@ -39,6 +39,35 @@ Wenn der Beitritt nicht klappt
 - Wer ins Hauptmenue zurueckgeht, verlaesst die Sitzung; geht der Host, endet sie.
 5. F8 oeffnet das Entwickler-Menue (Sync-Zustand, API-Rekorder, Namensschilder).
 
+Die anderen sehen
+- Bodenmarke: eine kleine farbige Scheibe dort, wohin ein Mitspieler schaut, mit seinem
+  Namen und dem, was er gerade tut ("baut Wege", "platziert ein Fahrgeschaeft").
+- Sichtkegel: eine gepunktete Linie von seiner Kamera zu diesem Punkt zeigt Richtung und
+  Bereich, den er sieht.
+- Geist: was ein Mitspieler gerade in der Hand hat, siehst du eingefaerbt an der Stelle,
+  an der er es haelt - auch waehrend er noch einen Platz sucht. Fahrgeschaefte, Shops
+  und Bauplaene erscheinen als grosse Scheibe mit Namen (kein Modell).
+- Gesperrt: ein Objekt, das ein Mitspieler gerade bearbeitet, ist eingefaerbt. Nimmst du
+  es trotzdem auf, wird dein Werkzeug zurueckgesetzt und du siehst, wer es bearbeitet.
+  Legt er es ab, ist es wieder frei.
+Im Entwickler-Menue (F8) lassen sich Namensschilder und diese Anzeige abschalten.
+
+Ein Park, ein Spielstand
+- Der Park des Hosts ist der echte: dort laufen Besucher, Geld, Defekte und Wartung, und
+  nur der Host speichert.
+- Bei Mitspielern geht nichts von selbst kaputt, und Bauen kostet dort nichts. Ihre
+  Besucher sind nur Kulisse und koennen sich von denen des Hosts unterscheiden.
+- Pause und Spieltempo gelten fuer alle: wer pausiert oder vorspult, tut es fuer alle
+  (mit Hinweis, wer es war).
+- Im Multiplayer-Fenster stehen die Zahlen des Host-Parks (Besucher, Geld), wer wie viel
+  gebaut hat und der Verlauf. Meldungen des Host-Parks (Fahrgeschaeft defekt, kein Strom
+  ...) erscheinen bei allen unten links.
+- Rueckgaengig (Strg+Z) nimmt nur deinen eigenen letzten Schritt zurueck. Stammt der
+  neueste Schritt von einem Mitspieler, ist Rueckgaengig gesperrt, damit niemand
+  versehentlich fremde Arbeit abreisst.
+- Baut ein Mitspieler etwas, das im Park des Hosts nicht moeglich ist (z. B. ausserhalb
+  der Parkgrenze), wird es bei allen wieder entfernt und im Verlauf vermerkt.
+
 Wenn etwas nicht ankommt
 Kann eine Aenderung eines Mitspielers bei dir nicht uebernommen werden, wird sie einmal
 wiederholt. Klappt es dann immer noch nicht, erscheint ein Hinweis, und im
@@ -57,18 +86,24 @@ Live synchronisiert und im Spiel getestet:
   Groesse aendern, loeschen - auch waehrend jemand selbst etwas haelt.
 - Gelaende (Pinsel), Wege (Spline-Wege), Parkname.
 - Fahrgeschaefte: neu platzieren.
+- Anzeige der Mitspieler (Marke, Sichtkegel, Geist, Sperr-Faerbung), Pause/Tempo,
+  Zahlen und Meldungen des Host-Parks, Schutz vor Absturz, wenn ein Mitspieler das
+  Objekt loescht, das man gerade haelt (allein getestet, mit nachgestelltem Mitspieler).
 Eingebaut, aber noch nicht im Spiel bestaetigt:
+- Das Zusammenspiel der Sperren zwischen zwei echten Spielern.
 - Wasser (Seen), weitere Parkverwaltung (Preise, Oeffnen/Schliessen, Kredite,
   Forschung), Fahrgeschaefte verschieben, Ein- und Ausgaenge von Fahrgeschaeften.
 Noch NICHT synchronisiert (folgt):
 - Achterbahnen und Schienenfahrgeschaefte (Streckeneditor), Wasserrutschen,
-  Fahrgeschaefte loeschen, Bauplaene, Pools-Editor, Wege-Pinsel und -Stempel.
+  Fahrgeschaefte loeschen, Fahrgeschaefte aus Bauplaenen (nur deren Deko kommt an),
+  Pools-Editor, Wege-Pinsel und -Stempel.
   Diese Dinge sind beim Beitritt im uebertragenen Park enthalten, spaetere
   Aenderungen daran aber nur beim jeweiligen Spieler.
-- Gaeste, Geld und Simulation laufen bei jedem lokal.
+- Die Besucher selbst werden nicht uebertragen (siehe "Ein Park, ein Spielstand").
 
-Gleichzeitiges Bearbeiten desselben Objekts: der Host entscheidet, die spaetere
-Aenderung wird zurueckgesetzt.
+Gleichzeitiges Bearbeiten desselben Objekts: wer es zuerst aufnimmt, hat es. Kommen
+zwei Aenderungen trotzdem gleichzeitig an, entscheidet der Host; die spaetere wird
+zurueckgenommen und der Spieler bekommt einen Hinweis.
 
 Voraussetzungen
 - Windows x64, eigene Steam-Lizenz Planet Coaster 2. Alle Mitspieler sollten dieselbe

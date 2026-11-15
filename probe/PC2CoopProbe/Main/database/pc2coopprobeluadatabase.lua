@@ -2,7 +2,7 @@
 local global = _G
 local api = global.api
 local LuaDB = {}
-local probeVersion = "1.5.0"
+local probeVersion = "1.6.0"
 local diagnostic
 local viewHookResult = "not-run"
 
@@ -40,6 +40,12 @@ function LuaDB.AddLuaHooks(add)
         local qa = global.require("pc2coop.qa")
         qa.Init(trace)
         qa.HookManager(module)
+    end))
+    add("Windows.MainHUDGameface", guarded("MainHUD", function(module)
+        global.require("pc2coop.world").HookHUD(module, trace)
+    end))
+    add("Managers.NotificationManager", guarded("NotificationManager", function(module)
+        global.require("pc2coop.world").HookNotifications(module, trace)
     end))
     add("StartScreen.Shared.SandboxMenuHUD", guarded("SandboxMenuHUD", function(module)
         local qa = global.require("pc2coop.qa")
