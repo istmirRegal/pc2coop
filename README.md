@@ -7,9 +7,10 @@ selben Park, über Steam-Einladungen, ohne Portfreigabe oder Zusatzprogramm.
 
 1. Neueste ZIP unter [Releases](../../releases/latest) herunterladen und entpacken.
 2. Planet Coaster 2 beenden, `INSTALL.cmd` doppelklicken.
-3. Spiel starten: Hauptmenü → **Multiplayer**, oder im Park Pausemenü → **Multiplayer** (F7).
-   Der Host lädt einen Park und lädt Steam-Freunde ein; Freunde nehmen die Einladung an
-   und bekommen den Park automatisch.
+3. Spiel starten: Hauptmenü → **Multiplayer** → **Lobby erstellen**, Steam-Freunde einladen.
+   In der Lobby wählt der Host, wo ihr spielt (eigener Park, Franchise, neuer Sandbox-Park);
+   sobald sein Park offen ist, lädt er bei allen automatisch. Im Park geht es auch direkt:
+   Pausemenü → **Multiplayer** (F7) → **Diesen Park hosten**.
 4. Neue Version: Spiel beenden, `UPDATE.cmd` doppelklicken.
 
 Alle Mitspieler brauchen dieselbe Mod-Version und dieselbe Spielversion
@@ -33,6 +34,7 @@ Alle Mitspieler brauchen dieselbe Mod-Version und dieselbe Spielversion
   Steam-Freunden bei und fragt nach, wenn eine Sitzung per Startparameter statt per
   angeklickter Einladung kommt.
 - Der Host lässt Freunde zu, die er nicht selbst eingeladen hat, bevor sie den Park bekommen.
+- In der Lobby sehen Mitspieler DLC-Liste, Mod-Ordnernamen und Steam-Profilbild der anderen.
 - Aus dem Netz werden genau zwei Dateien geschrieben (der Park des Hosts), nur vom Host,
   mit festen Namen und Größenprüfung; sie werden nach dem Laden gelöscht.
 - Nachrichten anderer Spieler werden nie als Code ausgeführt: Bauaktionen laufen über eine

@@ -765,6 +765,55 @@ local function execute(command, manager)
         local session=frontend and frontendCoop().Session()
         if session then session.Rejoin() end
         emit("qa:rejoin-go:sent")
+    elseif command=="menu-lobby-test" then
+        -- Main menu: open a lobby, a made-up player "Vici" (sid 777) waits in it with fewer
+        -- DLCs and other mods, the panel opens.
+        local coop=frontend and frontendCoop()
+        local session=coop and coop.Session()
+        if not session then emit("qa:menu-lobby:not-in-frontend"); return end
+        session.SetAskBeforeJoin(false)
+        if not session.View().role then session.Host() end
+        for i=1,900 do
+            if session.View().role=="host" then break end
+            global.coroutine.yield()
+        end
+        session._onNet("msg|777|hello|Vici|-1|lobby|" .. session.VERSION .. "||1|ForgeUtils;ACSE")
+        coop.Ui().SetOpen(true)
+        for i=1,240 do global.coroutine.yield() end
+        local view=session.View()
+        local names={}
+        for _,pl in global.ipairs(view.players or {}) do names[#names+1]=pl.name .. "=" .. global.tostring(pl.act) .. "/dlc" .. global.tostring(pl.dlc) end
+        local pictures=""
+        for sid,data in global.pairs(session.Avatars()) do pictures=pictures .. sid .. ":" .. #data .. ":" .. global.string.sub(data,1,12) .. " " end
+        emit("qa:menu-lobby:role=" .. global.tostring(view.role) .. ";stage=" .. global.tostring(view.stage) .. ";players=" .. global.table.concat(names,",")
+            .. ";mydlc=" .. global.tostring(view.dlc) .. ";avatars=" .. pictures)
+        for sid,data in global.pairs(session.Avatars()) do
+            if #data>0 then
+                for i=1,#data,2000 do emit("qa:menu-lobby:avatar-part=" .. global.string.sub(data,i,i+1999)) end
+                break
+            end
+        end
+        emit("qa:menu-lobby-test:shown")
+    elseif command=="menu-lobby-close" then
+        local coop=frontend and frontendCoop()
+        if coop then
+            coop.Ui().SetOpen(false)
+            for i=1,120 do global.coroutine.yield() end
+            emit("qa:menu-lobby:mini-shown")
+            for i=1,600 do global.coroutine.yield() end
+            coop.Session()._onNet("member:leave|777")
+            coop.Session().Leave()
+        end
+        emit("qa:menu-lobby-close:done")
+    elseif command=="dlc-probe" then
+        -- What the game says a part needs: the test rock (base game) and DLC parts if any.
+        local apis=testWorld(); if not apis then return end
+        local world=global.require("pc2coop.world")
+        emit("qa:dlc-probe:api=" .. global.type(apis.scenery and apis.scenery.GetRequiredDLCForPart))
+        if createdPart then emit("qa:dlc-probe:rock=" .. global.tostring(world.RequiredDLC(createdPart))) end
+        local okRaw,raw=global.pcall(function() return apis.scenery:GetRequiredDLCForPart(createdPart) end)
+        emit("qa:dlc-probe:raw=" .. global.tostring(okRaw) .. "/" .. global.type(raw) .. "/" .. global.tostring(raw))
+        emit("qa:dlc-probe:done")
     elseif command=="viz-clean" then
         local shared=global.require("pc2coop.shared")
         local n=0

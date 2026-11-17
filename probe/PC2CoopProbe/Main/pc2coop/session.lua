@@ -4,7 +4,9 @@
 -- attribution); everyone else is a client. Local game changes come from sync.lua as
 -- "sync:*" lines, remote ones go back into sync.lua as numbered op lines.
 -- Wire messages (Steam, reliable, text):
---   client -> host: hello|<name>|<baseline>|<mode>|<version>   up|...   del|...   pres|...
+--   client -> host: hello|<name>|<baseline>|<mode>|<version>|<game>|<dlc>|<mods>   up|...   del|...   pres|...
+--     mode: lobby (main menu), needpark, loaded, live
+--   host -> client: stage|lobby or park|<park token>|<park name>|<content guard>
 --   host -> client: reject|<host version>   (different mod versions never play together)
 --   host -> client: ops\n<line>...   roster|<players>   feed|<text>   welcome|<color>
 local global = _G
@@ -13,7 +15,7 @@ local World = global.require("pc2coop.world")
 local shared = global.require("pc2coop.shared")
 
 -- Mod version; must match the database's probeVersion (checked by the tests).
-Session.VERSION = "1.7.0"
+Session.VERSION = "1.8.0"
 local COLORS = {"ff6b6b", "4dabf7", "51cf66", "fcc419", "cc5de8", "ff922b", "22b8cf", "f06595"}
 local net, sync
 local emit = function() end
@@ -69,6 +71,14 @@ local selfStalled = false -- joiner: Steam dropped what this game sent to the ho
 local departed = {}       -- host: sid -> colour of players who left (they keep it on return)
 local rejoin = nil        -- menu: {lobby, host, hostSid} of a session this game dropped out of
 local LAST_SESSION = "pc2coop-lastsession.txt"
+-- Lobby: the host can wait in the main menu with everyone before a park is chosen.
+local stage = nil         -- "lobby" (host in the main menu) or "park"; joiners: as the host said last
+local parkToken = nil     -- id of the park the session plays (a new one for every park the host opens)
+local parkTitle = ""      -- name of the host's park
+local seenStage = nil     -- joiner: stage|token last acted on
+local myDlc, myMods = nil, ""  -- owned DLC packs (bit mask, from the UI) and folders of other mods
+local contentGuard = true -- host: objects from a DLC that not every player owns are not built
+local avatars, avatarAsked = {}, {}  -- sid -> profile picture (base64 PNG), asked once
 local lastRoster = 0
 local frames = 0
 
@@ -150,7 +160,9 @@ local function deliver(deliveries)
     local bySid, sids = {}, {}
     for _, d in global.ipairs(deliveries) do
         local p = players[d[1]]
-        if p and p.pending then
+        if p and p.lobby then
+            -- In the main menu: the park comes as a whole when they load it.
+        elseif p and p.pending then
             -- Joiner is still loading the host park: hold its ops until it is ready.
             p.pending[#p.pending+1] = d[2]
         else
@@ -164,6 +176,51 @@ end
 local function remember(key, value)
     memory[key] = value
     net.NetCommand("kv|" .. key .. "|" .. value)
+end
+
+-- True when some bit of need is not in mask (both whole numbers below 2^53).
+local function lacks(mask, need)
+    mask, need = global.math.floor(mask or 0), global.math.floor(need or 0)
+    while need > 0 do
+        if need % 2 == 1 and mask % 2 == 0 then return true end
+        need, mask = global.math.floor(need / 2), global.math.floor(mask / 2)
+    end
+    return false
+end
+
+-- Mod folder names, ";"-separated, as a clean list.
+local function modList(text)
+    local out = {}
+    for entry in global.string.gmatch(global.tostring(text or ""), "[^;/]+") do
+        local name = global.string.sub(global.string.gsub(entry, "[^%w_%-%. ]", ""), 1, 48)
+        if name ~= "" and #out < 40 then out[#out+1] = name end
+    end
+    return out
+end
+
+local function setContent(sid, dlc, mods)
+    local p = players[sid]
+    if not p then return end
+    p.dlc = global.tonumber(dlc)
+    if mods ~= nil then p.mods = modList(mods) end
+end
+
+-- Host: everyone invited or let in may come back without asking again (kept across park loads).
+local function persistAdmitted()
+    local list = {}
+    for sid in global.pairs(invited) do list[#list+1] = sid end
+    for sid in global.pairs(approved) do if not invited[sid] then list[#list+1] = sid end end
+    remember("admitted", global.table.concat(list, ","))
+end
+
+local function helloLine(mode)
+    return "hello|" .. myName .. "|-1|" .. mode .. "|" .. Session.VERSION .. "|" .. gameVersion .. "|"
+        .. global.tostring(myDlc or "") .. "|" .. myMods
+end
+
+local function stageLine()
+    return "stage|" .. global.tostring(stage) .. "|" .. global.tostring(parkToken or "") .. "|" .. clean(parkTitle)
+        .. "|" .. (contentGuard and "1" or "0")
 end
 
 -- Authority (host only) -----------------------------------------------------------------
@@ -287,9 +344,25 @@ local function lockedByOther(sid, gid) return gid ~= "" and locks[gid] ~= nil an
 local function validResource(res) return global.type(res) == "string" and global.string.match(res, "^[%w_%.%-]+$") and #res <= 96 end
 local function validGid(gid) return gid == "" or (global.string.match(gid, "^[%w_%.%-]+$") and #gid <= 64) end
 
-local function authorityUp(sid, part, gid, rev, res, p, q, s)
+local function authorityUp(sid, part, gid, rev, res, p, q, s, need)
     if not validResource(res) or not validGid(gid) then return {} end
     if lockedByOther(sid, gid) then return refuseLocked(sid, gid) end
+    if gid == "" and contentGuard and need and need > 0 then
+        -- A new object from a DLC: built only when everyone owns that DLC.
+        local missing = {}
+        for _, other in global.ipairs(order) do
+            local pl = players[other]
+            if pl and pl.dlc and lacks(pl.dlc, need) then missing[#missing+1] = pl.name end
+        end
+        if #missing > 0 then
+            counter = counter + 1
+            local refused = global.string.format("%s-%d", global.string.sub(sid, -6), counter)
+            tombstones[refused] = 1
+            local text = global.table.concat(missing, ", ")
+            if sid == me then Session._ContentRefused(need, text) else send(sid, "content|" .. global.math.floor(need) .. "|" .. text) end
+            return {{sid, "M|" .. refused .. "|" .. part .. "|1"}, {sid, "D|" .. refused .. "|host|0"}}
+        end
+    end
     local name = nameOf(sid)
     local state = {res = res, p = p, q = q, s = s, last = name}
     if gid == "" then
@@ -385,6 +458,12 @@ local function join(sid, name, mode)
     stats[players[sid].name] = stats[players[sid].name] or {created = 0, edited = 0, deleted = 0}
     if sid ~= me then send(sid, "welcome|" .. color) end
     for _, fr in global.ipairs(friends) do if fr.sid == sid then fr.invitedAt = nil end end
+    if mode == "lobby" then
+        players[sid].lobby = true
+        if not returning then addFeed(players[sid].name .. " ist in der Lobby") end
+        return
+    end
+    players[sid].lobby = nil
     if mode == "needpark" then
         -- Asked again while the park is still on its way: it arrives, nothing to restart.
         if players[sid].sending then return end
@@ -505,7 +584,7 @@ end
 local function hostChange(sid, f)
     if f[1] == "up" and #f >= 13 then
         local p, q, s = numbers(f, 6, 8), numbers(f, 9, 12), numbers(f, 13, 13)
-        if p and q and s then deliver(authorityUp(sid, f[2], f[3], global.tonumber(f[4]), f[5], p, q, s[1])) end
+        if p and q and s then deliver(authorityUp(sid, f[2], f[3], global.tonumber(f[4]), f[5], p, q, s[1], global.tonumber(f[14]))) end
     elseif f[1] == "del" and #f >= 4 then
         deliver(authorityDelete(sid, f[2], f[3], global.tonumber(f[4])))
     elseif f[1] == "pres" and players[sid] then
@@ -566,20 +645,23 @@ local function rosterLine()
             local pr = p.pres or {}
             -- A joiner has no presence yet: show how far the park transfer is instead.
             local act = pr.act or "-"
-            if p.sending then act = "holt" .. global.math.floor((p.sent or 0) * 100)
+            if p.lobby then act = "lobby"
+            elseif p.sending then act = "holt" .. global.math.floor((p.sent or 0) * 100)
             elseif p.pending then act = "laedt" end
             parts[#parts+1] = global.table.concat({sid, p.name, p.color, act, num(pr.x or 0), num(pr.y or 0),
                 num(pr.z or 0), num(pr.yaw or 0), global.tostring(p.base or -1),
-                num(pr.fx or pr.x or 0), num(pr.fy or pr.y or 0), num(pr.fz or pr.z or 0)}, ",")
+                num(pr.fx or pr.x or 0), num(pr.fy or pr.y or 0), num(pr.fz or pr.z or 0),
+                global.tostring(p.dlc or ""), global.table.concat(p.mods or {}, "/")}, ",")
         end
     end
     local st = {}
     for name, v in global.pairs(stats) do st[#st+1] = name .. "," .. v.created .. "," .. v.edited .. "," .. v.deleted end
-    local n = World.Numbers()
+    local n = context == "park" and World.Numbers() or nil
     local numbersText = n and (global.tostring(n.guests or 0) .. "," .. global.tostring(global.math.floor(n.cash or 0)) .. ","
         .. (n.unlimited and "1" or "0")) or ""
     return "roster|" .. global.table.concat(parts, ";") .. "|" .. global.table.concat(st, ";") .. "|" .. conflicts
-        .. "|" .. numbersText
+        .. "|" .. numbersText .. "|" .. global.tostring(stage) .. "," .. global.tostring(parkToken or "") .. ","
+        .. (contentGuard and "1" or "0")
 end
 
 local function parseRoster(payload)
@@ -589,7 +671,8 @@ local function parseRoster(payload)
         local p = split(entry, ",")
         list[#list+1] = {sid = p[1], name = p[2], color = p[3], act = p[4], x = global.tonumber(p[5]),
             y = global.tonumber(p[6]), z = global.tonumber(p[7]), yaw = global.tonumber(p[8]), base = global.tonumber(p[9]),
-            fx = global.tonumber(p[10]), fy = global.tonumber(p[11]), fz = global.tonumber(p[12])}
+            fx = global.tonumber(p[10]), fy = global.tonumber(p[11]), fz = global.tonumber(p[12]),
+            dlc = global.tonumber(p[13]), mods = modList(p[14])}
     end
     local st = {}
     for _, entry in global.ipairs(split(f[3] or "", ";")) do
@@ -599,6 +682,14 @@ local function parseRoster(payload)
     roster = {players = list, stats = st, conflicts = global.tonumber(f[4]) or 0}
     local n = split(f[5] or "", ",")
     park = n[1] and {guests = global.tonumber(n[1]) or 0, cash = global.tonumber(n[2]) or 0, unlimited = n[3] == "1"} or nil
+    local st2 = split(f[6] or "", ",")
+    if role == "client" and (st2[1] == "lobby" or st2[1] == "park") then
+        contentGuard = st2[3] ~= "0"
+        if st2[1] ~= stage or (st2[2] or "") ~= (parkToken or "") then
+            stage, parkToken = st2[1], st2[2] ~= "" and st2[2] or nil
+            Session._OnStage()
+        end
+    end
 end
 
 -- Inputs ----------------------------------------------------------------------------------
@@ -634,6 +725,11 @@ function Session.OnSyncLine(line)
     end
     if kind ~= "up" and kind ~= "del" and kind ~= "pres" and kind ~= "baseline" and kind ~= "cmd" and kind ~= "hold" then return end
     local wire = (kind == "baseline" and "base" or kind) .. "|" .. rest
+    if kind == "up" then
+        local part, gid = global.string.match(rest, "^(%d+)|([^|]*)|")
+        local need = gid == "" and World.RequiredDLC and World.RequiredDLC(global.tonumber(part)) or 0
+        if need and need > 0 then wire = wire .. "|" .. global.math.floor(need) end
+    end
     if role == "host" then hostChange(me, split(wire, "|"))
     elseif hostId then send(hostId, wire) end
 end
@@ -662,12 +758,11 @@ local function onMessage(from, payload)
                     toast(name .. " moechte beitreten. Im Multiplayer-Fenster zulassen oder ablehnen.", "fcc419")
                     emit("session:join-request|" .. from)
                 end
-                requests[from] = {name = name, mode = f[4], base = f[3]}
+                requests[from] = {name = name, mode = f[4], base = f[3], dlc = f[7], mods = f[8]}
                 send(from, "wait|")
                 return
             end
-            join(from, f[2], f[4])
-            if f[3] then hostChange(from, {"base", f[3]}) end
+            Session._Admit(from, f[2], f[4], f[3], f[7], f[8])
         elseif players[from] and players[from].stale and kind ~= "hello" then
             -- Steam dropped what we sent this player while the connection hung: their park is
             -- incomplete. Now that they are back, they fetch it again.
@@ -682,7 +777,10 @@ local function onMessage(from, payload)
             addFeed(players[from].name .. " konnte den Park nicht laden")
         elseif kind == "chat" and players[from] then
             Session._BroadcastChat(players[from].name, players[from].color, global.string.sub(payload, 6))
-        elseif players[from] then
+        elseif kind == "info" and players[from] then
+            local f = split(payload, "|")
+            setContent(from, f[2], f[3] or "")
+        elseif players[from] and stage == "park" and not players[from].lobby then
             hostChange(from, split(payload, "|"))
         end
     elseif from == hostId then
@@ -762,6 +860,15 @@ local function onMessage(from, payload)
                 Session._RefuseJoin("Der Host hat Spielversion " .. hostGame .. ", du " .. gameVersion
                     .. ". Bitte beide Planet Coaster 2 in Steam aktualisieren.")
             end
+        elseif kind == "stage" then
+            local f = split(payload, "|")
+            if f[2] == "lobby" or f[2] == "park" then
+                stage, parkToken, parkTitle, contentGuard = f[2], f[3] ~= "" and f[3] or nil, clean(f[4] or ""), f[5] ~= "0"
+                Session._OnStage()
+            end
+        elseif kind == "content" then
+            local f = split(payload, "|")
+            Session._ContentRefused(global.tonumber(f[2]) or 0, clean(f[3] or ""))
         elseif kind == "wait" then
             waiting = true
         elseif kind == "welcome" then
@@ -779,10 +886,44 @@ end
 local function requestPark()
     remember("lobby", lobbyId)
     remember("phase", "awaiting")
+    remember("hostPark", parkToken or "")
+    seenStage = "park|" .. global.tostring(parkToken)
     transfer, progress, joinFailure, desync = {}, {}, nil, nil
     emit("session:awaiting-park|" .. lobbyId .. "|" .. global.tostring(hostName))
     waiting = false
-    send(hostId, "hello|" .. myName .. "|-1|needpark|" .. Session.VERSION .. "|" .. gameVersion)
+    send(hostId, helloLine("needpark"))
+end
+
+-- Joiner: in the host's lobby (main menu or a park of one's own), waiting for a park.
+local function enterLobby()
+    remember("lobby", lobbyId)
+    remember("phase", "lobby")
+    waiting = false
+    emit("session:lobby|" .. lobbyId .. "|" .. global.tostring(hostName))
+    send(hostId, helloLine("lobby"))
+end
+
+-- Joiner: the host opened a park (load it, unless it is the one loaded here) or went back
+-- to the lobby.
+function Session._OnStage()
+    if role ~= "client" then return end
+    local key = global.tostring(stage) .. "|" .. global.tostring(parkToken)
+    if stage == "park" then
+        local phase = memory.phase
+        local have = memory.hostPark == (parkToken or "")
+        if phase == "lobby" or not have then
+            if seenStage == key and phase ~= "lobby" then return end
+            if context == "park" and phase == "live" then toast("Der Host hat einen anderen Park geoeffnet - er wird geladen.", "fcc419") end
+            requestPark()
+        end
+    elseif stage == "lobby" and seenStage ~= key then
+        seenStage = key
+        if context == "park" and memory.phase == "live" then
+            toast("Der Host ist zurueck in der Lobby und waehlt einen Park. Geh ins Hauptmenue, um dabei zu bleiben.", "fcc419")
+        elseif context == "menu" and memory.phase ~= "lobby" then
+            remember("phase", "lobby")
+        end
+    end
 end
 
 local function failJoin(reason, tellHost)
@@ -809,23 +950,36 @@ local function onNet(event)
             return
         end
         if hostId == me then
-            if context == "menu" then
-                -- Back in the main menu: there is no park to share any more.
-                toast("Sitzung beendet: du hast den Park verlassen.")
-                Session.Leave()
-                return
-            end
             role = "host"
+            local again = memory.lobby == lobbyId
+            if again then
+                for sid in global.string.gmatch(memory.admitted or "", "%d+") do approved[sid] = true end
+                contentGuard = memory.guard ~= "0"
+            end
+            if context == "menu" then
+                -- The lobby: everyone waits in the main menu until the host opens a park.
+                stage, parkToken, parkTitle = "lobby", nil, ""
+                if again then toast("Du bist wieder in der Lobby. Oeffne einen Park - alle laden ihn dann mit.", "fcc419") end
+            else
+                stage = "park"
+                if not parkToken then
+                    parkToken = global.tostring((global.tonumber(memory.parks) or 0) + 1)
+                    remember("parks", parkToken)
+                end
+                global.pcall(function()
+                    local name = global.api.world.GetWorldAPIs().park:GetParkName()
+                    parkTitle = clean(name)
+                    authorsFile = "pc2coop-authors-" .. global.string.sub(global.string.gsub(global.tostring(name), "[^%w%-]", "_"), 1, 40) .. ".txt"
+                    net.NetCommand("note-read|" .. authorsFile)
+                end)
+                sync.Receive("S|" .. myName)
+            end
             join(me, myName)
-            global.pcall(function()
-                local name = global.api.world.GetWorldAPIs().park:GetParkName()
-                authorsFile = "pc2coop-authors-" .. global.string.sub(global.string.gsub(global.tostring(name), "[^%w%-]", "_"), 1, 40) .. ".txt"
-                net.NetCommand("note-read|" .. authorsFile)
-            end)
+            setContent(me, myDlc, myMods)
             remember("lobby", lobbyId)
             remember("phase", "host")
-            emit("session:hosting|" .. lobbyId)
-            sync.Receive("S|" .. myName)
+            emit("session:hosting|" .. lobbyId .. "|" .. stage)
+            net.NetCommand("all|" .. stageLine())
         elseif context == "menu" and phase == "loading" then
             -- The game came back to the menu instead of opening the park.
             role = "client"
@@ -833,16 +987,17 @@ local function onNet(event)
         elseif context == "menu" and phase == "failed" then
             role = "client"
             joinFailure = joinFailure or "Der Park des Hosts konnte nicht geladen werden."
-        elseif context == "menu" and phase == "live" then
+        elseif context == "menu" and (phase == "live" or phase == "lobby" or phase == "awaiting") then
+            -- Back in the main menu: still in the host's lobby (leaving is a button).
             role = "client"
-            toast("Du hast die Sitzung verlassen.")
-            Session.Leave()
+            if phase == "live" then toast("Du bist in der Lobby von " .. hostName .. ".", "fcc419") end
+            enterLobby()
         elseif context == "park" and phase == "loading" then
             role = "client"
             remember("phase", "live")
             emit("session:joined|" .. lobbyId .. "|" .. hostName)
             sync.Receive("S|" .. myName)
-            send(hostId, "hello|" .. myName .. "|-1|loaded|" .. Session.VERSION .. "|" .. gameVersion)
+            send(hostId, helloLine("loaded"))
             toast("Bereit: du baust jetzt im Park von " .. hostName .. ".", "51cf66")
             World.ApplyGuestProfile()
             net.NetCommand("del|pc2coop-join.bin")
@@ -851,7 +1006,7 @@ local function onNet(event)
         elseif context == "park" and phase == "live" then
             role = "client"
             sync.Receive("S|" .. myName)
-            send(hostId, "hello|" .. myName .. "|-1|live|" .. Session.VERSION .. "|" .. gameVersion)
+            send(hostId, helloLine("live"))
         else
             role = "client"
             if joinSource == "launch" then
@@ -859,7 +1014,7 @@ local function onNet(event)
                 confirm = {host = hostName}
                 emit("session:join-confirm|" .. lobbyId)
             else
-                requestPark()
+                enterLobby()
             end
         end
         joinSource = nil
@@ -900,7 +1055,7 @@ local function onNet(event)
         local invitedAt
         for _, old in global.ipairs(friends) do if old.sid == f[2] then invitedAt = old.invitedAt end end
         friendsLoading[#friendsLoading+1] = {sid = f[2], name = clean(f[3]), state = global.tonumber(f[4]) or 0,
-            pc2 = f[5] == "1", invitedAt = invitedAt}
+            pc2 = f[5] == "1", invitedAt = invitedAt, lobby = global.string.match(f[6] or "", "^%d+$")}
     elseif kind == "friends:end" then
         -- Playing Planet Coaster 2 first, then online, then the rest; alphabetical within.
         global.table.sort(friendsLoading, function(a, b)
@@ -910,8 +1065,14 @@ local function onNet(event)
             return global.string.lower(a.name) < global.string.lower(b.name)
         end)
         friends = friendsLoading
+    elseif kind == "avatar" then
+        local data = f[3] or ""
+        if f[2] and #data <= 16000 and not global.string.find(data, "[^%w%+/=]") then avatars[f[2]] = data end
+    elseif kind == "mods" then
+        Session._SetMods(global.table.concat(modList(f[2]), ";"))
     elseif kind == "invite:sent" then
         invited[f[2]] = true
+        if role == "host" then persistAdmitted() end
         for _, fr in global.ipairs(friends) do
             if fr.sid == f[2] then fr.invitedAt = frames; toast("Einladung an " .. fr.name .. " gesendet") end
         end
@@ -973,6 +1134,7 @@ function Session.Init(logger, diagnostic, syncModule, parkManager)
     -- Module state was reset (new park); the DLL still knows lobby and phase.
     if Session.Available() then
         net.NetCommand("status")
+        net.NetCommand("mods")
         if context == "menu" then net.NetCommand("note-read|" .. LAST_SESSION) end
     end
 end
@@ -1046,9 +1208,75 @@ function Session.SendChat(text)
 end
 
 function Session.Host()
-    if role then return end
+    if role or joining then return end
     objects, tombstones, stats, players, order, counter, conflicts = {}, {}, {}, {}, {}, 0, 0
+    rejoin = nil
     net.NetCommand("host")
+end
+
+-- Host: lets a player in (invited, approved or known from earlier in this lobby).
+function Session._Admit(sid, name, mode, base, dlc, mods)
+    if stage ~= "park" then mode = "lobby" end
+    join(sid, name, mode)
+    setContent(sid, dlc, mods or "")
+    if sid ~= me then
+        approved[sid] = true
+        persistAdmitted()
+        if mode == "lobby" or mode == "live" or mode == "loaded" then send(sid, stageLine()) end
+    end
+    if base and mode ~= "lobby" then hostChange(sid, {"base", base}) end
+end
+
+-- Join the open lobby of a friend (shown in the friends list).
+function Session.JoinFriend(sid)
+    for _, fr in global.ipairs(friends) do
+        if fr.sid == sid and fr.lobby then onNet("invite:accepted|" .. fr.lobby .. "|" .. sid .. "|click"); return end
+    end
+end
+
+-- Content: owned DLC packs (from the UI) and other mods (from the DLL).
+function Session.SetDlc(mask)
+    mask = global.tonumber(mask)
+    if not mask or mask == myDlc then return end
+    myDlc = global.math.floor(mask)
+    Session._ContentChanged()
+end
+
+function Session._SetMods(list)
+    if list == myMods then return end
+    myMods = list
+    Session._ContentChanged()
+end
+
+function Session._ContentChanged()
+    if role == "host" then setContent(me, myDlc, myMods)
+    elseif role == "client" and hostId then send(hostId, "info|" .. global.tostring(myDlc or "") .. "|" .. myMods) end
+end
+
+function Session._ContentRefused(need, names)
+    emit("session:content-refused|" .. global.tostring(need) .. "|" .. global.tostring(names))
+    toast("Nicht gebaut: das Objekt ist aus einem DLC, das " .. names .. " nicht hat.", "ff922b")
+end
+
+-- Host: refuse (true) or allow objects from DLC packs not every player owns.
+function Session.SetContentGuard(value)
+    if role ~= "host" then return end
+    contentGuard = value ~= false
+    remember("guard", contentGuard and "1" or "0")
+    net.NetCommand("all|" .. stageLine())
+end
+
+function Session.Stage() return stage, parkTitle end
+
+-- Profile pictures of the players in the session (asked from Steam once per player).
+function Session.Avatars()
+    for _, p in global.ipairs(Session.View().players or {}) do
+        if p.sid and not avatarAsked[p.sid] and global.string.match(p.sid, "^%d+$") then
+            avatarAsked[p.sid] = true
+            net.NetCommand("avatar|" .. p.sid)
+        end
+    end
+    return avatars
 end
 
 function Session.Invite() net.NetCommand("invite") end
@@ -1065,8 +1293,9 @@ function Session.JoinState()
     local got, total = 0, 0
     for _, p in global.pairs(progress) do got, total = got + p[1], total + p[2] end
     local phase = memory.phase or "awaiting"
-    if waiting and phase == "awaiting" then phase = "asking" end
+    if waiting and (phase == "awaiting" or phase == "lobby") then phase = "asking" end
     if hostSilent and phase == "live" then return {phase = "silent", host = hostName} end
+    if phase == "live" and stage == "lobby" then return {phase = "hostlobby", host = hostName} end
     return {phase = phase, progress = total > 0 and got / total or 0, host = hostName}
 end
 
@@ -1097,9 +1326,7 @@ function Session.Answer(sid, allow)
     if role ~= "host" or not request then return end
     requests[sid] = nil
     if allow then
-        approved[sid] = true
-        join(sid, request.name, request.mode)
-        if request.base then hostChange(sid, {"base", request.base}) end
+        Session._Admit(sid, request.name, request.mode, request.base, request.dlc, request.mods)
     else
         send(sid, "denied|")
         addFeed(request.name .. " wurde nicht zugelassen")
@@ -1259,6 +1486,8 @@ function Session.Leave()
     invited, approved, requests, confirm, waiting, joinSource = {}, {}, {}, nil, false, nil
     pings, following, whoCache, hostSilent, selfStalled, authorsFile, dirtyAuthors = {}, nil, {}, false, false, nil, {}
     if role == "client" then net.NetCommand("note-write|" .. LAST_SESSION .. "|") end
+    if role == "host" then remember("admitted", "") end
+    stage, parkToken, parkTitle, seenStage = nil, nil, "", nil
     locks, holds, bursts, recent, park, lastNote = {}, {}, {}, {}, nil, {}
     if sync.SetRemoteLocks then sync.SetRemoteLocks({}) end
     for _, fr in global.ipairs(friends) do fr.invitedAt = nil end
@@ -1276,18 +1505,22 @@ function Session.View()
             if p then
                 local pr = p.pres or {}
                 local act = pr.act
-                if p.sending then act = "holt" .. global.math.floor((p.sent or 0) * 100)
+                if p.lobby then act = "lobby"
+                elseif p.sending then act = "holt" .. global.math.floor((p.sent or 0) * 100)
                 elseif p.pending then act = "laedt" end
                 list[#list+1] = {sid = sid, name = p.name, color = p.color, act = act, x = pr.x, y = pr.y, z = pr.z,
-                    yaw = pr.yaw, pitch = pr.pitch, base = p.base, fx = pr.fx, fy = pr.fy, fz = pr.fz, hold = holds[sid]}
+                    yaw = pr.yaw, pitch = pr.pitch, base = p.base, fx = pr.fx, fy = pr.fy, fz = pr.fz, hold = holds[sid],
+                    dlc = p.dlc, mods = p.mods}
             end
         end
         return {role = role, me = me, host = me, lobby = lobbyId, players = list, stats = stats, conflicts = conflicts, feed = feed,
-            park = World.Numbers()}
+            park = context == "park" and World.Numbers() or nil, stage = stage, parkTitle = parkTitle, guard = contentGuard,
+            context = context, dlc = myDlc}
     end
     for _, pl in global.ipairs(roster.players or {}) do pl.hold = holds[pl.sid] end
     return {role = role, me = me, host = hostId, lobby = lobbyId, players = roster.players or {}, stats = roster.stats or {},
-        conflicts = roster.conflicts or 0, feed = feed, park = park}
+        conflicts = roster.conflicts or 0, feed = feed, park = park, stage = stage, parkTitle = parkTitle, guard = contentGuard,
+        context = context, dlc = myDlc}
 end
 
 function Session.Tick()

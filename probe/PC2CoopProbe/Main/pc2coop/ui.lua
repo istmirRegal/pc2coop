@@ -8,6 +8,7 @@ local emit = function() end
 local session, sync, menu
 local context
 local lastState
+local lastAvatars = nil
 local lastRequest
 local open = false
 local canHost = true
@@ -28,6 +29,8 @@ local function json(value)
     if kind == "boolean" then return value and "true" or "false" end
     if kind == "number" then
         if value ~= value or value == global.math.huge or value == -global.math.huge then return "0" end
+        -- Whole numbers exactly (DLC bit masks), the rest short.
+        if value == global.math.floor(value) and global.math.abs(value) < 9007199254740992 then return global.string.format("%d", value) end
         return global.string.format("%.6g", value)
     end
     if kind == "string" then return quote(value) end
@@ -53,7 +56,7 @@ local function ensureContext()
     if ok and existing then
         context = existing
     else
-        context = ui2.CreateDataStoreContext({state = "{}"}, "pc2coop")
+        context = ui2.CreateDataStoreContext({state = "{}", avatars = "{}"}, "pc2coop")
     end
     return context
 end
@@ -62,7 +65,11 @@ function Ui.Init(logger, sessionModule, syncModule, menuModule)
     emit, session, sync, menu = logger, sessionModule, syncModule, menuModule
 end
 
+local closedAt = -1000
+
 function Ui.SetOpen(value)
+    if open and value ~= true then closedAt = frames end
+    if open ~= (value == true) then emit("ui:open|" .. global.tostring(value == true) .. "|" .. frames) end
     open = value == true
     if open and session.Available() then session.RefreshFriends() end
     lastState = nil
@@ -70,7 +77,7 @@ end
 
 function Ui.Toggle() Ui.SetOpen(not open) end
 
--- Hosting needs a loaded park; the main menu can only join.
+-- Hosting: a lobby in the main menu, or the loaded park.
 function Ui.SetCanHost(value) canHost = value == true end
 
 -- The newest lines of the session log, oldest first.
@@ -95,12 +102,13 @@ local function buildState()
     local players = {}
     for _, p in global.pairs(view.players or {}) do
         players[#players+1] = {sid = p.sid, name = p.name, color = p.color, act = p.act or "-", x = p.x,
-            me = p.sid == view.me, host = p.sid == view.host, hold = p.hold and p.hold.label or false}
+            me = p.sid == view.me, host = p.sid == view.host, hold = p.hold and p.hold.label or false,
+            dlc = p.dlc, mods = p.mods or {}}
     end
     global.table.sort(players, function(a, b) return (a.host and 0 or 1) < (b.host and 0 or 1) end)
     local friends = {}
     for _, f in global.ipairs(session.Friends()) do
-        friends[#friends+1] = {sid = f.sid, name = f.name, state = f.state, pc2 = f.pc2, invited = f.invited}
+        friends[#friends+1] = {sid = f.sid, name = f.name, state = f.state, pc2 = f.pc2, invited = f.invited, lobby = f.lobby ~= nil}
     end
     local franchise = false
     if menu and menu.FranchiseInfo then
@@ -116,12 +124,15 @@ local function buildState()
         requests = session.Requests and session.Requests() or {},
         following = session.Following and session.Following() or false,
         chat = session.Chat(), toasts = session.Toasts(),
+        stage = view.stage or false, parkTitle = view.parkTitle or "", guard = view.guard ~= false,
+        context = view.context or false, dlc = view.dlc,
     }
 end
 
 local actions = {
     hello = function() lastState = nil end,
-    open = function() Ui.SetOpen(true) end,
+    -- A menu tile can report a select right after the panel closed (focus comes back to it).
+    open = function() if frames - closedAt > 45 then Ui.SetOpen(true) end end,
     close = function() Ui.SetOpen(false) end,
     host = function() if canHost then session.Host() end end,
     invite_overlay = function() session.Invite() end,
@@ -153,6 +164,9 @@ local actions = {
         if session.Following() == arg then session.SetFollow(nil) else session.SetFollow(arg); Ui.SetOpen(false) end
     end,
     ping = function() session.Ping() end,
+    dlc = function(arg) session.SetDlc(arg) end,
+    guard = function(arg) session.SetContentGuard(arg ~= "0") end,
+    join_friend = function(arg) session.JoinFriend(arg) end,
     rejoin = function() session.Rejoin() end,
     forget_rejoin = function() session.ForgetRejoin() end,
 }
@@ -167,6 +181,7 @@ local function onRequest(_, raw)
     local _, command, argument = global.string.match(raw, "^(%d+)|([%w_]+)|(.*)$")
     local action = command and actions[command]
     if action then
+        if command ~= "chat" and command ~= "hello" then emit("ui:request|" .. command .. "|" .. frames) end
         local okAction, failure = global.pcall(action, argument)
         if not okAction then emit("ui:request-error|" .. command .. "|" .. global.tostring(failure)) end
         lastState = nil
@@ -202,6 +217,13 @@ function Ui.Tick()
                 global.api.ui2.SetDataStoreElement(ctx, "state", state)
                 lastState = state
             end
+            if frames % 30 == 0 then
+                local pictures = json(session.Avatars())
+                if pictures ~= lastAvatars then
+                    lastAvatars = pictures
+                    global.pcall(global.api.ui2.SetDataStoreElement, ctx, "avatars", pictures)
+                end
+            end
         end
     end)
     if not ok and frames % 600 == 1 then emit("ui:error|" .. global.tostring(failure)) end
@@ -210,7 +232,7 @@ end
 function Ui.Shutdown()
     open = false
     bridgeReady = false
-    context, lastState, lastRequest = nil, nil, nil
+    context, lastState, lastRequest, lastAvatars = nil, nil, nil, nil
 end
 
 return Ui

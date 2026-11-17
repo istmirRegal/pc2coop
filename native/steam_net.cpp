@@ -79,6 +79,12 @@ struct Api {
     bool (*GetFriendGamePlayed)(void*, u64, void*) = nullptr;
     bool (*InviteUserToGame)(void*, u64, const char*) = nullptr;
     bool (*HasFriend)(void*, u64, int) = nullptr;
+    const char* (*GetFriendRichPresence)(void*, u64, const char*) = nullptr;
+    void (*RequestFriendRichPresence)(void*, u64) = nullptr;
+    int (*GetSmallFriendAvatar)(void*, u64) = nullptr;
+    void* (*SteamUtils)() = nullptr;
+    bool (*GetImageSize)(void*, int, unsigned int*, unsigned int*) = nullptr;
+    bool (*GetImageRGBA)(void*, int, unsigned char*, int) = nullptr;
 } api;
 
 template <class T> bool bind(T& slot, const char* name) {
@@ -275,7 +281,13 @@ bool initialise() {
         && bind(api.GetFriendPersonaState, "SteamAPI_ISteamFriends_GetFriendPersonaState")
         && bind(api.GetFriendGamePlayed, "SteamAPI_ISteamFriends_GetFriendGamePlayed")
         && bind(api.InviteUserToGame, "SteamAPI_ISteamFriends_InviteUserToGame")
-        && bind(api.HasFriend, "SteamAPI_ISteamFriends_HasFriend");
+        && bind(api.HasFriend, "SteamAPI_ISteamFriends_HasFriend")
+        && bind(api.GetFriendRichPresence, "SteamAPI_ISteamFriends_GetFriendRichPresence")
+        && bind(api.RequestFriendRichPresence, "SteamAPI_ISteamFriends_RequestFriendRichPresence")
+        && bind(api.GetSmallFriendAvatar, "SteamAPI_ISteamFriends_GetSmallFriendAvatar")
+        && bind(api.SteamUtils, "SteamAPI_SteamUtils_v010")
+        && bind(api.GetImageSize, "SteamAPI_ISteamUtils_GetImageSize")
+        && bind(api.GetImageRGBA, "SteamAPI_ISteamUtils_GetImageRGBA");
     ok = ok && api.Friends() && api.Matchmaking() && api.Messages() && api.Utils() && api.User();
     if (!ok) {
         failed = true;
@@ -479,6 +491,121 @@ void receive_chunk(u64 from, const char* data, size_t size) {
     if (end >= total) queue("file:done|" + id_text(from) + "|" + name + "|" + std::to_string(total));
 }
 
+// Profile pictures -------------------------------------------------------------------------
+// Steam hands out RGBA pixels; the UI shows them as a PNG data URL. The PNG is written
+// uncompressed (zlib "stored" blocks): 32x32 pixels are about 4 KB.
+unsigned int crc32(const unsigned char* data, size_t size, unsigned int crc = 0) {
+    crc = ~crc;
+    for (size_t i = 0; i < size; ++i) {
+        crc ^= data[i];
+        for (int k = 0; k < 8; ++k) crc = (crc >> 1) ^ (0xEDB88320u & (0u - (crc & 1u)));
+    }
+    return ~crc;
+}
+
+void put32(std::string& out, unsigned int v) {
+    out += static_cast<char>(v >> 24); out += static_cast<char>(v >> 16); out += static_cast<char>(v >> 8); out += static_cast<char>(v);
+}
+
+void chunk(std::string& png, const char* type, const std::string& data) {
+    put32(png, static_cast<unsigned int>(data.size()));
+    std::string body = std::string(type, 4) + data;
+    png += body;
+    put32(png, crc32(reinterpret_cast<const unsigned char*>(body.data()), body.size()));
+}
+
+std::string png_rgba(const unsigned char* rgba, unsigned int w, unsigned int h) {
+    std::string raw;
+    for (unsigned int y = 0; y < h; ++y) {
+        raw += '\0';
+        raw.append(reinterpret_cast<const char*>(rgba + static_cast<size_t>(y) * w * 4), static_cast<size_t>(w) * 4);
+    }
+    std::string z = "\x78\x01";
+    unsigned int a = 1, b = 0;
+    for (unsigned char c : raw) { a = (a + c) % 65521; b = (b + a) % 65521; }
+    for (size_t at = 0; at < raw.size() || at == 0; at += 65535) {
+        size_t n = raw.size() - at < 65535 ? raw.size() - at : 65535;
+        z += static_cast<char>(at + n >= raw.size() ? 1 : 0);
+        z += static_cast<char>(n & 0xff); z += static_cast<char>(n >> 8);
+        z += static_cast<char>(~n & 0xff); z += static_cast<char>((~n >> 8) & 0xff);
+        z.append(raw, at, n);
+        if (at + n >= raw.size()) break;
+    }
+    put32(z, (b << 16) | a);
+    std::string ihdr;
+    put32(ihdr, w); put32(ihdr, h);
+    ihdr += "\x08\x06"; ihdr += std::string(3, '\0');
+    std::string png = "\x89PNG\r\n\x1a\n";
+    chunk(png, "IHDR", ihdr);
+    chunk(png, "IDAT", z);
+    chunk(png, "IEND", std::string());
+    return png;
+}
+
+std::string base64(const std::string& in) {
+    static const char* table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    std::string out;
+    size_t i = 0;
+    for (; i + 2 < in.size(); i += 3) {
+        unsigned int v = (static_cast<unsigned char>(in[i]) << 16) | (static_cast<unsigned char>(in[i + 1]) << 8) | static_cast<unsigned char>(in[i + 2]);
+        out += table[v >> 18]; out += table[(v >> 12) & 63]; out += table[(v >> 6) & 63]; out += table[v & 63];
+    }
+    if (i < in.size()) {
+        unsigned int v = static_cast<unsigned char>(in[i]) << 16;
+        if (i + 1 < in.size()) v |= static_cast<unsigned char>(in[i + 1]) << 8;
+        out += table[v >> 18]; out += table[(v >> 12) & 63];
+        out += i + 1 < in.size() ? table[(v >> 6) & 63] : '=';
+        out += '=';
+    }
+    return out;
+}
+
+std::vector<u64> avatar_waiting;   // pictures Steam is still downloading
+
+// "avatar|<sid>|<base64 png>" (empty when the player has none). False while Steam loads it.
+bool send_avatar(u64 id) {
+    int image = api.GetSmallFriendAvatar(api.Friends(), id);
+    if (image == -1) return false;
+    unsigned int w = 0, h = 0;
+    std::string data;
+    if (image > 0 && api.GetImageSize(api.SteamUtils(), image, &w, &h) && w && h && w <= 64 && h <= 64) {
+        std::vector<unsigned char> rgba(static_cast<size_t>(w) * h * 4);
+        if (api.GetImageRGBA(api.SteamUtils(), image, rgba.data(), static_cast<int>(rgba.size()))) data = base64(png_rgba(rgba.data(), w, h));
+    }
+    queue("avatar|" + id_text(id) + "|" + data);
+    return true;
+}
+
+void retry_avatars() {
+    static int tick = 0;
+    if (avatar_waiting.empty() || ++tick % 30) return;
+    std::vector<u64> still;
+    for (u64 id : avatar_waiting) if (!send_avatar(id)) still.push_back(id);
+    avatar_waiting = still;
+}
+
+// Folders of other mods next to the game's content (names only).
+std::string mod_list() {
+    std::wstring dir = game_path("pc2coop-x");
+    dir = dir.substr(0, dir.find_last_of(L'\\') + 1) + L"Win64\\ovldata\\*";
+    WIN32_FIND_DATAW found{};
+    HANDLE find = FindFirstFileW(dir.c_str(), &found);
+    std::string list;
+    if (find == INVALID_HANDLE_VALUE) return list;
+    int count = 0;
+    do {
+        if (!(found.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) || found.cFileName[0] == L'.') continue;
+        std::wstring name = found.cFileName;
+        if (name.rfind(L"Content", 0) == 0 || name == L"GameMain" || name == L"PC2CoopProbe") continue;
+        std::string ascii;
+        for (wchar_t c : name) if (c < 128 && c != L'|' && c != L';') ascii += static_cast<char>(c);
+        if (ascii.empty() || ++count > 40) continue;
+        list += (list.empty() ? "" : ";") + ascii.substr(0, 48);
+    } while (FindNextFileW(find, &found));
+    FindClose(find);
+    return list;
+}
+
 // Small text files the mod keeps between game starts, next to the game's exe: who built
 // what in a park (pc2coop-authors-<park>.txt) and the last session (pc2coop-lastsession.txt).
 // Only these names; nothing received from the network decides about them.
@@ -584,7 +711,17 @@ void command(const char* bytes, unsigned int size) {
             u64 gameId = 0;
             std::memcpy(&gameId, game, sizeof(gameId));
             bool pc2 = playing && (gameId & 0xFFFFFF) == 2688950;
-            queue("friend|" + id_text(id) + "|" + friend_name(id) + "|" + std::to_string(state) + "|" + (pc2 ? "1" : "0"));
+            // A friend in a PC2Coop lobby advertises it in rich presence ("+connect_lobby <id>").
+            std::string open;
+            if (pc2) {
+                api.RequestFriendRichPresence(api.Friends(), id);
+                const char* connect = api.GetFriendRichPresence(api.Friends(), id, "connect");
+                if (connect && std::strncmp(connect, "+connect_lobby ", 15) == 0) {
+                    u64 their = strtoull(connect + 15, nullptr, 10);
+                    if (their) open = id_text(their);
+                }
+            }
+            queue("friend|" + id_text(id) + "|" + friend_name(id) + "|" + std::to_string(state) + "|" + (pc2 ? "1" : "0") + "|" + open);
         }
         queue("friends:end");
     } else if (verb == "invite_user") {
@@ -598,6 +735,11 @@ void command(const char* bytes, unsigned int size) {
         // note-write|<name>|<text>  /  note-append|<name>|<text>
         size_t bar2 = rest.find('|');
         if (bar2 != std::string::npos) note_write(rest.substr(0, bar2), rest.substr(bar2 + 1), verb == "note-append");
+    } else if (verb == "avatar") {
+        u64 id = parse_id(rest);
+        if (id && !send_avatar(id)) avatar_waiting.push_back(id);
+    } else if (verb == "mods") {
+        queue("mods|" + mod_list());
     } else if (verb == "note-read") {
         note_read(rest);
     } else if (verb == "del") {
@@ -660,6 +802,7 @@ extern "C" __declspec(dllexport) int pc2_net_poll(void* state) noexcept {
         }
         poll_hotkeys();
         pump_outbox();
+        retry_avatars();
         Message* incoming[16];
         int count = api.ReceiveMessages(api.Messages(), kChannel, incoming, 16);
         for (int i = 0; i < count; ++i) {

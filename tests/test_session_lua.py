@@ -57,6 +57,8 @@ class Peer:
         self.deleted = []
         self.sent_notes = []
         self.loaded = 0
+        self.in_lobby = True      # the simulated DLL reports lobby L1 on "status"
+        self.load_fails = False   # a park load that ends back in the main menu
         self.event(f'net:ready|{sid}|{name}')
 
     def event(self, text):
@@ -106,6 +108,10 @@ class SessionTests(unittest.TestCase):
                     if verb == 'send':
                         target, _, payload = rest.partition('|')
                         self.peers[target].event(f'msg|{sid}|{payload}')
+                    elif verb == 'all':
+                        for other in self.peers:
+                            if other != sid:
+                                self.peers[other].event(f'msg|{sid}|{rest}')
                     elif verb == 'file':
                         target, local, remote = rest.split('|')
                         self.peers[target].event(f'file:done|{sid}|{remote}|100')
@@ -121,12 +127,17 @@ class SessionTests(unittest.TestCase):
                     elif verb == 'status':
                         for key, value in peer.memory.items():
                             peer.event(f'kv|{key}|{value}')
-                        peer.event('lobby:entered|L1|100|Host')
+                        if peer.in_lobby:
+                            peer.event('lobby:entered|L1|100|Host')
+                    elif verb in ('leave', 'host', 'join'):
+                        peer.in_lobby = verb != 'leave'
+
                 loads = len(peer.lua.eval('loads'))
                 if loads > peer.loaded:
                     # The game loaded the host park: module restarts and asks the DLL.
                     peer.loaded = loads
-                    peer.lua.execute('session.Init(function(m) logs[#logs+1] = m end, net, sync, manager)')
+                    context = 'menu' if peer.load_fails else 'park'
+                    peer.lua.execute(f'session.SetContext("{context}"); session.Init(function(m) logs[#logs+1] = m end, net, sync, manager)')
 
     def test_roster_lists_all_three_players_everywhere(self):
         self.pump(60)
@@ -230,7 +241,16 @@ class MenuJoinTests(SessionTests):
         self.peers['100'].event('member:join|600|Gast')
         guest.tick()
         state = self.join_state(guest)
-        self.assertEqual((state['phase'], state['host']), ('awaiting', 'Host'))
+        self.assertEqual((state['phase'], state['host']), ('lobby', 'Host'))
+        # The host answers the hello with the park it plays: the guest asks for it.
+        for peer in (guest, self.peers['100'], guest):
+            peer.tick()
+            for command in peer.commands():
+                verb, _, rest = command.partition('|')
+                if verb == 'send':
+                    target, _, payload = rest.partition('|')
+                    self.peers[target].event(f'msg|{peer.sid}|{payload}')
+        self.assertEqual(self.join_state(guest)['phase'], 'awaiting')
         guest.event('file:progress|pc2coop-join.bin|50|200')
         guest.tick()
         self.assertAlmostEqual(self.join_state(guest)['progress'], 0.25)
@@ -313,6 +333,7 @@ class JoinRobustnessTests(SessionTests):
 
     def test_load_that_ends_in_the_menu_is_a_failure_not_a_join(self):
         new = self.peers['810'] = Peer('810', 'Vici')
+        new.load_fails = True
         new.lua.execute('session.SetContext("menu")')
         new.event('lobby:entered|L1|100|Host')
         self.peers['100'].event('member:join|810|Vici')
@@ -324,6 +345,7 @@ class JoinRobustnessTests(SessionTests):
         acts = {p['name']: p['act'] for p in self.peers['100'].lua.eval('session.View().players').values()}
         self.assertEqual(acts['Vici'], 'laedt')
         # Retry; this time the game opens the park.
+        new.load_fails = False
         new.lua.execute('session.Resync(); session.SetContext("park")')
         self.pump(12)
         self.assertEqual(self.join_state(new)['phase'], 'live')
@@ -369,9 +391,165 @@ class JoinRobustnessTests(SessionTests):
         alex = [p for p in self.peers['300'].lua.eval('session.View().players').values() if p['sid'] == '200'][0]
         self.assertEqual((alex['fx'], alex['fz'], alex['act']), (10, 12, 'baut'))
 
-    def test_host_back_in_the_menu_ends_the_session(self):
+    def test_host_back_in_the_menu_keeps_the_lobby(self):
         host = self.peers['100']
         host.lua.execute('session.SetContext("menu"); session.Init(function(m) logs[#logs+1] = m end, net, sync, manager)')
-        self.pump(2)   # the simulated DLL answers "status" with the lobby the host is still in
-        self.assertIsNone(host.lua.eval('session.View().role'))
-        self.assertTrue(any('Sitzung beendet' in t['text'] for t in host.lua.eval('session.Toasts()').values()))
+        self.pump(4)   # the simulated DLL answers "status" with the lobby the host is still in
+        view = host.lua.eval('session.View()')
+        self.assertEqual((view['role'], view['stage']), ('host', 'lobby'))
+        self.assertTrue(any('wieder in der Lobby' in t['text'] for t in host.lua.eval('session.Toasts()').values()))
+        alex = self.peers['200'].lua.eval('session.JoinState()')
+        self.assertEqual(alex['phase'], 'hostlobby')
+        # Edits of a player still in the old park do not reach the lobby.
+        self.peers['200'].local_change('sync:up|101||0|AQ_Rock_04|1|2|3|0|0|0|1|1')
+        self.pump(2)
+        self.assertEqual(self.peers['300'].ops()[-1:], self.peers['300'].ops()[-1:])
+        self.assertFalse(any('AQ_Rock_04' in op for op in self.peers['300'].ops()))
+
+
+def menu(peer):
+    peer.lua.execute('session.SetContext("menu"); session.Init(function(m) logs[#logs+1] = m end, net, sync, manager)')
+
+
+def park(peer):
+    peer.lua.execute('session.SetContext("park"); session.Init(function(m) logs[#logs+1] = m end, net, sync, manager)')
+
+
+@unittest.skipIf(LuaRuntime is None, 'Optional lupa.lua53 runtime is not installed')
+class LobbyTests(unittest.TestCase):
+    """The host opens a lobby in the main menu; everyone loads the park the host opens."""
+    pump = SessionTests.pump
+
+    def setUp(self):
+        self.peers = {sid: Peer(sid, name) for sid, name in (('100', 'Host'), ('200', 'Alex'), ('300', 'Sam'))}
+        for peer in self.peers.values():
+            peer.in_lobby = False
+            menu(peer)
+        self.pump(2)
+        host = self.peers['100']
+        host.lua.execute('session.Host()')
+        self.assertIn('host', host.commands())
+        host.in_lobby = True
+        host.event('lobby:entered|L1|100|Host|1')
+        for sid in ('200', '300'):
+            self.peers[sid].event('invite:accepted|L1|100|invite')
+            self.pump(1)
+            self.peers[sid].event('lobby:entered|L1|100|Host|1')
+            host.event(f'member:join|{sid}|{self.peers[sid].name}')
+        self.pump(40)
+
+    def phase(self, sid):
+        state = self.peers[sid].lua.eval('session.JoinState()')
+        return state['phase'] if state is not None else None
+
+    def acts(self, sid='100'):
+        return {p['name']: p['act'] for p in self.peers[sid].lua.eval('session.View().players').values()}
+
+    def test_everyone_waits_in_the_lobby_without_a_park(self):
+        self.assertEqual(self.peers['100'].lua.eval('session.View().stage'), 'lobby')
+        self.assertEqual(self.acts(), {'Host': None, 'Alex': 'lobby', 'Sam': 'lobby'})
+        self.assertEqual(self.acts('300')['Alex'], 'lobby')
+        for sid in ('200', '300'):
+            self.assertEqual(self.phase(sid), 'lobby')
+            self.assertEqual(len(self.peers[sid].lua.eval('loads')), 0)
+        self.assertEqual(self.peers['300'].lua.eval('session.View().stage'), 'lobby')
+
+    def test_park_opened_by_the_host_loads_for_everyone(self):
+        park(self.peers['100'])
+        self.pump(14)
+        for sid in ('200', '300'):
+            self.assertEqual(list(self.peers[sid].lua.eval('loads').values()), ['/run/pc2coop-join.bin@temperateworld'])
+            self.assertEqual(self.phase(sid), 'live')
+        self.assertEqual(self.acts()['Alex'], '-' if False else self.acts()['Alex'])
+        self.assertNotEqual(self.acts()['Alex'], 'lobby')
+        # Back to the lobby and into another park: everyone gets the new park.
+        menu(self.peers['100'])
+        self.pump(4)
+        self.assertEqual(self.phase('200'), 'hostlobby')
+        menu(self.peers['200'])          # Alex goes to the main menu too, Sam stays in the old park
+        self.pump(4)
+        self.assertEqual(self.phase('200'), 'lobby')
+        park(self.peers['100'])
+        self.pump(14)
+        for sid in ('200', '300'):
+            self.assertEqual(len(self.peers[sid].lua.eval('loads')), 2, sid)
+            self.assertEqual(self.phase(sid), 'live')
+        toasts = [t['text'] for t in self.peers['300'].lua.eval('session.Toasts()').values()]
+        self.assertTrue(any('anderen Park' in t for t in toasts), toasts)
+
+    def test_a_let_in_friend_is_not_asked_again_after_the_host_reloads(self):
+        host = self.peers['100']
+        host.lua.execute('session.Leave()')
+        self.pump(2)
+        for sid in ('200', '300'):
+            self.peers[sid].lua.execute('session.Leave()')
+            self.peers[sid].commands()
+        host.lua.execute('session.SetAskBeforeJoin(true); session.Host()')
+        host.event('lobby:entered|L1|100|Host|1')
+        self.peers['200'].event('lobby:entered|L1|100|Host|1')
+        self.peers['200'].in_lobby = True
+        self.pump(4)
+        self.assertEqual([r['name'] for r in host.lua.eval('session.Requests()').values()], ['Alex'])
+        self.assertEqual(self.phase('200'), 'asking')
+        host.lua.execute('session.Answer("200", true)')
+        self.pump(4)
+        self.assertEqual(self.phase('200'), 'lobby')
+        # The host opens a park: a fresh module there, everything else comes from the DLL.
+        fresh = Peer('100', 'Host')
+        fresh.memory = dict(host.memory)
+        fresh.lua.execute('session.SetAskBeforeJoin(true)')
+        self.peers['100'] = fresh
+        self.pump(14)
+        self.assertEqual(len(fresh.lua.eval('session.Requests()')), 0)
+        self.assertEqual(self.phase('200'), 'live')
+
+    def test_dlc_object_not_everyone_owns_is_not_built(self):
+        park(self.peers['100'])
+        self.pump(14)
+        for sid, mask in (('100', 3), ('200', 1), ('300', 3)):
+            self.peers[sid].lua.execute(f'session.SetDlc({mask})')
+        self.pump(40)
+        alex = [p for p in self.peers['300'].lua.eval('session.View().players').values() if p['name'] == 'Alex'][0]
+        self.assertEqual(alex['dlc'], 1)
+        sam = self.peers['300']
+        sam.lua.execute('package.loaded["pc2coop.world"].RequiredDLC = function(part) return part == 101 and 2 or 0 end')
+        before = {sid: len(self.peers[sid].ops()) for sid in self.peers}
+        sam.local_change('sync:up|101||0|DLC_Rock|1|2|3|0|0|0|1|1')
+        self.pump(4)
+        got = sam.ops()[before['300']:]
+        self.assertEqual([op.split('|')[0] for op in got], ['M', 'D'], got)
+        self.assertEqual(len(self.peers['200'].ops()), before['200'])
+        self.assertTrue(any('Alex' in t['text'] and 'DLC' in t['text'] for t in sam.lua.eval('session.Toasts()').values()))
+        # The host allows everything: the same object is built for everyone.
+        self.peers['100'].lua.execute('session.SetContentGuard(false)')
+        self.pump(4)
+        sam.local_change('sync:up|102||0|DLC_Rock|1|2|3|0|0|0|1|1')
+        self.pump(4)
+        self.assertTrue(any('DLC_Rock' in op for op in self.peers['200'].ops()))
+
+    def test_mods_and_open_lobbies_of_friends(self):
+        self.peers['200'].event('mods|ForgeUtils;ACSE;Bad|Name')
+        self.pump(40)
+        alex = [p for p in self.peers['300'].lua.eval('session.View().players').values() if p['name'] == 'Alex'][0]
+        self.assertEqual(list(alex['mods'].values()), ['ForgeUtils', 'ACSE', 'Bad'])
+        guest = self.peers['600'] = Peer('600', 'Gast')
+        menu(guest)
+        for event in ('friends:begin|1', 'friend|100|Host|1|1|109775240000000002', 'friends:end'):
+            guest.event(event)
+        guest.tick()
+        guest.commands()
+        guest.lua.execute('session.JoinFriend("100")')
+        self.assertIn('join|109775240000000002', guest.commands())
+
+    def test_profile_pictures_are_asked_once(self):
+        host = self.peers['100']
+        host.commands()
+        host.lua.execute('session.Avatars(); session.Avatars()')
+        asked = [c for c in host.commands() if c.startswith('avatar|')]
+        self.assertEqual(sorted(asked), ['avatar|100', 'avatar|200', 'avatar|300'])
+        host.event('avatar|200|iVBORw0KGgo=')
+        host.event('avatar|300|<script>')
+        host.tick()
+        pictures = host.lua.eval('session.Avatars()')
+        self.assertEqual(pictures['200'], 'iVBORw0KGgo=')
+        self.assertIsNone(pictures['300'])

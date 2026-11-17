@@ -205,6 +205,15 @@ function World.CursorPoint()
     return nil
 end
 
+-- DLC bit mask a placed part needs (0: base game or unknown).
+function World.RequiredDLC(part)
+    if not part then return 0 end
+    local ok, need = global.pcall(function()
+        return global.api.world.GetWorldAPIs().scenery:GetRequiredDLCForPart(part)
+    end)
+    return ok and global.tonumber(need) or 0
+end
+
 -- The scenery part the player selected: the object whose info window is open in the
 -- normal select mode, or the first of the selection in the scenery editor. Nil otherwise.
 function World.SelectedPart()

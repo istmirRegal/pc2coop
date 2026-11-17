@@ -1,6 +1,6 @@
 -- Original MIT code. Multiplayer while the main menu is open: the same session and Gameface
--- layer as in a park, so friends can accept an invite (or be invited while browsing) and
--- load the host's park straight from the menu. Hosting needs a park, so only joining here.
+-- layer as in a park: the host opens a lobby here, friends join it, and everyone loads the
+-- park the host then opens.
 local global = _G
 local Frontend = {}
 
@@ -18,7 +18,7 @@ function Frontend.Tick(menu)
         session.SetContext("menu")
         session.Init(write("[PC2CoopSession] "), diagnostic, idleSync, menu.parkLoadSaveManager)
         ui.Init(write("[PC2CoopUI] "), session, idleSync, nil)
-        ui.SetCanHost(false)
+        ui.SetCanHost(true)
         session.OnMenuKey = function() ui.Toggle() end
         state = {session = session, ui = ui, menu = menu, diagnostic = diagnostic}
         diagnostic.Write("[PC2CoopSession] frontend-init")
