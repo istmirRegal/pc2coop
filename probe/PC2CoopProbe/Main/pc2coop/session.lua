@@ -13,7 +13,7 @@ local World = global.require("pc2coop.world")
 local shared = global.require("pc2coop.shared")
 
 -- Mod version; must match the database's probeVersion (checked by the tests).
-Session.VERSION = "1.6.1"
+Session.VERSION = "1.7.0"
 local COLORS = {"ff6b6b", "4dabf7", "51cf66", "fcc419", "cc5de8", "ff922b", "22b8cf", "f06595"}
 local net, sync
 local emit = function() end
@@ -53,6 +53,22 @@ local joinSource = nil    -- joiner: "launch" when the lobby id came with the ga
 local confirm = nil       -- joiner: {host} while the player has not agreed to join yet
 local waiting = false     -- joiner: the host has not let us in yet
 local gameVersion = ""    -- this game's version; players of different versions do not mix
+local pings = {}          -- sid -> {x, y, z, frame}: "here!" markers, shown for PING_FRAMES
+local PING_FRAMES = 480
+local lastPing = {}       -- host: sid -> frame of their last ping (one per second at most)
+local following = nil     -- sid whose camera this player follows
+local savedAuthors = {}   -- host: local part -> {res, creator, last} from earlier sessions in this park
+local authorsFile = nil   -- host: "pc2coop-authors-<park>.txt"
+local dirtyAuthors = {}   -- host: gid -> true, attribution not yet written to the file
+local whoCache = {}       -- gid -> {creator, last} as the host answered
+local watched, watchedAt = nil, 0  -- gid the local player selects or holds, frame it was asked
+local notes = {}          -- note file name -> text being read from the DLL
+local lastHostFrame = 0   -- joiner: frame of the last message from the host
+local hostSilent = false  -- joiner: no word from the host for a while
+local selfStalled = false -- joiner: Steam dropped what this game sent to the host
+local departed = {}       -- host: sid -> colour of players who left (they keep it on return)
+local rejoin = nil        -- menu: {lobby, host, hostSid} of a session this game dropped out of
+local LAST_SESSION = "pc2coop-lastsession.txt"
 local lastRoster = 0
 local frames = 0
 
@@ -168,6 +184,49 @@ local function count(sid, key)
     stats[name][key] = stats[name][key] + 1
 end
 
+-- Who made an object and who changed it last; nil when nobody in a session touched it.
+local function authorOf(gid)
+    local o = objects[gid]
+    if o then return o.creator or "Park", o.last or "?" end
+    local part = sync.LocalPart and sync.LocalPart(gid)
+    local saved = part and savedAuthors[part]
+    if saved then return saved.creator, saved.last end
+    return nil
+end
+
+local function markAuthor(gid) if authorsFile then dirtyAuthors[gid] = true end end
+
+-- Writes new attributions as "part|resource|creator|last" lines (later lines win). The part
+-- id is the host's own and survives saving and loading the park.
+local function flushAuthors()
+    if not authorsFile or global.next(dirtyAuthors) == nil then return end
+    local lines = {}
+    for gid in global.pairs(dirtyAuthors) do
+        local part = sync.LocalPart and sync.LocalPart(gid)
+        local o = objects[gid]
+        if part and o then
+            lines[#lines+1] = global.table.concat({part, o.res, clean(o.creator or "Park"), clean(o.last or "?")}, "|")
+            savedAuthors[part] = {res = o.res, creator = o.creator, last = o.last}
+            dirtyAuthors[gid] = nil
+        elseif not o then
+            dirtyAuthors[gid] = nil
+        end
+        if #lines >= 60 then break end
+    end
+    if #lines > 0 then net.NetCommand("note-append|" .. authorsFile .. "|" .. global.table.concat(lines, "\n") .. "\n") end
+end
+
+local function loadAuthors(text)
+    savedAuthors = {}
+    for line in global.string.gmatch(text or "", "[^\n]+") do
+        local f = split(line, "|")
+        local part = global.tonumber(f[1])
+        -- Only where the same kind of object still stands (the park may not have been saved).
+        local here = part and sync.StateOf and sync.StateOf("P" .. part)
+        if here and here.res == f[2] and f[3] then savedAuthors[part] = {res = f[2], creator = f[3], last = f[4] or f[3]} end
+    end
+end
+
 -- "Vici hat 143 Objekte platziert" instead of 143 lines.
 local function noteAction(sid, verb, res)
     local key = sid .. "|" .. verb
@@ -238,17 +297,21 @@ local function authorityUp(sid, part, gid, rev, res, p, q, s)
         gid = global.string.format("%s-%d", global.string.sub(sid, -6), counter)
         state.rev, state.creator = 1, name
         count(sid, "created")
+        markAuthor(gid)
         noteAction(sid, "platziert", res)
     elseif objects[gid] then
         local current = objects[gid]
         if rev ~= current.rev then return restore(sid, gid, "veraltet") end
         state.rev, state.creator = current.rev + 1, current.creator
+        markAuthor(gid)
         count(sid, "edited")
         noteAction(sid, "bearbeitet", res)
     elseif tombstones[gid] then
         return restore(sid, gid, "geloescht")
     elseif global.string.sub(gid, 1, 1) == "P" and rev == 0 then
-        state.rev, state.creator = 1, "Park"
+        local saved = savedAuthors[global.tonumber(global.string.sub(gid, 2)) or -1]
+        state.rev, state.creator = 1, saved and saved.creator or "Park"
+        markAuthor(gid)
         count(sid, "edited")
         noteAction(sid, "bearbeitet", res)
     else
@@ -316,7 +379,7 @@ end
 local function join(sid, name, mode)
     local returning = players[sid] ~= nil
     if not returning then order[#order+1] = sid end
-    local color = returning and players[sid].color or COLORS[(#order - 1) % #COLORS + 1]
+    local color = returning and players[sid].color or departed[sid] or COLORS[(#order - 1) % #COLORS + 1]
     players[sid] = players[sid] or {}
     players[sid].name, players[sid].color = clean(name), color
     stats[players[sid].name] = stats[players[sid].name] or {created = 0, edited = 0, deleted = 0}
@@ -352,6 +415,7 @@ local function leave(sid)
         if holds[sid] or global.next(locks) then hostHold(sid, "", "", "") end
         net.NetCommand("del|pc2coop-host-" .. sid .. ".bin")
         net.NetCommand("del|pc2coop-host-" .. sid .. ".trn")
+        departed[sid] = players[sid].color
         players[sid] = nil
         for i, other in global.ipairs(order) do if other == sid then global.table.remove(order, i); break end end
     end
@@ -452,9 +516,29 @@ local function hostChange(sid, f)
         -- Where a player looks goes to the others right away; the roster is too slow for that.
         if pr.fx then
             local line = "p|" .. sid .. "|" .. num(pr.fx) .. "|" .. num(pr.fy) .. "|" .. num(pr.fz) .. "|" .. pr.act
+                .. "|" .. num(pr.x or 0) .. "|" .. num(pr.y or 0) .. "|" .. num(pr.z or 0) .. "|" .. num(pr.yaw or 0)
+                .. "|" .. num(pr.pitch or 0)
             for _, other in global.ipairs(order) do
                 if other ~= me and other ~= sid and players[other] and not players[other].pending then send(other, line) end
             end
+        end
+    elseif f[1] == "ping" and players[sid] then
+        local at = numbers(f, 2, 4)
+        if at and (not lastPing[sid] or frames - lastPing[sid] >= 60) then
+            lastPing[sid] = frames
+            pings[sid] = {x = at[1], y = at[2], z = at[3], frame = frames}
+            local line = "pg|" .. sid .. "|" .. num(at[1]) .. "|" .. num(at[2]) .. "|" .. num(at[3])
+            for _, other in global.ipairs(order) do
+                if other ~= me and other ~= sid and players[other] and not players[other].pending then send(other, line) end
+            end
+            if sid ~= me then toast(nameOf(sid) .. " zeigt auf etwas (F7: Hinspringen)", players[sid].color) end
+        end
+    elseif f[1] == "who" and players[sid] and validGid(f[2] or "") then
+        local creator, last = authorOf(f[2])
+        if sid == me then
+            whoCache[f[2]] = {creator = creator or "", last = last or ""}
+        else
+            send(sid, "who|" .. f[2] .. "|" .. clean(creator or "") .. "|" .. clean(last or ""))
         end
     elseif f[1] == "hold" and players[sid] then
         hostHold(sid, f[2] or "", f[3] or "", f[4] or "")
@@ -584,6 +668,13 @@ local function onMessage(from, payload)
             end
             join(from, f[2], f[4])
             if f[3] then hostChange(from, {"base", f[3]}) end
+        elseif players[from] and players[from].stale and kind ~= "hello" then
+            -- Steam dropped what we sent this player while the connection hung: their park is
+            -- incomplete. Now that they are back, they fetch it again.
+            players[from].stale = nil
+            send(from, "resync|")
+            addFeed(players[from].name .. " war kurz weg - der Park wird neu uebertragen")
+            hostChange(from, split(payload, "|"))
         elseif kind == "desync" and players[from] then
             addFeed(players[from].name .. " ist nicht mehr synchron")
         elseif kind == "loadfailed" and players[from] then
@@ -595,6 +686,18 @@ local function onMessage(from, payload)
             hostChange(from, split(payload, "|"))
         end
     elseif from == hostId then
+        lastHostFrame = frames
+        if hostSilent then
+            hostSilent = false
+            toast("Verbindung zum Host wieder da.", "51cf66")
+        end
+        if selfStalled and kind ~= "resync" then
+            -- What we sent while the connection hung is lost: start from the host's park again.
+            selfStalled = false
+            toast("Die Verbindung war unterbrochen - der Park des Hosts wird neu geladen.", "ff922b")
+            Session.Resync()
+            return
+        end
         if kind == "ops" then
             local lines = {}
             for line in global.string.gmatch(global.string.sub(payload, 5), "[^\n]+") do lines[#lines+1] = line end
@@ -618,8 +721,28 @@ local function onMessage(from, payload)
             for _, pl in global.ipairs(roster.players or {}) do
                 if pl.sid == f[2] then
                     pl.fx, pl.fy, pl.fz, pl.act = global.tonumber(f[3]), global.tonumber(f[4]), global.tonumber(f[5]), f[6]
+                    if f[11] then
+                        pl.x, pl.y, pl.z = global.tonumber(f[7]), global.tonumber(f[8]), global.tonumber(f[9])
+                        pl.yaw, pl.pitch = global.tonumber(f[10]), global.tonumber(f[11])
+                    end
                 end
             end
+        elseif kind == "pg" then
+            local f = split(payload, "|")
+            local x, y, z = global.tonumber(f[3]), global.tonumber(f[4]), global.tonumber(f[5])
+            if x and y and z then
+                pings[f[2]] = {x = x, y = y, z = z, frame = frames}
+                for _, pl in global.ipairs(roster.players or {}) do
+                    if pl.sid == f[2] then toast(pl.name .. " zeigt auf etwas (F7: Hinspringen)", pl.color) end
+                end
+            end
+        elseif kind == "who" then
+            local f = split(payload, "|")
+            if f[2] then whoCache[f[2]] = {creator = f[3] or "", last = f[4] or ""} end
+        elseif kind == "resync" then
+            selfStalled = false
+            toast("Die Verbindung war unterbrochen - der Park des Hosts wird neu geladen.", "ff922b")
+            Session.Resync()
         elseif kind == "park" then
             local f = split(payload, "|")
             transfer.world, transfer.name = f[2], f[3]
@@ -694,6 +817,11 @@ local function onNet(event)
             end
             role = "host"
             join(me, myName)
+            global.pcall(function()
+                local name = global.api.world.GetWorldAPIs().park:GetParkName()
+                authorsFile = "pc2coop-authors-" .. global.string.sub(global.string.gsub(global.tostring(name), "[^%w%-]", "_"), 1, 40) .. ".txt"
+                net.NetCommand("note-read|" .. authorsFile)
+            end)
             remember("lobby", lobbyId)
             remember("phase", "host")
             emit("session:hosting|" .. lobbyId)
@@ -719,6 +847,7 @@ local function onNet(event)
             World.ApplyGuestProfile()
             net.NetCommand("del|pc2coop-join.bin")
             net.NetCommand("del|pc2coop-join.trn")
+            net.NetCommand("note-write|" .. LAST_SESSION .. "|" .. lobbyId .. "|" .. hostId .. "|" .. hostName)
         elseif context == "park" and phase == "live" then
             role = "client"
             sync.Receive("S|" .. myName)
@@ -804,8 +933,19 @@ local function onNet(event)
     elseif kind == "file:sent" and players[f[2]] then
         if f[3] == "pc2coop-join.bin" then players[f[2]].sending, players[f[2]].sent = false, 1
         else players[f[2]].sent = 0.5 end
+    elseif kind == "note:data" then
+        local name = f[2]
+        if name then notes[name] = (notes[name] or "") .. global.string.sub(event, #f[1] + #name + 3) end
+    elseif kind == "note:end" then
+        local text = notes[f[2]] or ""
+        notes[f[2]] = nil
+        if f[2] == authorsFile then loadAuthors(text)
+        elseif f[2] == LAST_SESSION then Session._LastSession(text) end
+    elseif kind == "key:ping" then
+        Session.Ping()
     elseif kind == "net:peer-stalled" then
-        if players[f[2]] then players[f[2]].sending = false end
+        if players[f[2]] then players[f[2]].sending, players[f[2]].stale = false, true end
+        if role == "client" and f[2] == hostId then selfStalled = true end
         -- Steam accepted nothing for this player for a minute: the data for them is gone.
         local who = players[f[2]] and players[f[2]].name or "Ein Mitspieler"
         addFeed("Verbindung zu " .. who .. " haengt - bitte neu beitreten")
@@ -831,7 +971,10 @@ function Session.Init(logger, diagnostic, syncModule, parkManager)
     helloLobby = nil   -- a new menu or park: the DLL reports the lobby again
     emit("session:init|" .. global.tostring(net.NetStatus and net.NetStatus()))
     -- Module state was reset (new park); the DLL still knows lobby and phase.
-    if Session.Available() then net.NetCommand("status") end
+    if Session.Available() then
+        net.NetCommand("status")
+        if context == "menu" then net.NetCommand("note-read|" .. LAST_SESSION) end
+    end
 end
 
 -- Opens the transferred park file (next to the game's exe) as a sandbox park.
@@ -913,6 +1056,8 @@ function Session.Invite() net.NetCommand("invite") end
 -- Joiner progress for the UI: phase ("joining", "awaiting", "loading", "live"), share of the
 -- park files received (0..1) and the host's name. Nil when not joining or in a session.
 function Session.JoinState()
+    local offer = Session._RejoinOffer()
+    if offer then return {phase = "rejoin", host = offer.host} end
     if joinFailure then return {phase = "failed", reason = joinFailure, retry = role == "client" and hostId ~= nil, host = hostName} end
     if joining then return {phase = "joining", progress = 0} end
     if role ~= "client" then return nil end
@@ -921,6 +1066,7 @@ function Session.JoinState()
     for _, p in global.pairs(progress) do got, total = got + p[1], total + p[2] end
     local phase = memory.phase or "awaiting"
     if waiting and phase == "awaiting" then phase = "asking" end
+    if hostSilent and phase == "live" then return {phase = "silent", host = hostName} end
     return {phase = phase, progress = total > 0 and got / total or 0, host = hostName}
 end
 
@@ -964,6 +1110,75 @@ end
 function Session.SetAskBeforeJoin(value) askBeforeJoin = value ~= false end
 
 function Session.Desync() return desync end
+
+-- "Here!": a marker at the ground under the cursor, for everyone in the session.
+function Session.Ping()
+    if not role then return end
+    local x, y, z = World.CursorPoint()
+    if not x then return end
+    pings[me] = {x = x, y = y, z = z, frame = frames}
+    local wire = "ping|" .. num(x) .. "|" .. num(y) .. "|" .. num(z)
+    if role == "host" then hostChange(me, split(wire, "|")) else send(hostId, wire) end
+end
+
+-- Current pings: {sid, x, y, z, age (0..1)}.
+function Session.Pings()
+    local list = {}
+    for sid, ping in global.pairs(pings) do
+        local age = (frames - ping.frame) / PING_FRAMES
+        if age >= 1 then pings[sid] = nil
+        else list[#list+1] = {sid = sid, x = ping.x, y = ping.y, z = ping.z, age = age} end
+    end
+    return list
+end
+
+function Session.Notice(text, color) toast(text, color) end
+
+-- Follow another player's camera; nil stops.
+function Session.SetFollow(sid) following = sid end
+function Session.Following() return following end
+
+-- The object the local player selects or holds: its author is asked from the host once.
+-- Returns {creator, last} when known.
+function Session.Attribution(gid)
+    if gid ~= watched then watched, watchedAt = gid, -1000 end
+    if not gid or not role then return nil end
+    if not whoCache[gid] and frames - watchedAt > 120 then
+        watchedAt = frames
+        if role == "host" then hostChange(me, {"who", gid}) else send(hostId, "who|" .. gid) end
+    end
+    return whoCache[gid]
+end
+
+-- Menu: the file from an earlier session (lobby|host sid|host name).
+function Session._LastSession(text)
+    local f = split(global.string.match(text or "", "^[^\n]*") or "", "|")
+    if role or joining or not f[1] or not global.string.match(f[1], "^%w+$") then return end
+    rejoin = {lobby = f[1], hostSid = f[2], host = clean(f[3] or "")}
+    Session.RefreshFriends()
+end
+
+-- Menu: the host of that session is playing Planet Coaster 2 right now.
+function Session._RejoinOffer()
+    if not rejoin or role or joining or joinFailure then return nil end
+    for _, fr in global.ipairs(friends) do
+        if fr.sid == rejoin.hostSid and fr.pc2 then return rejoin end
+    end
+    return nil
+end
+
+function Session.Rejoin()
+    local offer = Session._RejoinOffer()
+    if not offer then return end
+    rejoin = nil
+    joining, progress, joinFailure, joinSource = true, {}, nil, "invite"
+    net.NetCommand("join|" .. offer.lobby)
+end
+
+function Session.ForgetRejoin()
+    rejoin = nil
+    net.NetCommand("note-write|" .. LAST_SESSION .. "|")
+end
 function Session.Park() return park end
 function Session.Holds() return holds end
 
@@ -1039,8 +1254,11 @@ function Session.Leave()
             end
         end
     end
+    flushAuthors()
     joining, progress, desync, joinFailure, helloLobby = false, {}, nil, nil, nil
     invited, approved, requests, confirm, waiting, joinSource = {}, {}, {}, nil, false, nil
+    pings, following, whoCache, hostSilent, selfStalled, authorsFile, dirtyAuthors = {}, nil, {}, false, false, nil, {}
+    if role == "client" then net.NetCommand("note-write|" .. LAST_SESSION .. "|") end
     locks, holds, bursts, recent, park, lastNote = {}, {}, {}, {}, nil, {}
     if sync.SetRemoteLocks then sync.SetRemoteLocks({}) end
     for _, fr in global.ipairs(friends) do fr.invitedAt = nil end
@@ -1061,7 +1279,7 @@ function Session.View()
                 if p.sending then act = "holt" .. global.math.floor((p.sent or 0) * 100)
                 elseif p.pending then act = "laedt" end
                 list[#list+1] = {sid = sid, name = p.name, color = p.color, act = act, x = pr.x, y = pr.y, z = pr.z,
-                    yaw = pr.yaw, base = p.base, fx = pr.fx, fy = pr.fy, fz = pr.fz, hold = holds[sid]}
+                    yaw = pr.yaw, pitch = pr.pitch, base = p.base, fx = pr.fx, fy = pr.fy, fz = pr.fz, hold = holds[sid]}
             end
         end
         return {role = role, me = me, host = me, lobby = lobbyId, players = list, stats = stats, conflicts = conflicts, feed = feed,
@@ -1086,7 +1304,14 @@ function Session.Tick()
         if not ok then emit("session:task-error|" .. global.tostring(failure)) end
         if not ok or global.coroutine.status(tasks[i]) == "dead" then global.table.remove(tasks, i) end
     end
-    if role == "host" then flushActions(false) end
+    if role == "host" then
+        flushActions(false)
+        if frames % 300 == 0 then flushAuthors() end
+    end
+    if role == "client" and memory.phase == "live" and not hostSilent and lastHostFrame > 0 and frames - lastHostFrame > 600 then
+        hostSilent = true
+        toast("Keine Verbindung zum Host - warte ...", "ff922b")
+    end
     if role == "host" and frames - lastRoster >= 30 then
         lastRoster = frames
         local line = rosterLine()

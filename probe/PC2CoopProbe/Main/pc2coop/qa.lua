@@ -692,6 +692,79 @@ local function execute(command, manager)
         for i=1,20 do global.coroutine.yield() end
         emit("qa:ghost-sweep:done;" .. #names .. " names;" .. shown .. " shown as model;failed=" .. global.tostring(viz.Stats().failed)
             .. ";left=" .. viz.Stats().entities)
+    elseif command=="extras-test" then
+        -- Hosting in the test park: a made-up player "Vici" (sid 777) joins over the session
+        -- API, looks around, gets followed and pings; then the author of the test rock.
+        local apis=testWorld(); if not apis then return end
+        local session,sync,world=global.require("pc2coop.session"),global.require("pc2coop.sync"),global.require("pc2coop.world")
+        if session.View().role~="host" then emit("qa:extras:not-hosting"); return end
+        session._onNet("msg|777|hello|Vici|-1|live|" .. session.VERSION .. "|")
+        emit("qa:extras:request=" .. global.tostring(#session.Requests()))
+        session.Answer("777",true)
+        local function look(x,y,z,yaw,pitch,fx,fz)
+            session._onNet(global.string.format("msg|777|pres|%f|%f|%f|%f|%f|4|Orbit|baut|%f|0|%f",x,y,z,yaw,pitch,fx,fz))
+        end
+        look(40,30,-10,0.3,-0.6,48,20)
+        for i=1,30 do global.coroutine.yield() end
+        -- follow: our camera has to end up at Vici's
+        session.SetFollow("777")
+        for i=1,240 do
+            if i==120 then look(60,25,0,0.8,-0.5,70,30) end
+            global.coroutine.yield()
+        end
+        local x,y,z=world.Camera()
+        emit(global.string.format("qa:extras:follow camera=%.1f,%.1f,%.1f target=60,25,0 following=%s",x or -1,y or -1,z or -1,global.tostring(session.Following())))
+        session.SetFollow(nil)
+        -- ping from the cursor (no mouse here: logs where it lands) and from Vici
+        local cx,cy,cz=world.CursorPoint()
+        emit(global.string.format("qa:extras:cursor=%.1f,%.1f,%.1f",cx or -1,cy or -1,cz or -1))
+        global.pcall(function()
+            local cam,start,dir=global.api.input.GetMouseRay()
+            emit("qa:extras:mouseray=" .. global.tostring(cam) .. ";" .. global.string.format("%.1f,%.1f,%.1f;%.2f,%.2f,%.2f",
+                start:GetX(),start:GetY(),start:GetZ(),dir:GetX(),dir:GetY(),dir:GetZ()))
+        end)
+        session.Ping()
+        session._onNet("msg|777|ping|20|0|25")
+        session._onNet("msg|777|pres|30|25|-20|0|0.6|4|Orbit|baut|18|0|22")
+        for i=1,30 do global.coroutine.yield() end
+        local count=0
+        for _ in global.ipairs(session.Pings()) do count=count+1 end
+        emit("qa:extras:pings=" .. count .. ";viz=" .. global.tostring(global.require("pc2coop.viz").Stats().entities))
+        -- author of the test rock, and Vici editing it
+        if createdPart and apis.placement:PlacementPartExists(createdPart) then
+            -- Vici moves the rock, then the host's attribution is asked as the UI does.
+            local gid=sync.GidOfPart(createdPart)
+            session._onNet("msg|777|up|0|" .. gid .. "|0|AQ_Rock_04|12|5|12|0|0|0|1|1")
+            for i=1,40 do global.coroutine.yield() end
+            session.Attribution(gid)
+            for i=1,10 do global.coroutine.yield() end
+            local who=session.Attribution(gid)
+            emit("qa:extras:author gid=" .. global.tostring(gid) .. " creator=" .. global.tostring(who and who.creator) .. " last=" .. global.tostring(who and who.last))
+            -- Selected like a click does: the select mode's info window target.
+            local okSel=global.pcall(function()
+                local mode=apis.GameModeHelperComponent:GetCurrentMode(global.require("Editors.Shared.BaseEditMode").GetModeHelperEntity())
+                mode:DebugSelectEntity(apis.placement:PlacementIDToEntityID(createdPart))
+            end)
+            for i=1,40 do global.coroutine.yield() end
+            emit("qa:extras:select=" .. global.tostring(okSel) .. ";selectedPart=" .. global.tostring(world.SelectedPart()) .. ";rock=" .. global.tostring(createdPart))
+            global.pcall(function() global.api.world.GetWorldAPIs().CameraModeManager:SetPosYPR(global.require("Vector3"):new(12,14,-6),global.require("Vector3"):new(0,0.6,0)) end)
+        end
+        emit("qa:extras-test:shown")
+        for i=1,240 do global.coroutine.yield() end
+        session._onNet("member:leave|777")
+        emit("qa:extras-test:done")
+    elseif command=="rejoin-test" then
+        -- Main menu: pretends this game dropped out of a session whose host is online in PC2.
+        local session=frontend and frontendCoop().Session()
+        if not session then emit("qa:rejoin-test:not-in-frontend"); return end
+        session._LastSession("109775240000000002|76561190000000001|Vici")
+        for _,event in global.ipairs({"friends:begin|1","friend|76561190000000001|Vici|1|1","friends:end"}) do session._onNet(event) end
+        local state=session.JoinState()
+        emit("qa:rejoin-test:phase=" .. global.tostring(state and state.phase) .. ";host=" .. global.tostring(state and state.host))
+    elseif command=="rejoin-go" then
+        local session=frontend and frontendCoop().Session()
+        if session then session.Rejoin() end
+        emit("qa:rejoin-go:sent")
     elseif command=="viz-clean" then
         local shared=global.require("pc2coop.shared")
         local n=0

@@ -55,6 +55,7 @@ class Peer:
         self.memory = {}
         self.sent_files = []
         self.deleted = []
+        self.sent_notes = []
         self.loaded = 0
         self.event(f'net:ready|{sid}|{name}')
 
@@ -110,6 +111,8 @@ class SessionTests(unittest.TestCase):
                         self.peers[target].event(f'file:done|{sid}|{remote}|100')
                         peer.event(f'file:sent|{target}|{remote}|100')
                         peer.sent_files.append((target, remote))
+                    elif verb in ('note-write', 'note-append'):
+                        peer.sent_notes.append(command)
                     elif verb == 'del':
                         peer.deleted.append(rest)
                     elif verb == 'kv':
@@ -360,7 +363,7 @@ class JoinRobustnessTests(SessionTests):
             host.event(f'msg|{sid}|{payload}')
         host.tick()
         relayed = [c for c in host.commands() if c.startswith('send|300|p|200|')]
-        self.assertEqual(relayed, ['send|300|p|200|10|5|12|baut'])
+        self.assertEqual(relayed, ['send|300|p|200|10|5|12|baut|1|2|3|0.5|-0.2'])
         self.peers['300'].event('msg|100|p|200|10|5|12|baut')
         self.peers['300'].tick()
         alex = [p for p in self.peers['300'].lua.eval('session.View().players').values() if p['sid'] == '200'][0]

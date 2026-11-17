@@ -82,8 +82,65 @@ Manager.Advance=function(self,delta)
                 end
             end
         end
+        -- Pings: a tag above each beacon.
+        local pings,names={}, {}
+        for _,p in global.pairs(view.players or {}) do names[p.sid]=p end
+        if view.role then
+            for _,ping in global.ipairs(self.session.Pings()) do
+                local who=names[ping.sid]
+                if who then
+                    pings[#pings+1]=ping
+                    tags[#tags+1]={key="ping:" .. ping.sid,name=who.name,activity="hier!",x=ping.x,y=ping.y+11,z=ping.z}
+                    colour=colour or who.color
+                end
+            end
+        end
+        -- Author of what the local player selects or holds.
+        self.authorFrames=(self.authorFrames or 0)+1
+        if view.role and self.authorFrames%10==0 then
+            local world=global.require("pc2coop.world")
+            local part=world.SelectedPart()
+            if not part then for held in global.pairs(self.sync.HeldParts()) do part=held; break end end
+            local gid=part and self.sync.GidOfPart(part)
+            local who=self.session.Attribution(gid)
+            self.authorTag=nil
+            if gid and who and (who.creator~="" or who.last~="") then
+                local text
+                if who.creator~="" and who.creator~="Park" then
+                    text="Erstellt von " .. who.creator
+                    if who.last~="" and who.last~=who.creator then text=text .. ", zuletzt " .. who.last end
+                elseif who.last~="" and who.last~="Park" then
+                    text="Zuletzt bearbeitet von " .. who.last
+                end
+                local placement=global.api.world.GetWorldAPIs().placement
+                if text and placement:PlacementPartExists(part) then
+                    local at=global.api.transform.CalculateWorldPosition(placement:PlacementIDToEntityID(part))
+                    self.authorTag={key="author",name=text,activity="",x=at:GetX(),y=at:GetY()+2.5,z=at:GetZ()}
+                end
+            end
+        end
+        if self.authorTag then tags[#tags+1]=self.authorTag end
         self.labels.Show(tags,delta)
-        self.viz.Update(remote,locked,colour,delta)
+        self.viz.Update(remote,locked,colour,delta,pings)
+        -- Follow another player's camera until the player moves it.
+        local target=self.session.Following()
+        if target then
+            local world=global.require("pc2coop.world")
+            local p=names[target]
+            if not p or not p.x or not view.role then
+                self.session.SetFollow(nil)
+            elseif world.PlayerMovesCamera() then
+                self.session.SetFollow(nil)
+                self.session.Notice("Du folgst " .. p.name .. " nicht mehr.")
+            else
+                local x,y,z,yaw,pitch=world.Camera()
+                if x then
+                    local k=1-global.math.exp(-(delta or 1/60)*5)
+                    local turn=((p.yaw or yaw)-yaw+global.math.pi)%(2*global.math.pi)-global.math.pi
+                    world.SetCamera(x+(p.x-x)*k,y+(p.y-y)*k,z+(p.z-z)*k,yaw+turn*k,pitch+((p.pitch or pitch)-pitch)*k)
+                end
+            end
+        end
     end)
 end
 

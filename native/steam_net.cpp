@@ -479,6 +479,45 @@ void receive_chunk(u64 from, const char* data, size_t size) {
     if (end >= total) queue("file:done|" + id_text(from) + "|" + name + "|" + std::to_string(total));
 }
 
+// Small text files the mod keeps between game starts, next to the game's exe: who built
+// what in a park (pc2coop-authors-<park>.txt) and the last session (pc2coop-lastsession.txt).
+// Only these names; nothing received from the network decides about them.
+bool note_name(const std::string& name) {
+    if (!safe_name(name) || name.size() < 5 || name.compare(name.size() - 4, 4, ".txt") != 0) return false;
+    return name == "pc2coop-lastsession.txt" || name.rfind("pc2coop-authors-", 0) == 0;
+}
+
+void note_write(const std::string& name, const std::string& data, bool append) {
+    if (!note_name(name) || data.size() > 4096) return;
+    HANDLE file = CreateFileW(game_path(name).c_str(), append ? FILE_APPEND_DATA : GENERIC_WRITE, 0, nullptr,
+                              append ? OPEN_ALWAYS : CREATE_ALWAYS, 0, nullptr);
+    if (file == INVALID_HANDLE_VALUE) { queue("note:error|" + name); return; }
+    LARGE_INTEGER size{};
+    // A runaway file is cut off at 2 MB rather than filling the disk.
+    if (!append || (GetFileSizeEx(file, &size) && size.QuadPart < 2 * 1024 * 1024)) {
+        DWORD written = 0;
+        WriteFile(file, data.data(), static_cast<DWORD>(data.size()), &written, nullptr);
+    }
+    CloseHandle(file);
+}
+
+// Sends the file back as "note:data|name|<up to 3000 bytes>" events, then "note:end|name".
+void note_read(const std::string& name) {
+    if (!note_name(name)) return;
+    HANDLE file = CreateFileW(game_path(name).c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
+    if (file != INVALID_HANDLE_VALUE) {
+        std::vector<char> buffer(3000);
+        long long total = 0;
+        DWORD read = 0;
+        while (total < 2 * 1024 * 1024 && ReadFile(file, buffer.data(), static_cast<DWORD>(buffer.size()), &read, nullptr) && read) {
+            queue("note:data|" + name + "|" + std::string(buffer.data(), read));
+            total += read;
+        }
+        CloseHandle(file);
+    }
+    queue("note:end|" + name);
+}
+
 void remember(const std::string& key, const std::string& value) {
     for (auto& kv : memory) if (kv.first == key) { kv.second = value; return; }
     if (memory.size() < 32) memory.emplace_back(key, value);
@@ -555,6 +594,12 @@ void command(const char* bytes, unsigned int size) {
             bool ok = api.InviteUserToGame(api.Friends(), id, connect.c_str());
             queue(std::string(ok ? "invite:sent|" : "invite:failed|") + id_text(id));
         }
+    } else if (verb == "note-write" || verb == "note-append") {
+        // note-write|<name>|<text>  /  note-append|<name>|<text>
+        size_t bar2 = rest.find('|');
+        if (bar2 != std::string::npos) note_write(rest.substr(0, bar2), rest.substr(bar2 + 1), verb == "note-append");
+    } else if (verb == "note-read") {
+        note_read(rest);
     } else if (verb == "del") {
         // Temporary park copies of a finished transfer (pc2coop-host-<id>.*, pc2coop-join.*).
         if (safe_name(rest)) DeleteFileW(game_path(rest).c_str());
@@ -595,7 +640,8 @@ void poll_key(int key, bool& down, const char* event) {
 
 // F7 opens the multiplayer window, F8 the developer menu.
 void poll_hotkeys() {
-    static bool f7 = false, f8 = false;
+    static bool f6 = false, f7 = false, f8 = false;
+    poll_key(VK_F6, f6, "key:ping");
     poll_key(VK_F7, f7, "key:menu");
     poll_key(VK_F8, f8, "key:dev");
 }

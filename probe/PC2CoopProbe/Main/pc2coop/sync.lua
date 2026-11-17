@@ -426,6 +426,7 @@ end
 function Sync.SetRemoteLocks(locks) remoteLocked = locks or {} end
 function Sync.RemoteLocks() return remoteLocked end
 function Sync.HeldParts() return heldParts end
+function Sync.GidOfPart(part) return localToGlobal[part] end
 -- Test seam: the editor is not driven by tests, so they say what is held.
 function Sync._SetHeld(parts) heldParts = parts or {} end
 

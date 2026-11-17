@@ -114,6 +114,7 @@ local function buildState()
         desync = session.Desync and session.Desync() or false,
         park = view.park or false, log = recentLog(view.feed), stats = statsList(view.stats),
         requests = session.Requests and session.Requests() or {},
+        following = session.Following and session.Following() or false,
         chat = session.Chat(), toasts = session.Toasts(),
     }
 end
@@ -134,12 +135,26 @@ local actions = {
     deny = function(arg) session.Answer(arg, false) end,
     chat = function(arg) session.SendChat(arg) end,
     jump = function(arg)
+        -- To the player's recent ping when there is one, else to their camera.
+        for _, ping in global.ipairs(session.Pings()) do
+            if ping.sid == arg then
+                -- The game's pitch is positive downwards.
+                sync.Receive("C|" .. ping.x .. "|" .. (ping.y + 30) .. "|" .. (ping.z - 30) .. "|0|0.75")
+                return
+            end
+        end
         for _, p in global.pairs(session.View().players or {}) do
             if p.sid == arg and p.x then
-                sync.Receive("C|" .. p.x .. "|" .. p.y .. "|" .. p.z .. "|" .. (p.yaw or 0) .. "|-0.5")
+                sync.Receive("C|" .. p.x .. "|" .. p.y .. "|" .. p.z .. "|" .. (p.yaw or 0) .. "|" .. (p.pitch or 0.5))
             end
         end
     end,
+    follow = function(arg)
+        if session.Following() == arg then session.SetFollow(nil) else session.SetFollow(arg); Ui.SetOpen(false) end
+    end,
+    ping = function() session.Ping() end,
+    rejoin = function() session.Rejoin() end,
+    forget_rejoin = function() session.ForgetRejoin() end,
 }
 
 -- Events from the Gameface layer arrive as global UI events; Lua listens through an

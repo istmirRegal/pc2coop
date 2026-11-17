@@ -180,6 +180,75 @@ function World.ApplyGuestProfile()
     end)
 end
 
+-- The point on the ground under the mouse cursor (falls back to the camera's focus point).
+function World.CursorPoint()
+    local ok, x, y, z = global.pcall(function()
+        local Vector3 = global.require("Vector3")
+        local _, start, direction = global.api.input.GetMouseRay()
+        local terrain = global.api.world.GetWorldAPIs().voxelterrain
+        local distance = start and direction and terrain:RayCast(terrain:GetPrimaryVoxelTerrainEntityID(), start, direction, 2000)
+        -- A ray of length 0 (cursor outside the window) means: no point under the cursor.
+        if distance and distance > 0.5 then
+            local hit = start + direction * distance
+            return hit:GetX(), hit:GetY(), hit:GetZ()
+        end
+        -- The cursor points above the horizon: 40 m ahead in its direction, on the ground.
+        local dx, dz = direction:GetX(), direction:GetZ()
+        local length = global.math.sqrt(dx * dx + dz * dz)
+        if length < 0.01 then return nil end
+        local x, z = start:GetX() + dx / length * 40, start:GetZ() + dz / length * 40
+        local top = Vector3:new(x, start:GetY() + 200, z)
+        local down = terrain:RayCast(terrain:GetPrimaryVoxelTerrainEntityID(), top, Vector3:new(0, -1, 0), 1000)
+        return x, down and (start:GetY() + 200 - down) or start:GetY(), z
+    end)
+    if ok and global.type(x) == "number" then return x, y, z end
+    return nil
+end
+
+-- The scenery part the player selected: the object whose info window is open in the
+-- normal select mode, or the first of the selection in the scenery editor. Nil otherwise.
+function World.SelectedPart()
+    local ok, part = global.pcall(function()
+        local apis = global.api.world.GetWorldAPIs()
+        local BaseEditMode = global.require("Editors.Shared.BaseEditMode")
+        local mode = apis.GameModeHelperComponent:GetCurrentMode(BaseEditMode.GetModeHelperEntity())
+        if global.type(mode) ~= "table" then return nil end
+        local entity = global.rawget(mode, "bEntitySelected") and global.rawget(mode, "nSelectedEntityID")
+        if entity then return apis.placement:EntityIDToPlacementID(entity) end
+        local context = global.rawget(mode, "editorContext")
+        if not context then return nil end
+        local selection = context:GetSelectionSet()
+        if not selection or selection:CountParts() < 1 then return nil end
+        return selection:GetOnePartID()
+    end)
+    return ok and part or nil
+end
+
+-- Camera: position and yaw/pitch, as presence reports them.
+function World.Camera()
+    local ok, x, y, z, yaw, pitch = global.pcall(function()
+        local position, ypr = global.api.world.GetWorldAPIs().CameraModeManager:GetPosYPRZoom()
+        return position:GetX(), position:GetY(), position:GetZ(), ypr:GetX(), ypr:GetY()
+    end)
+    if ok then return x, y, z, yaw, pitch end
+    return nil
+end
+
+function World.SetCamera(x, y, z, yaw, pitch)
+    return global.pcall(function()
+        local Vector3 = global.require("Vector3")
+        global.api.world.GetWorldAPIs().CameraModeManager:SetPosYPR(Vector3:new(x, y, z), Vector3:new(yaw, pitch, 0))
+    end)
+end
+
+-- True while the player moves the camera with mouse or keys (ends "follow").
+function World.PlayerMovesCamera()
+    local ok, moving = global.pcall(function()
+        return global.api.world.GetWorldAPIs().CameraModeManager:IsPlayerTryingToMoveCamera()
+    end)
+    return ok and moving == true
+end
+
 -- Leaves the current editor tool, as a right click does (used when a lock is refused).
 function World.LeaveTool()
     return global.pcall(function()

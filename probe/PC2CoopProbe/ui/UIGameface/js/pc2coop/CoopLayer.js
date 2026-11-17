@@ -211,7 +211,9 @@ class Lobby extends StateComponent {
                         preact.h('div', { style: { width: '14px', height: '14px', borderRadius: '7px', background: '#' + p.color, marginRight: '8px' } }),
                         p.name + (p.me ? ' (du)' : '') + (p.host ? ' - Host' : ''),
                         preact.h('span', { style: { color: '#6a8899', marginLeft: '10px' } }, activityText(p.act, p.hold))),
-                    !p.me && p.x !== undefined ? preact.h(Button, { label: literal('Hinspringen'), onSelect: () => request('jump', p.sid) }) : null,
+                    !p.me && p.x !== undefined ? preact.h('div', { style: { display: 'flex' } },
+                        preact.h(Button, { label: literal('Hinspringen'), onSelect: () => request('jump', p.sid) }),
+                        preact.h(Button, { label: literal(coop.following === p.sid ? 'Nicht folgen' : 'Folgen'), onSelect: () => request('follow', p.sid) })) : null,
                 ], 'p' + p.sid)),
                 coop.role && coop.park && section('Park des Hosts'),
                 coop.role && coop.park && preact.h('div', null, (coop.park.guests || 0).toLocaleString('de-DE') + ' Besucher · ' + money(coop.park)),
@@ -240,6 +242,7 @@ class Lobby extends StateComponent {
 function joinText(join) {
     const host = join.host ? ' von ' + join.host : '';
     if (join.phase === 'joining') return 'Trete der Sitzung bei ...';
+    if (join.phase === 'silent') return 'Keine Verbindung zum Host - warte ...';
     if (join.phase === 'asking') return 'Warte auf die Zustimmung' + host + ' ...';
     if (join.phase === 'confirm') return 'Beitritt' + (join.host ? ' bei ' + join.host : '') + ' wartet auf deine Bestätigung.';
     if (join.phase === 'awaiting') return 'Empfange den Park' + host + ' ... ' + Math.round((join.progress || 0) * 100) + ' %';
@@ -252,7 +255,7 @@ class JoinProgress extends StateComponent {
     render(props, state) {
         const coop = state.coop || {};
         const join = coop.join;
-        if (!join || !join.phase || join.phase === 'live' || join.phase === 'failed' || join.phase === 'confirm' || coop.open) return null;
+        if (!join || !join.phase || join.phase === 'live' || join.phase === 'failed' || join.phase === 'confirm' || join.phase === 'rejoin' || coop.open) return null;
         const share = join.phase === 'awaiting' ? (join.progress || 0) : join.phase === 'loading' ? 1 : 0.02;
         return preact.h('div', { style: { position: 'absolute', left: '50%', top: '42%', width: '520px', marginLeft: '-260px',
             padding: '22px 28px', borderRadius: '14px', background: 'rgba(14, 33, 48, 0.9)', color: '#ffffff', textAlign: 'center' } },
@@ -260,6 +263,19 @@ class JoinProgress extends StateComponent {
             preact.h('div', { style: { fontSize: '17px', color: '#9fd8f0', marginBottom: '14px' } }, joinText(join)),
             preact.h('div', { style: { height: '8px', borderRadius: '4px', background: 'rgba(255, 255, 255, 0.15)' } },
                 preact.h('div', { style: { height: '8px', borderRadius: '4px', background: '#00c6ff', width: Math.round(share * 100) + '%' } })));
+    }
+}
+
+// After a crash or a dropped connection: back into the same session from the main menu.
+class Rejoin extends StateComponent {
+    render(props, state) {
+        const coop = state.coop || {};
+        const join = coop.join;
+        if (!join || join.phase !== 'rejoin' || coop.open) return null;
+        return preact.h(Dialog, { modifiers: 'dialogApp', title: literal('Multiplayer'),
+            description: literal('Du warst eben noch in der Sitzung von ' + (join.host || 'einem Freund') + '. Wieder beitreten?'),
+            buttons: [{ label: literal('Wieder beitreten'), onSelect: () => request('rejoin') },
+                { label: literal('Nein'), onSelect: () => request('forget_rejoin'), inputName: 'UI_Cancel' }] });
     }
 }
 
@@ -298,7 +314,8 @@ class CoopLayer extends preact.Component {
             preact.h(JoinProgress, null),
             preact.h('div', { style: { pointerEvents: 'auto' } }, preact.h(Lobby, null)),
             preact.h('div', { style: { pointerEvents: 'auto' } }, preact.h(JoinFailed, null)),
-            preact.h('div', { style: { pointerEvents: 'auto' } }, preact.h(JoinConfirm, null)));
+            preact.h('div', { style: { pointerEvents: 'auto' } }, preact.h(JoinConfirm, null)),
+            preact.h('div', { style: { pointerEvents: 'auto' } }, preact.h(Rejoin, null)));
     }
 }
 

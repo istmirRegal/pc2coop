@@ -13,6 +13,7 @@ local emit = function() end
 local enabled = true
 local players = {}        -- sid -> {marker, dots = {...}, ghosts = {...}, big, signature}
 local tinted = {}         -- entity -> true (objects locked by others)
+local beacons = {}        -- sid -> {ring, column = {...}}: "here!" pings
 local colour = nil
 local frames = 0
 local failed = false
@@ -233,7 +234,31 @@ function Viz.Enabled() return enabled end
 
 -- remote: list of the other players (see update); lockedEntities: entity -> true for
 -- objects somebody else is editing; hex: colour for all of it.
-function Viz.Update(remote, lockedEntities, hex, dt)
+-- A ping: a pulsing ring on the ground and a column of small discs above it.
+local function beacon(sid, ping, dt)
+    local state = beacons[sid]
+    if not state then
+        state = {ring = spawn(DISC, 2), column = {}}
+        for i = 1, 6 do state.column[i] = spawn(DISC, 0.9 - i * 0.08) end
+        beacons[sid] = state
+    end
+    local y = ground(ping.x, ping.z, ping.y)
+    place(state.ring, ping.x, y + 0.15, ping.z, 1)
+    if state.ring and state.ring.ready then
+        global.pcall(X().SetScale, state.ring.entity, 2 + 4 * ((ping.age * 6) % 1))
+    end
+    for i, item in global.ipairs(state.column) do
+        local bob = global.math.sin(frames / 12 + i) * 0.25
+        place(item, ping.x, y + 1.5 * i + bob, ping.z, 1)
+    end
+end
+
+local function dropBeacon(state)
+    destroy(state.ring and state.ring.entity)
+    for _, item in global.ipairs(state.column or {}) do destroy(item.entity) end
+end
+
+function Viz.Update(remote, lockedEntities, hex, dt, pings)
     frames = frames + 1
     if failed or not enabled then return end
     if pinned then
@@ -253,6 +278,14 @@ function Viz.Update(remote, lockedEntities, hex, dt)
         end
         for sid, state in global.pairs(players) do
             if not live[sid] then drop(state); players[sid] = nil end
+        end
+        local pinged = {}
+        for _, ping in global.ipairs(pings or {}) do
+            pinged[ping.sid] = true
+            beacon(ping.sid, ping, dt)
+        end
+        for sid, state in global.pairs(beacons) do
+            if not pinged[sid] then dropBeacon(state); beacons[sid] = nil end
         end
         local model = global.api.model
         for entity in global.pairs(tinted) do
@@ -278,6 +311,8 @@ end
 function Viz.Clear()
     for _, state in global.pairs(players) do drop(state) end
     players = {}
+    for _, state in global.pairs(beacons) do dropBeacon(state) end
+    beacons = {}
     for entity in global.pairs(tinted) do global.pcall(global.api.model.SetHighlighted, entity, CHANNEL, false, true) end
     tinted = {}
     -- Entities of an earlier module instance (the park manager was restarted).
