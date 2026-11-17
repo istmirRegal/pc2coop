@@ -130,6 +130,11 @@ Noch NICHT synchronisiert (folgt):
 Gleichzeitiges Bearbeiten desselben Objekts: wer es zuerst aufnimmt, hat es. Kommen
 zwei Aenderungen trotzdem gleichzeitig an, entscheidet der Host; die spaetere wird
 zurueckgenommen und der Spieler bekommt einen Hinweis.
+Einstellungen (Parkname, Preise, Oeffnen/Schliessen): aendern zwei Spieler sie gleichzeitig,
+gilt die Reihenfolge beim Host - am Ende haben alle denselben Wert.
+Bekannte Grenze: Malen zwei Spieler gleichzeitig an derselben Stelle im Gelaende (oder nehmen
+gleichzeitig Kredite auf), kann der Park bei den Spielern leicht unterschiedlich werden.
+"Neu synchronisieren" im Multiplayer-Fenster laedt dann den Stand des Hosts.
 
 Sicherheit und Datenschutz
 - Nur Steam-Freunde: die Sitzung ist nur fuer Steam-Freunde des Hosts sichtbar, und die

@@ -794,6 +794,44 @@ local function execute(command, manager)
             end
         end
         emit("qa:menu-lobby-test:shown")
+    elseif command=="park-list-probe" then
+        -- The host's saved parks as the lobby lists them, plus the metadata fields the game has.
+        if not frontend then emit("qa:park-list:not-in-frontend"); return end
+        local list=global.require("pc2coop.parks").List(frontend.parkLoadSaveManager)
+        local names={}
+        for i,park in global.ipairs(list) do if i<=5 then names[#names+1]=park.name .. "/" .. park.world .. "/" .. park.time end end
+        emit("qa:park-list:count=" .. #list .. ";" .. global.table.concat(names,";"))
+        global.pcall(function()
+            local okEnum,saves=frontend.parkLoadSaveManager:EnumerateParkSaves(global.api.save.GetExistingSaves_SortOldestFirst,"park2")
+            local meta=okEnum and saves[1] and global.api.save.GetSaveMetadata(saves[1])
+            local keys={}
+            for k,v in global.pairs(meta or {}) do keys[#keys+1]=global.tostring(k) .. "=" .. global.type(v) end
+            for k,v in global.pairs(meta and meta.tSave or {}) do keys[#keys+1]="tSave." .. global.tostring(k) .. "=" .. global.tostring(v):sub(1,24) end
+            emit("qa:park-list:meta=" .. global.table.concat(keys,","):sub(1,900))
+        end)
+        local m=frontend.parkLoadSaveManager
+        local okE,r1,r2=global.pcall(function() return m:EnumerateParkSaves(global.api.save.GetExistingSaves_SortOldestFirst,"park2") end)
+        emit("qa:park-list:enum=" .. global.tostring(okE) .. "/" .. global.tostring(r1) .. "/" .. global.type(r2) .. "/" .. global.tostring(global.type(r2)=="table" and #r2 or r2)
+            .. ";fn=" .. global.type(global.api.save.GetExistingSaves_SortOldestFirst) .. ";m=" .. global.type(m and m.EnumerateParkSaves))
+        local okD,direct=global.pcall(global.api.save.GetExistingSaves_SortOldestFirst)
+        emit("qa:park-list:direct=" .. global.tostring(okD) .. "/" .. global.type(direct) .. "/" .. global.tostring(global.type(direct)=="table" and #direct or direct))
+        emit("qa:park-list:offline=" .. global.tostring(frontend.tOfflineParks and global.next(frontend.tOfflineParks)))
+        emit("qa:park-list-probe:done")
+    elseif command=="lobby-start-new" then
+        -- The host picks "new sandbox park, temperate, creative" in the lobby and opens it.
+        local coop=frontend and frontendCoop()
+        if not coop then emit("qa:lobby-start:not-in-frontend"); return end
+        local ui=coop.Ui()
+        ui.SetOpen(true)
+        ui._Request("901|choose|new|Temperate|1")
+        local choice=coop.Session().Choice()
+        emit("qa:lobby-start:choice=" .. global.tostring(choice and choice.title) .. "/" .. global.tostring(choice and choice.detail))
+        for i=1,60 do global.coroutine.yield() end
+        testParkRequested=true
+        createdPart=nil
+        global.pcall(function() global.require("pc2coop.live").AuthorizeNewPark() end)
+        ui._Request("902|start|")
+        emit("qa:lobby-start-new:requested")
     elseif command=="menu-lobby-close" then
         local coop=frontend and frontendCoop()
         if coop then

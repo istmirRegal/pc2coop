@@ -69,6 +69,17 @@ function Ui.Init(logger, sessionModule, syncModule, menuModule)
     emit, session, sync, menu = logger, sessionModule, syncModule, menuModule
 end
 
+-- Defined before Ui.SetOpen: a local is only visible to code after its declaration.
+local function choosing()
+    local view = session.View()
+    return frontendMenu ~= nil and view.role == "host" and view.stage == "lobby"
+end
+
+local function refreshParks()
+    local Parks = global.require("pc2coop.parks")
+    parkList = choosing() and Parks.List(frontendMenu.parkLoadSaveManager) or {}
+end
+
 local closedAt = -1000
 
 function Ui.SetOpen(value)
@@ -86,16 +97,6 @@ function Ui.Toggle() Ui.SetOpen(not open) end
 function Ui.SetCanHost(value) canHost = value == true end
 
 function Ui.SetFrontend(value) frontendMenu = value end
-
-local function choosing()
-    local view = session.View()
-    return frontendMenu ~= nil and view.role == "host" and view.stage == "lobby"
-end
-
-local function refreshParks()
-    local Parks = global.require("pc2coop.parks")
-    parkList = choosing() and Parks.List(frontendMenu.parkLoadSaveManager) or {}
-end
 
 -- The newest lines of the session log, oldest first.
 local function recentLog(feed)
@@ -202,7 +203,7 @@ local actions = {
         elseif kind == "franchise" then
             chosen = {kind = "franchise"}
             session.SetChoice("franchise", "Franchise", "Park im Franchise-Menue")
-        else
+        elseif kind == "" then
             chosen = nil
             session.SetChoice(nil)
         end
@@ -245,6 +246,9 @@ local function onRequest(_, raw)
         lastState = nil
     end
 end
+
+-- Test seam: a request as the Gameface layer sends it ("<n>|<command>|<argument>").
+function Ui._Request(raw) onRequest(nil, raw) end
 
 local function onLog(_, text) emit("js|" .. global.tostring(text)) end
 

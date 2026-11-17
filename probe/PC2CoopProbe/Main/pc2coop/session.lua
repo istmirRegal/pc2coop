@@ -425,6 +425,15 @@ local function sendPark(sid)
     -- The joiner gets the host's exact park; part ids survive save/load (verified).
     -- One copy per joiner: the DLL streams it chunk by chunk while Steam has room, so a
     -- second joiner must not overwrite a file that is still being sent.
+    -- Manifest of this copy: which shared object is which part in it, at its revision. The
+    -- joiner's aliases come from here, so an object deleted while the copy travels still
+    -- gets its alias and the delete that follows finds it.
+    local manifest, missing = {}, {}
+    for gid, state in global.pairs(objects) do
+        local part = sync.LocalPart and sync.LocalPart(gid)
+        if part then manifest[gid] = {part = part, rev = state.rev} else missing[gid] = true end
+    end
+    if players[sid] then players[sid].manifest, players[sid].missing = manifest, missing end
     local base = "pc2coop-host-" .. sid
     local ok, failure = manager:SaveTerrainToFile("/run/" .. base .. ".trn", true)
     global.assert(ok, "terrain save failed: " .. global.tostring(failure))
@@ -441,13 +450,21 @@ end
 local function catchUp(sid)
     local p = players[sid]
     local lines = {}
-    for gid, state in global.pairs(objects) do
-        local part = sync.LocalPart and sync.LocalPart(gid)
-        if part then lines[#lines+1] = "A|" .. gid .. "|" .. part .. "|" .. state.rev
-        else lines[#lines+1] = upsertLine(gid) end
+    if p.manifest then
+        -- Objects in the transferred copy; everything after it is in pending (in order).
+        for gid, m in global.pairs(p.manifest) do lines[#lines+1] = "A|" .. gid .. "|" .. m.part .. "|" .. m.rev end
+        for gid in global.pairs(p.missing or {}) do
+            if objects[gid] then lines[#lines+1] = upsertLine(gid) end
+        end
+    else
+        for gid, state in global.pairs(objects) do
+            local part = sync.LocalPart and sync.LocalPart(gid)
+            if part then lines[#lines+1] = "A|" .. gid .. "|" .. part .. "|" .. state.rev
+            else lines[#lines+1] = upsertLine(gid) end
+        end
     end
     for _, line in global.ipairs(p.pending or {}) do lines[#lines+1] = line end
-    p.pending = nil
+    p.pending, p.manifest, p.missing = nil, nil, nil
     sendOps(sid, lines)
 end
 
@@ -633,7 +650,15 @@ local function hostChange(sid, f)
         addFeed(timeText(nameOf(sid), paused, index))
     elseif f[1] == "cmd" and f[2] then
         -- Replayed edit (terrain, lakes, ...): host orders it and forwards it to everyone else.
-        if #f[2] <= 3000 then deliver(others(sid, "K|" .. f[2])) end
+        -- A setter (park name, prices, open/close) goes back to its author too: applied once
+        -- more in the host's order, everyone ends with the same value when two players set
+        -- it at once. Additive calls (terrain brush, loans, research) are never repeated.
+        if #f[2] <= 3000 then
+            local method = global.string.match(f[2], "^![%w_]+%.([%w_]+)%(")
+            local setter = method and (global.string.match(method, "^Set") or method == "OpenAttraction" or method == "CloseAttraction")
+            if setter and sid ~= me then deliver(others(nil, "K|" .. f[2]))
+            else deliver(others(sid, "K|" .. f[2])) end
+        end
     elseif f[1] == "base" and players[sid] then
         players[sid].base = global.tonumber(f[2])
     end

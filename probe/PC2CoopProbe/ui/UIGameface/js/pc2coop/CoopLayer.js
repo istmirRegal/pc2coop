@@ -430,7 +430,7 @@ class Lobby extends StateComponent {
         } else {
             if (coop.desync && coop.role === 'client') footer.push({ label: 'Neu synchronisieren', onSelect: () => request('resync') });
             footer.push({ label: 'Steam-Overlay', onSelect: () => request('invite_overlay') });
-            footer.push({ label: coop.role === 'host' ? 'Lobby beenden' : 'Verlassen', onSelect: () => request('leave') });
+            footer.push({ label: coop.role === 'host' ? 'Beenden' : 'Verlassen', onSelect: () => request('leave') });
         }
         footer.push({ label: 'Schließen', onSelect: () => request('close'), inputName: 'UI_Cancel' });
         const column = (width, children, last) => h('div', { style: { width: width + 'px', height: '636px', padding: '0 18px',
@@ -452,8 +452,8 @@ class Lobby extends StateComponent {
                     borderTop: '1px solid rgba(0, 120, 170, 0.2)' } },
                     h('div', { style: { width: '12px', height: '12px', borderRadius: '6px', background: TONE[status.tone] || TONE.idle,
                         marginRight: '10px', flexShrink: 0 } }),
-                    h('div', { style: { width: '760px', fontSize: '19px' } }, status.text),
-                    h('div', { style: { width: '500px' } }, buttons(footer)))));
+                    h('div', { style: { width: '640px', fontSize: '19px' } }, status.text),
+                    h('div', { style: { width: '620px' } }, buttons(footer)))));
     }
 
     renderPlayers(coop) {

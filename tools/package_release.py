@@ -73,7 +73,7 @@ def main() -> int:
         copy(args.acse_source / "LICENSE", stage / "licenses/ACSE-GPL-3.0.txt")
         for folder in ("probe", "native", "tools", "tests", "docs", "alpha-dist"):
             for file in sorted((PROJECT / folder).rglob("*")):
-                if file.is_file() and file.suffix in {".py", ".lua", ".cpp", ".md", ".json", ".xml", ".ps1", ".cmd", ".txt"} \
+                if file.is_file() and file.suffix in {".py", ".lua", ".cpp", ".h", ".js", ".html", ".css", ".md", ".json", ".xml", ".ps1", ".cmd", ".txt"} \
                         and "__pycache__" not in file.parts:
                     copy(file, stage / "source" / file.relative_to(PROJECT))
         for name in ("LICENSE", "README.md"):

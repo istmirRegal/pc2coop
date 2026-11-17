@@ -107,7 +107,8 @@ class SessionTests(unittest.TestCase):
                     verb, _, rest = command.partition('|')
                     if verb == 'send':
                         target, _, payload = rest.partition('|')
-                        self.peers[target].event(f'msg|{sid}|{payload}')
+                        if target in self.peers:      # a player driven by hand in the test is skipped
+                            self.peers[target].event(f'msg|{sid}|{payload}')
                     elif verb == 'all':
                         for other in self.peers:
                             if other != sid:
@@ -224,6 +225,47 @@ class TransferTests(SessionTests):
         self.pump(12)
         late = self.peers['500'].ops()
         self.assertTrue(any(op.startswith('U|') and 'AQ_Rock_04' in op for op in late), late)
+
+
+class OrderTests(SessionTests):
+    def last_k(self, sid):
+        return [op.split('|', 2)[2] for op in self.peers[sid].ops() if op.startswith('K|')]
+
+    def test_two_players_renaming_at_once_end_with_the_same_name(self):
+        self.peers['200'].local_change('sync:cmd|!park.SetParkName(sA)')
+        self.peers['300'].local_change('sync:cmd|!park.SetParkName(sB)')
+        self.pump(6)
+        finals = {sid: self.last_k(sid)[-1] for sid in ('100', '200', '300')}
+        self.assertEqual(len(set(finals.values())), 1, finals)
+
+    def test_additive_calls_are_not_applied_twice_by_their_author(self):
+        self.peers['200'].local_change('sync:cmd|!money.TakeLoan(n5)')
+        self.pump(6)
+        self.assertEqual(self.last_k('200'), [])
+        self.assertEqual(self.last_k('300'), ['!money.TakeLoan(n5)'])
+        self.assertEqual(self.last_k('100'), ['!money.TakeLoan(n5)'])
+
+    def test_object_deleted_while_a_joiner_loads_is_deleted_there_too(self):
+        host = self.peers['100']
+        self.peers['200'].local_change('sync:up|101||0|AQ_Rock_04|1|2|3|0|0|0|1|1')
+        self.pump(4)
+        gid = [op for op in self.peers['200'].ops() if op.startswith('M|')][-1].split('|')[2]
+        host.lua.eval('function(g) sync.LocalPart = function(x) if x == g then return 4242 end end end')(gid)
+        version = host.lua.eval('session.VERSION')
+        host.event(f'msg|500|hello|Spaet|-1|needpark|{version}|1.12.2.1035111')
+        for _ in range(4):
+            host.tick()
+        host.commands()                              # the park copy is on its way (not delivered here)
+        host.lua.execute('sync.LocalPart = function() return nil end')   # gone from the host's world
+        self.peers['200'].local_change(f'sync:del|101|{gid}|1')
+        self.pump(2)
+        host.event(f'msg|500|hello|Spaet|-1|loaded|{version}|1.12.2.1035111')
+        host.tick()
+        sent = [c for c in host.commands() if c.startswith('send|500|ops')]
+        lines = chr(10).join(sent).split(chr(10))
+        alias = [i for i, l in enumerate(lines) if l.startswith(f'A|{gid}|4242|')]
+        delete = [i for i, l in enumerate(lines) if l.startswith(f'D|{gid}|')]
+        self.assertTrue(alias and delete and alias[0] < delete[0], lines)
 
 
 class MenuJoinTests(SessionTests):
