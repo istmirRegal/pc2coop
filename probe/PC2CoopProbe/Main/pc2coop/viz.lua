@@ -129,10 +129,12 @@ local function safePrefab(resource)
     for _, pattern in global.ipairs(UNSAFE) do
         if global.string.match(lower, pattern) then return nil end
     end
-    local ok, found = global.pcall(E().FindPrefab, resource)
-    if ok and found then return resource end
-    ok, found = global.pcall(E().FindPrefab, resource .. "_game")
-    if ok and found then return resource .. "_game" end
+    -- The name comes from another player's game. A scenery piece consists of a visual
+    -- prefab "<name>" and a game prefab "<name>_game"; only when both exist is the visual
+    -- one shown. Anything else (rides, vehicles, engine prefabs) gets the plain disc.
+    local okArt, art = global.pcall(E().FindPrefab, resource)
+    local okGame, game = global.pcall(E().FindPrefab, resource .. "_game")
+    if okArt and art and okGame and game then return resource end
     return nil
 end
 

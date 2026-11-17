@@ -56,6 +56,8 @@ def main(argv=None):
     mod_dir = args.game_dir / 'Win64' / 'ovldata' / 'PC2CoopProbe'
     if not exe.is_file() or not mod_dir.is_dir():
         parser.error('Expected the prepared test copy with PC2CoopProbe installed')
+    # The mod only reads QA commands when this marker is present (never in a player install).
+    (mod_dir / 'pc2coop-dev.flag').write_text('developer test copy\n', encoding='ascii')
     steps = []
     for step in args.steps:
         # "COMMAND => EXPECTED" when the command itself contains ':' (vectors in replay batches).

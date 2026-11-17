@@ -19,6 +19,7 @@ int refused = 0;
 std::vector<std::string> delivered;        // non-file payloads in arrival order
 
 void* messages() { return reinterpret_cast<void*>(1); }
+unsigned long long lobby_owner(void*, unsigned long long) { return 1111; }   // the host
 void set_id(Identity* identity, unsigned long long id) { std::memset(identity, 0, sizeof(*identity)); std::memcpy(identity->data, &id, sizeof(id)); }
 unsigned long long get_id(const Identity* identity) { unsigned long long id; std::memcpy(&id, identity->data, sizeof(id)); return id; }
 int send(void*, const Identity* peer, const void* data, unsigned int size, int, int) {
@@ -52,16 +53,21 @@ int main() {
     api.SetSteamID64 = fake::set_id;
     api.GetSteamID64 = fake::get_id;
     api.SendMessageToUser = fake::send;
+    api.Matchmaking = fake::messages;
+    api.GetLobbyOwner = fake::lobby_owner;
+    // This process plays the joiner 2222 in the lobby of host 1111 when it receives.
+    lobby = 5;
+    self_id = 2222;
 
     // A park-sized file (7.5 MB) of varied bytes.
     std::string park(7500000, '\0');
     unsigned int seed = 12345;
     for (char& c : park) { seed = seed * 1103515245u + 12345u; c = static_cast<char>(seed >> 16); }
     { std::ofstream out(game_path("pc2coop-host-test.bin").c_str(), std::ios::binary); out.write(park.data(), static_cast<std::streamsize>(park.size())); }
-    DeleteFileW(game_path("pc2coop-join-test.bin").c_str());
+    DeleteFileW(game_path("pc2coop-join.bin").c_str());
 
     send_to(2222, "hello-before", 12);
-    send_file(2222, "pc2coop-host-test.bin", "pc2coop-join-test.bin");
+    send_file(2222, "pc2coop-host-test.bin", "pc2coop-join.bin");
     send_to(2222, "park|after-file", 15);       // must arrive after every chunk
     for (int i = 0; i < 20000 && (!outbox_for(2222).items.empty() || !fake::wire.empty()); ++i) {
         pump_outbox();
@@ -69,30 +75,48 @@ int main() {
     }
     bool sent = false, done = false, stalled = false;
     for (const std::string& event : events) {
-        sent = sent || event.rfind("file:sent|2222|pc2coop-join-test.bin|7500000", 0) == 0;
-        done = done || event.rfind("file:done|1111|pc2coop-join-test.bin|7500000", 0) == 0;
+        sent = sent || event.rfind("file:sent|2222|pc2coop-join.bin|7500000", 0) == 0;
+        done = done || event.rfind("file:done|1111|pc2coop-join.bin|7500000", 0) == 0;
         stalled = stalled || event.rfind("net:peer-stalled", 0) == 0;
     }
     std::printf("refused=%d delivered=%zu sent=%d done=%d\n", fake::refused, fake::delivered.size(), sent, done);
     if (fake::refused == 0) return fail("fake Steam never refused; test does not cover the limit");
     if (stalled) return fail("peer reported stalled");
     if (!sent || !done) return fail("file not reported complete");
-    if (read_all(game_path("pc2coop-join-test.bin")) != park) return fail("received file differs");
+    if (read_all(game_path("pc2coop-join.bin")) != park) return fail("received file differs");
     if (fake::delivered.size() != 2 || fake::delivered[0] != "hello-before" || fake::delivered[1] != "park|after-file")
         return fail("messages lost or out of order");
     DeleteFileW(game_path("pc2coop-host-test.bin").c_str());
-    DeleteFileW(game_path("pc2coop-join-test.bin").c_str());
+    DeleteFileW(game_path("pc2coop-join.bin").c_str());
 
     // While the joiner loads the park, late chunks must not rewrite its files.
     remember("phase", "loading");
-    std::string late = std::string("\x02pc2coop-join-test.bin|10|0|") + "0123456789";
+    std::string late = std::string("\x02pc2coop-join.bin|10|0|") + "0123456789";
     receive_chunk(1111, late.data(), late.size());
-    if (GetFileAttributesW(game_path("pc2coop-join-test.bin").c_str()) != INVALID_FILE_ATTRIBUTES)
+    if (GetFileAttributesW(game_path("pc2coop-join.bin").c_str()) != INVALID_FILE_ATTRIBUTES)
         return fail("file rewritten while loading");
     remember("phase", "awaiting");
     receive_chunk(1111, late.data(), late.size());
-    if (read_all(game_path("pc2coop-join-test.bin")) != "0123456789") return fail("chunk refused although not loading");
-    DeleteFileW(game_path("pc2coop-join-test.bin").c_str());
+    if (read_all(game_path("pc2coop-join.bin")) != "0123456789") return fail("chunk refused although not loading");
+    DeleteFileW(game_path("pc2coop-join.bin").c_str());
+
+    // Files are taken from the lobby's host only, only the two park files, only within
+    // the announced size. Nothing else a lobby member sends is written to disk.
+    receive_chunk(3333, late.data(), late.size());                       // another member
+    if (GetFileAttributesW(game_path("pc2coop-join.bin").c_str()) != INVALID_FILE_ATTRIBUTES)
+        return fail("file accepted from a member who is not the host");
+    std::string other = std::string("\x02pc2coop-evil.dll|10|0|") + "0123456789";
+    receive_chunk(1111, other.data(), other.size());                     // another file name
+    if (GetFileAttributesW(game_path("pc2coop-evil.dll").c_str()) != INVALID_FILE_ATTRIBUTES)
+        return fail("unexpected file name written");
+    std::string big = std::string("\x02pc2coop-join.bin|4|0|") + "0123456789";
+    receive_chunk(1111, big.data(), big.size());                         // more bytes than announced
+    if (GetFileAttributesW(game_path("pc2coop-join.bin").c_str()) != INVALID_FILE_ATTRIBUTES)
+        return fail("chunk larger than the announced file written");
+    self_id = 1111;                                                      // the host itself takes no files
+    receive_chunk(1111, late.data(), late.size());
+    if (GetFileAttributesW(game_path("pc2coop-join.bin").c_str()) != INVALID_FILE_ATTRIBUTES)
+        return fail("host accepted a file");
     std::printf("PASS\n");
     return 0;
 }

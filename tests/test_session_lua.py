@@ -31,7 +31,8 @@ function manager:RequestLoadParkFromFile(path, world, creator, name) loads[#load
 local nextData = {SetGameMode = function() end, SetParkName = function() end}
 api = {world = {GetActive = function() return "temperateworld" end,
     GetWorldAPIs = function() return {park = {GetParkName = function() return "Testpark" end}} end},
-    game = {GetEnvironment = function() return {RequireInterface = function() return nextData end} end},
+    game = {GetEnvironment = function() return {RequireInterface = function() return nextData end} end,
+        GetVersionString = function() return fakeGameVersion or "1.12.2.1035111" end},
     ui2 = {GetDataStoreContext = function() return "simulation" end,
         GetDataStoreElement = function(_, key) return ({numGuests = 1234, cash = 5000, hasUnlimitedCash = false})[key] end}}
 '''
@@ -49,8 +50,11 @@ class Peer:
         self.session = loader(SOURCE.read_text(encoding='utf8'))
         self.lua.globals().session = self.session
         self.lua.execute('session.Init(function(m) logs[#logs+1] = m end, net, sync, manager)')
+        # Most tests are about a running session, not about getting in: friends walk in.
+        self.lua.execute('session.SetAskBeforeJoin(false)')
         self.memory = {}
         self.sent_files = []
+        self.deleted = []
         self.loaded = 0
         self.event(f'net:ready|{sid}|{name}')
 
@@ -106,6 +110,8 @@ class SessionTests(unittest.TestCase):
                         self.peers[target].event(f'file:done|{sid}|{remote}|100')
                         peer.event(f'file:sent|{target}|{remote}|100')
                         peer.sent_files.append((target, remote))
+                    elif verb == 'del':
+                        peer.deleted.append(rest)
                     elif verb == 'kv':
                         key, _, value = rest.partition('|')
                         peer.memory[key] = value
@@ -263,8 +269,9 @@ class VersionTests(SessionTests):
         self.assertTrue(any('Alt hat PC2Coop 0.9.0' in line for line in host_feed), host_feed)
         names = [p['name'] for p in self.peers['100'].lua.eval('session.View().players').values()]
         self.assertNotIn('Alt', names)
-        toasts = [t['text'] for t in old.lua.eval('session.Toasts()').values()]
-        self.assertTrue(any('UPDATE.cmd' in t for t in toasts), toasts)
+        state = old.lua.eval('session.JoinState()')
+        self.assertEqual(state['phase'], 'failed')
+        self.assertIn('UPDATE.cmd', state['reason'])
         self.assertIsNone(old.lua.eval('session.View().role'))
 
 

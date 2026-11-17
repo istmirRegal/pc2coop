@@ -27,6 +27,23 @@ Alle Mitspieler brauchen dieselbe Mod-Version und dieselbe Spielversion
 - Die Oberfläche (Spielerleiste, Lobby, Menüeinträge) ist in die Gameface-UI des Spiels
   eingebaut.
 
+## Sicherheit
+
+- Sitzungen sind nur für Steam-Freunde des Hosts sichtbar; die Mod tritt nur Sitzungen von
+  Steam-Freunden bei und fragt nach, wenn eine Sitzung per Startparameter statt per
+  angeklickter Einladung kommt.
+- Der Host lässt Freunde zu, die er nicht selbst eingeladen hat, bevor sie den Park bekommen.
+- Aus dem Netz werden genau zwei Dateien geschrieben (der Park des Hosts), nur vom Host,
+  mit festen Namen und Größenprüfung; sie werden nach dem Laden gelöscht.
+- Nachrichten anderer Spieler werden nie als Code ausgeführt: Bauaktionen laufen über eine
+  feste Liste erlaubter Spielfunktionen mit geprüften Argumenten.
+- Der Befehlskanal für automatische Tests ist nur aktiv, wenn `pc2coop-dev.flag` im
+  Mod-Ordner liegt; ausgelieferte Pakete enthalten die Datei nicht.
+- `UPDATE.cmd` lädt nur aus diesem Repository und prüft die SHA-256-Prüfsumme. Wer das
+  Repository veröffentlicht, sollte sein GitHub-Konto mit 2FA schützen.
+
+Sicherheitslücke gefunden? Bitte als Issue melden (ohne Log-Dateien mit fremden Steam-IDs).
+
 ## Entwickeln
 
 - `probe/PC2CoopProbe/` – Mod-Quellcode (Lua) und UI (`ui/UIGameface/js/pc2coop`).

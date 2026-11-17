@@ -113,6 +113,7 @@ local function buildState()
         join = session.JoinState and session.JoinState() or false,
         desync = session.Desync and session.Desync() or false,
         park = view.park or false, log = recentLog(view.feed), stats = statsList(view.stats),
+        requests = session.Requests and session.Requests() or {},
         chat = session.Chat(), toasts = session.Toasts(),
     }
 end
@@ -128,6 +129,9 @@ local actions = {
     resync = function() session.Resync() end,
     retry_join = function() session.Resync() end,
     cancel_join = function() session.DismissJoin() end,
+    confirm_join = function() session.ConfirmJoin() end,
+    approve = function(arg) session.Answer(arg, true) end,
+    deny = function(arg) session.Answer(arg, false) end,
     chat = function(arg) session.SendChat(arg) end,
     jump = function(arg)
         for _, p in global.pairs(session.View().players or {}) do

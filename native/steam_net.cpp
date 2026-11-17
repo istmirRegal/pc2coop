@@ -78,6 +78,7 @@ struct Api {
     int (*GetFriendPersonaState)(void*, u64) = nullptr;
     bool (*GetFriendGamePlayed)(void*, u64, void*) = nullptr;
     bool (*InviteUserToGame)(void*, u64, const char*) = nullptr;
+    bool (*HasFriend)(void*, u64, int) = nullptr;
 } api;
 
 template <class T> bool bind(T& slot, const char* name) {
@@ -121,6 +122,14 @@ bool is_member(u64 id) {
     return false;
 }
 
+// "1" when the lobby's owner is this player or one of their Steam friends. The session
+// only takes a park from a friend: a lobby id can also reach the game from outside
+// (launch arguments), and then nobody chose that host.
+std::string owner_trust(u64 owner) {
+    constexpr int kImmediate = 0x04;   // k_EFriendFlagImmediate
+    return owner == self_id || api.HasFriend(api.Friends(), owner, kImmediate) ? "1" : "0";
+}
+
 void refresh_members() {
     std::vector<u64> now;
     if (lobby) {
@@ -162,7 +171,7 @@ void entered(u64 id, unsigned int response) {
     api.SetRichPresence(api.Friends(), "status", "PC2 Co-op");
     members.clear();
     refresh_members();
-    queue("lobby:entered|" + id_text(lobby) + "|" + id_text(owner) + "|" + friend_name(owner));
+    queue("lobby:entered|" + id_text(lobby) + "|" + id_text(owner) + "|" + friend_name(owner) + "|" + owner_trust(owner));
     // Open sessions in both directions; sending first auto-accepts on the peer's side.
     for (u64 m : members) {
         if (m == self_id) continue;
@@ -265,7 +274,8 @@ bool initialise() {
         && bind(api.GetFriendByIndex, "SteamAPI_ISteamFriends_GetFriendByIndex")
         && bind(api.GetFriendPersonaState, "SteamAPI_ISteamFriends_GetFriendPersonaState")
         && bind(api.GetFriendGamePlayed, "SteamAPI_ISteamFriends_GetFriendGamePlayed")
-        && bind(api.InviteUserToGame, "SteamAPI_ISteamFriends_InviteUserToGame");
+        && bind(api.InviteUserToGame, "SteamAPI_ISteamFriends_InviteUserToGame")
+        && bind(api.HasFriend, "SteamAPI_ISteamFriends_HasFriend");
     ok = ok && api.Friends() && api.Matchmaking() && api.Messages() && api.Utils() && api.User();
     if (!ok) {
         failed = true;
@@ -445,9 +455,15 @@ void receive_chunk(u64 from, const char* data, size_t size) {
     long long total = strtoll(head.substr(a + 1, b - a - 1).c_str(), nullptr, 10);
     long long offset = strtoll(head.substr(b + 1, c - b - 1).c_str(), nullptr, 10);
     if (!safe_name(name) || total <= 0 || total > 256LL * 1024 * 1024 || offset < 0 || offset >= total) return;
+    // Only the host of the lobby this game joined sends files, and only the park it shares.
+    // Anything else from a lobby member is dropped: no other file is ever written here.
+    u64 owner = lobby ? api.GetLobbyOwner(api.Matchmaking(), lobby) : 0;
+    if (!owner || owner == self_id || from != owner) return;
+    if (name != "pc2coop-join.bin" && name != "pc2coop-join.trn") return;
     if (files_locked()) return;
     const char* body = data + 1 + c + 1;
     size_t length = size - (1 + c + 1);
+    if (static_cast<long long>(length) > total - offset) return;
     HANDLE file = CreateFileW(game_path(name).c_str(), GENERIC_WRITE, 0, nullptr, offset == 0 ? CREATE_ALWAYS : OPEN_EXISTING, 0, nullptr);
     if (file == INVALID_HANDLE_VALUE) { queue("file:error|write|" + name); return; }
     LARGE_INTEGER at{};
@@ -539,6 +555,9 @@ void command(const char* bytes, unsigned int size) {
             bool ok = api.InviteUserToGame(api.Friends(), id, connect.c_str());
             queue(std::string(ok ? "invite:sent|" : "invite:failed|") + id_text(id));
         }
+    } else if (verb == "del") {
+        // Temporary park copies of a finished transfer (pc2coop-host-<id>.*, pc2coop-join.*).
+        if (safe_name(rest)) DeleteFileW(game_path(rest).c_str());
     } else if (verb == "kv") {
         size_t p1 = rest.find('|');
         if (p1 != std::string::npos) remember(rest.substr(0, p1), rest.substr(p1 + 1));
@@ -551,7 +570,7 @@ void command(const char* bytes, unsigned int size) {
         for (const auto& kv : memory) queue("kv|" + kv.first + "|" + kv.second);
         if (lobby) {
             u64 owner = api.GetLobbyOwner(api.Matchmaking(), lobby);
-            queue("lobby:entered|" + id_text(lobby) + "|" + id_text(owner) + "|" + friend_name(owner));
+            queue("lobby:entered|" + id_text(lobby) + "|" + id_text(owner) + "|" + friend_name(owner) + "|" + owner_trust(owner));
         }
     }
 

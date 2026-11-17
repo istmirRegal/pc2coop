@@ -13,7 +13,7 @@ local World = global.require("pc2coop.world")
 local shared = global.require("pc2coop.shared")
 
 -- Mod version; must match the database's probeVersion (checked by the tests).
-Session.VERSION = "1.6.0"
+Session.VERSION = "1.6.1"
 local COLORS = {"ff6b6b", "4dabf7", "51cf66", "fcc419", "cc5de8", "ff922b", "22b8cf", "f06595"}
 local net, sync
 local emit = function() end
@@ -47,6 +47,12 @@ local bursts = {}         -- host: "sid|verb" -> {name, verb, n, res, last}: one
 local recent = {}         -- host: seq -> line given to the local game (to undo what it refuses)
 local park = nil          -- the host park's numbers: {guests, cash, unlimited}
 local lastNote = {}       -- host: notification text -> frame it was last passed on
+local askBeforeJoin = true  -- host: a friend who was not invited from here needs the host's OK
+local invited, approved, requests = {}, {}, {}  -- host: who was invited / let in / is asking
+local joinSource = nil    -- joiner: "launch" when the lobby id came with the game's start
+local confirm = nil       -- joiner: {host} while the player has not agreed to join yet
+local waiting = false     -- joiner: the host has not let us in yet
+local gameVersion = ""    -- this game's version; players of different versions do not mix
 local lastRoster = 0
 local frames = 0
 
@@ -64,9 +70,11 @@ end
 
 local send
 
-local function toast(text, color)
+-- loc: the text is in the game's own notification format and is translated by the UI.
+-- Only notifications of the host's park are; anything a player typed never is.
+local function toast(text, color, loc)
     toastId = toastId + 1
-    toasts[#toasts+1] = {id = toastId, text = text, color = color}
+    toasts[#toasts+1] = {id = toastId, text = text, color = color, loc = loc == true}
     while #toasts > 10 do global.table.remove(toasts, 1) end
 end
 
@@ -342,6 +350,8 @@ local function leave(sid)
     if players[sid] then
         addFeed(players[sid].name .. " hat die Sitzung verlassen")
         if holds[sid] or global.next(locks) then hostHold(sid, "", "", "") end
+        net.NetCommand("del|pc2coop-host-" .. sid .. ".bin")
+        net.NetCommand("del|pc2coop-host-" .. sid .. ".trn")
         players[sid] = nil
         for i, other in global.ipairs(order) do if other == sid then global.table.remove(order, i); break end end
     end
@@ -549,10 +559,27 @@ local function onMessage(from, payload)
     if role == "host" then
         if kind == "hello" then
             local f = split(payload, "|")
+            local name, theirGame = clean(f[2] or "?"), clean(f[6] or "")
             if f[5] ~= Session.VERSION then
                 local version = clean(f[5] or "alt")
-                addFeed(clean(f[2] or "?") .. " hat PC2Coop " .. version .. ", du " .. Session.VERSION .. " - bitte beide UPDATE.cmd ausfuehren")
-                send(from, "reject|" .. Session.VERSION)
+                addFeed(name .. " hat PC2Coop " .. version .. ", du " .. Session.VERSION .. " - bitte beide UPDATE.cmd ausfuehren")
+                send(from, "reject|" .. Session.VERSION .. "|" .. gameVersion)
+                return
+            end
+            if gameVersion ~= "" and theirGame ~= "" and theirGame ~= gameVersion then
+                addFeed(name .. " hat Spielversion " .. theirGame .. ", du " .. gameVersion .. " - bitte beide in Steam aktualisieren")
+                send(from, "reject|" .. Session.VERSION .. "|" .. gameVersion)
+                return
+            end
+            -- A Steam friend can enter a friends-only lobby without an invitation. The park
+            -- is only handed to someone the host invited from here or lets in now.
+            if not players[from] and askBeforeJoin and not invited[from] and not approved[from] then
+                if not requests[from] then
+                    toast(name .. " moechte beitreten. Im Multiplayer-Fenster zulassen oder ablehnen.", "fcc419")
+                    emit("session:join-request|" .. from)
+                end
+                requests[from] = {name = name, mode = f[4], base = f[3]}
+                send(from, "wait|")
                 return
             end
             join(from, f[2], f[4])
@@ -585,7 +612,7 @@ local function onMessage(from, payload)
             World.SetTime(paused, index)
             if f[4] and f[4] ~= "" then toast(timeText(clean(f[4]), paused, index)) end
         elseif kind == "note" then
-            toast(global.string.sub(payload, 6), "fcc419")
+            toast(global.string.sub(payload, 6), "fcc419", true)
         elseif kind == "p" then
             local f = split(payload, "|")
             for _, pl in global.ipairs(roster.players or {}) do
@@ -602,10 +629,22 @@ local function onMessage(from, payload)
             while #feed > 30 do global.table.remove(feed, 1) end
             toast(feed[#feed])
         elseif kind == "reject" then
-            local hostVersion = clean(split(payload, "|")[2] or "?")
-            toast("Der Host hat PC2Coop " .. hostVersion .. ", du " .. Session.VERSION .. ". Bitte UPDATE.cmd ausfuehren (Spiel vorher beenden).", "ff6b6b")
-            emit("session:rejected-version|" .. hostVersion)
-            Session.Leave()
+            local f = split(payload, "|")
+            local hostVersion, hostGame = clean(f[2] or "?"), clean(f[3] or "?")
+            emit("session:rejected-version|" .. hostVersion .. "|" .. hostGame)
+            if hostVersion ~= Session.VERSION then
+                Session._RefuseJoin("Der Host hat PC2Coop " .. hostVersion .. ", du " .. Session.VERSION
+                    .. ". Bitte UPDATE.cmd ausfuehren (Spiel vorher beenden).")
+            else
+                Session._RefuseJoin("Der Host hat Spielversion " .. hostGame .. ", du " .. gameVersion
+                    .. ". Bitte beide Planet Coaster 2 in Steam aktualisieren.")
+            end
+        elseif kind == "wait" then
+            waiting = true
+        elseif kind == "welcome" then
+            waiting = false
+        elseif kind == "denied" then
+            Session._RefuseJoin("Der Host hat deinen Beitritt abgelehnt.")
         elseif kind == "chat" then
             local f = split(payload, "|")
             Session._AddChat(f[2], f[3], global.string.sub(payload, #f[1] + #f[2] + #f[3] + 4))
@@ -619,7 +658,8 @@ local function requestPark()
     remember("phase", "awaiting")
     transfer, progress, joinFailure, desync = {}, {}, nil, nil
     emit("session:awaiting-park|" .. lobbyId .. "|" .. global.tostring(hostName))
-    send(hostId, "hello|" .. myName .. "|-1|needpark|" .. Session.VERSION)
+    waiting = false
+    send(hostId, "hello|" .. myName .. "|-1|needpark|" .. Session.VERSION .. "|" .. gameVersion)
 end
 
 local function failJoin(reason, tellHost)
@@ -641,6 +681,10 @@ local function onNet(event)
         lobbyId, hostId, helloLobby = f[2], f[3], f[2]
         joining, hostName = false, clean(f[4] or "")
         local phase = memory.lobby == lobbyId and memory.phase or nil
+        if hostId ~= me and f[5] == "0" then
+            Session._RefuseJoin("Der Host dieser Sitzung ist nicht in deiner Steam-Freundesliste. Beitritt abgebrochen.")
+            return
+        end
         if hostId == me then
             if context == "menu" then
                 -- Back in the main menu: there is no park to share any more.
@@ -670,17 +714,26 @@ local function onNet(event)
             remember("phase", "live")
             emit("session:joined|" .. lobbyId .. "|" .. hostName)
             sync.Receive("S|" .. myName)
-            send(hostId, "hello|" .. myName .. "|-1|loaded|" .. Session.VERSION)
+            send(hostId, "hello|" .. myName .. "|-1|loaded|" .. Session.VERSION .. "|" .. gameVersion)
             toast("Bereit: du baust jetzt im Park von " .. hostName .. ".", "51cf66")
             World.ApplyGuestProfile()
+            net.NetCommand("del|pc2coop-join.bin")
+            net.NetCommand("del|pc2coop-join.trn")
         elseif context == "park" and phase == "live" then
             role = "client"
             sync.Receive("S|" .. myName)
-            send(hostId, "hello|" .. myName .. "|-1|live|" .. Session.VERSION)
+            send(hostId, "hello|" .. myName .. "|-1|live|" .. Session.VERSION .. "|" .. gameVersion)
         else
             role = "client"
-            requestPark()
+            if joinSource == "launch" then
+                -- Nobody clicked an invitation: the lobby came with the start of the game.
+                confirm = {host = hostName}
+                emit("session:join-confirm|" .. lobbyId)
+            else
+                requestPark()
+            end
         end
+        joinSource = nil
     elseif kind == "lobby:join-failed" then
         joining = false
         local code = global.tonumber(f[2]) or 0
@@ -690,6 +743,7 @@ local function onNet(event)
     elseif kind == "member:join" then
         emit("session:member|" .. f[2] .. "|" .. clean(f[3]))
     elseif kind == "member:leave" then
+        requests[f[2]] = nil
         if role == "host" then leave(f[2]) end
         if f[2] == hostId and role == "client" then
             addFeed("Host hat die Sitzung beendet")
@@ -704,6 +758,7 @@ local function onNet(event)
         end
         if role then Session.Leave() end
         joining, progress, joinFailure = true, {}, nil
+        joinSource = f[4] == "launch" and "launch" or "invite"
         net.NetCommand("join|" .. f[2])
         emit("session:joining|" .. f[2])
     elseif kind == "key:menu" then
@@ -727,6 +782,7 @@ local function onNet(event)
         end)
         friends = friendsLoading
     elseif kind == "invite:sent" then
+        invited[f[2]] = true
         for _, fr in global.ipairs(friends) do
             if fr.sid == f[2] then fr.invitedAt = frames; toast("Einladung an " .. fr.name .. " gesendet") end
         end
@@ -767,6 +823,7 @@ end
 
 function Session.Init(logger, diagnostic, syncModule, parkManager)
     emit, net, sync, manager = logger, diagnostic, syncModule, parkManager
+    global.pcall(function() gameVersion = clean(global.api.game.GetVersionString()) end)
     if context == "park" then
         shared.onTime = function(paused, index) Session._LocalTime(paused, index) end
         shared.onNotification = function(text) Session._ParkNote(text) end
@@ -859,10 +916,52 @@ function Session.JoinState()
     if joinFailure then return {phase = "failed", reason = joinFailure, retry = role == "client" and hostId ~= nil, host = hostName} end
     if joining then return {phase = "joining", progress = 0} end
     if role ~= "client" then return nil end
+    if confirm then return {phase = "confirm", host = confirm.host} end
     local got, total = 0, 0
     for _, p in global.pairs(progress) do got, total = got + p[1], total + p[2] end
-    return {phase = memory.phase or "awaiting", progress = total > 0 and got / total or 0, host = hostName}
+    local phase = memory.phase or "awaiting"
+    if waiting and phase == "awaiting" then phase = "asking" end
+    return {phase = phase, progress = total > 0 and got / total or 0, host = hostName}
 end
+
+-- Joiner: the player agreed to join the lobby that came with the start of the game.
+function Session.ConfirmJoin()
+    if role ~= "client" or not confirm then return end
+    confirm = nil
+    requestPark()
+end
+
+-- Joiner: this session is not joined; says why (and leaves its lobby).
+function Session._RefuseJoin(reason)
+    Session.Leave()
+    joinFailure = reason
+    emit("session:join-refused|" .. reason)
+end
+
+-- Host: friends who ask to join without an invitation from here.
+function Session.Requests()
+    local list = {}
+    for sid, request in global.pairs(requests) do list[#list+1] = {sid = sid, name = request.name} end
+    global.table.sort(list, function(a, b) return a.name < b.name end)
+    return list
+end
+
+function Session.Answer(sid, allow)
+    local request = requests[sid]
+    if role ~= "host" or not request then return end
+    requests[sid] = nil
+    if allow then
+        approved[sid] = true
+        join(sid, request.name, request.mode)
+        if request.base then hostChange(sid, {"base", request.base}) end
+    else
+        send(sid, "denied|")
+        addFeed(request.name .. " wurde nicht zugelassen")
+    end
+end
+
+-- Host: false lets every Steam friend in without asking (the lobby is friends-only either way).
+function Session.SetAskBeforeJoin(value) askBeforeJoin = value ~= false end
 
 function Session.Desync() return desync end
 function Session.Park() return park end
@@ -932,7 +1031,16 @@ function Session.DismissJoin()
 end
 
 function Session.Leave()
+    if role == "host" then
+        for _, sid in global.ipairs(order) do
+            if sid ~= me then
+                net.NetCommand("del|pc2coop-host-" .. sid .. ".bin")
+                net.NetCommand("del|pc2coop-host-" .. sid .. ".trn")
+            end
+        end
+    end
     joining, progress, desync, joinFailure, helloLobby = false, {}, nil, nil, nil
+    invited, approved, requests, confirm, waiting, joinSource = {}, {}, {}, nil, false, nil
     locks, holds, bursts, recent, park, lastNote = {}, {}, {}, {}, nil, {}
     if sync.SetRemoteLocks then sync.SetRemoteLocks({}) end
     for _, fr in global.ipairs(friends) do fr.invitedAt = nil end

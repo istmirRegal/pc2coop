@@ -149,7 +149,7 @@ class Toasts extends StateComponent {
         return preact.h('div', { style: { position: 'absolute', bottom: '120px', left: '24px', display: 'flex', flexDirection: 'column' } },
             state.visible.map((t) => preact.h('div', { key: t.id, style: { margin: '4px 0', padding: '10px 16px', maxWidth: '520px',
                 borderRadius: '10px', background: 'rgba(14, 33, 48, 0.82)', color: '#ffffff', fontSize: '17px',
-                borderLeft: '5px solid #' + (t.color || '00c6ff') } }, shown(t.text))));
+                borderLeft: '5px solid #' + (t.color || '00c6ff') } }, t.loc ? shown(t.text) : t.text)));
     }
 }
 
@@ -198,6 +198,13 @@ class Lobby extends StateComponent {
         return preact.h(Dialog, { modifiers: 'dialogApp', title: literal('Multiplayer'), description: literal(status), buttons },
             preact.h('div', { style: { width: '760px', maxHeight: '560px', overflowY: 'auto', textAlign: 'left', color: '#20435a',
                 fontSize: '16px' } },
+                coop.role === 'host' && (coop.requests || []).length > 0 && section('Möchte beitreten'),
+                coop.role === 'host' && (coop.requests || []).map((r) => row([
+                    preact.h('div', null, r.name),
+                    preact.h('div', { style: { display: 'flex' } },
+                        preact.h(Button, { label: literal('Zulassen'), onSelect: () => request('approve', r.sid) }),
+                        preact.h(Button, { label: literal('Ablehnen'), onSelect: () => request('deny', r.sid) })),
+                ], 'r' + r.sid)),
                 coop.role && section('Im Park'),
                 coop.role && (coop.players || []).map((p) => row([
                     preact.h('div', { style: { display: 'flex', alignItems: 'center' } },
@@ -212,7 +219,7 @@ class Lobby extends StateComponent {
                 coop.role && (coop.stats || []).map((s) => preact.h('div', { key: 's' + s.name, style: { padding: '2px 0' } },
                     s.name + ': ' + s.created + ' platziert, ' + s.edited + ' bearbeitet, ' + s.deleted + ' gelöscht')),
                 coop.role && (coop.log || []).length > 0 && section('Verlauf'),
-                coop.role && (coop.log || []).slice(-6).map((line, i) => preact.h('div', { key: 'l' + i, style: { padding: '2px 0', color: '#4a6b7d' } }, shown(line))),
+                coop.role && (coop.log || []).slice(-6).map((line, i) => preact.h('div', { key: 'l' + i, style: { padding: '2px 0', color: '#4a6b7d' } }, line)),
                 coop.role && (coop.chat || []).length > 0 && section('Chat'),
                 (coop.chat || []).slice(-8).map((c, i) => preact.h('div', { key: 'c' + i, style: { padding: '2px 0' } },
                     preact.h('span', { style: { color: '#' + (c.color || '20435a') } }, c.name + ': '), c.text)),
@@ -233,6 +240,8 @@ class Lobby extends StateComponent {
 function joinText(join) {
     const host = join.host ? ' von ' + join.host : '';
     if (join.phase === 'joining') return 'Trete der Sitzung bei ...';
+    if (join.phase === 'asking') return 'Warte auf die Zustimmung' + host + ' ...';
+    if (join.phase === 'confirm') return 'Beitritt' + (join.host ? ' bei ' + join.host : '') + ' wartet auf deine Bestätigung.';
     if (join.phase === 'awaiting') return 'Empfange den Park' + host + ' ... ' + Math.round((join.progress || 0) * 100) + ' %';
     if (join.phase === 'loading') return 'Lade den Park' + host + ' ...';
     return 'Verbunden' + host + '.';
@@ -243,7 +252,7 @@ class JoinProgress extends StateComponent {
     render(props, state) {
         const coop = state.coop || {};
         const join = coop.join;
-        if (!join || !join.phase || join.phase === 'live' || join.phase === 'failed' || coop.open) return null;
+        if (!join || !join.phase || join.phase === 'live' || join.phase === 'failed' || join.phase === 'confirm' || coop.open) return null;
         const share = join.phase === 'awaiting' ? (join.progress || 0) : join.phase === 'loading' ? 1 : 0.02;
         return preact.h('div', { style: { position: 'absolute', left: '50%', top: '42%', width: '520px', marginLeft: '-260px',
             padding: '22px 28px', borderRadius: '14px', background: 'rgba(14, 33, 48, 0.9)', color: '#ffffff', textAlign: 'center' } },
@@ -251,6 +260,20 @@ class JoinProgress extends StateComponent {
             preact.h('div', { style: { fontSize: '17px', color: '#9fd8f0', marginBottom: '14px' } }, joinText(join)),
             preact.h('div', { style: { height: '8px', borderRadius: '4px', background: 'rgba(255, 255, 255, 0.15)' } },
                 preact.h('div', { style: { height: '8px', borderRadius: '4px', background: '#00c6ff', width: Math.round(share * 100) + '%' } })));
+    }
+}
+
+// The lobby came with the start of the game (launch arguments), not from an invitation the
+// player clicked: ask before this game takes a park from that host.
+class JoinConfirm extends StateComponent {
+    render(props, state) {
+        const coop = state.coop || {};
+        const join = coop.join;
+        if (!join || join.phase !== 'confirm') return null;
+        return preact.h(Dialog, { modifiers: 'dialogApp', title: literal('Multiplayer'),
+            description: literal('Der Sitzung von ' + (join.host || 'einem Steam-Freund') + ' beitreten? Dein Spiel lädt dann den Park des Hosts.'),
+            buttons: [{ label: literal('Beitreten'), onSelect: () => request('confirm_join') },
+                { label: literal('Abbrechen'), onSelect: () => request('cancel_join'), inputName: 'UI_Cancel' }] });
     }
 }
 
@@ -274,7 +297,8 @@ class CoopLayer extends preact.Component {
             preact.h(Toasts, null),
             preact.h(JoinProgress, null),
             preact.h('div', { style: { pointerEvents: 'auto' } }, preact.h(Lobby, null)),
-            preact.h('div', { style: { pointerEvents: 'auto' } }, preact.h(JoinFailed, null)));
+            preact.h('div', { style: { pointerEvents: 'auto' } }, preact.h(JoinFailed, null)),
+            preact.h('div', { style: { pointerEvents: 'auto' } }, preact.h(JoinConfirm, null)));
     }
 }
 

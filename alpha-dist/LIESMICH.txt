@@ -1,4 +1,4 @@
-PC2Coop 1.6.0 - Planet Coaster 2 live zusammen bauen, ueber Steam
+PC2Coop 1.6.1 - Planet Coaster 2 live zusammen bauen, ueber Steam
 
 Installation (jeder Spieler, einmalig)
 1. ZIP in einen eigenen Ordner entpacken.
@@ -104,6 +104,29 @@ Noch NICHT synchronisiert (folgt):
 Gleichzeitiges Bearbeiten desselben Objekts: wer es zuerst aufnimmt, hat es. Kommen
 zwei Aenderungen trotzdem gleichzeitig an, entscheidet der Host; die spaetere wird
 zurueckgenommen und der Spieler bekommt einen Hinweis.
+
+Sicherheit und Datenschutz
+- Nur Steam-Freunde: die Sitzung ist nur fuer Steam-Freunde des Hosts sichtbar, und die
+  Mod tritt nur Sitzungen bei, deren Host in deiner Steam-Freundesliste steht.
+- Der Host entscheidet: wen du im Multiplayer-Fenster einlaedst, der kommt direkt hinein.
+  Jeder andere Freund, der beitreten will, erscheint dort unter "Moechte beitreten" und
+  bekommt den Park erst nach "Zulassen".
+- Startet das Spiel mit einer Sitzung im Gepaeck (Link oder Startparameter statt einer
+  angeklickten Einladung), fragt die Mod erst nach, bevor sie beitritt.
+- Aus dem Netz landen genau zwei Dateien auf deiner Platte: der Park des Hosts
+  (pc2coop-join.bin/.trn im Spielordner), nur vom Host der Sitzung, und sie werden nach
+  dem Laden wieder geloescht. Nichts anderes, was ein Mitspieler schickt, wird gespeichert
+  oder ausgefuehrt.
+- Kein eigener Server: die Verbindung laeuft ueber Steam. UPDATE.cmd spricht nur mit
+  GitHub (istmirRegal/pc2coop) und installiert nur, wenn die Pruefsumme stimmt.
+- Keine Administratorrechte; der Installer schreibt nur in Win64\ovldata des Spiels.
+- Die Log-Datei bleibt auf deinem PC. Sie enthaelt Steam-Namen und Steam-IDs der
+  Mitspieler - bedenke das, wenn du sie weitergibst.
+- Grenzen: Wer mitspielt, darf bauen und damit auch abreissen - lade nur Leute ein, denen
+  du deinen Park anvertraust. Der Park des Hosts wird vom Spiel geladen wie ein Park aus
+  dem Workshop. Updates sind so vertrauenswuerdig wie das GitHub-Konto des Herausgebers.
+- Alle Mitspieler brauchen dieselbe Mod- und dieselbe Spielversion; sonst lehnt der Host
+  den Beitritt ab und sagt, wer aktualisieren muss.
 
 Voraussetzungen
 - Windows x64, eigene Steam-Lizenz Planet Coaster 2. Alle Mitspieler sollten dieselbe

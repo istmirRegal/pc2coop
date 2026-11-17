@@ -579,6 +579,14 @@ end
 
 -- A run of remote upserts in one change list and one commit, the way the game itself
 -- places a blueprint. Later entries for the same object replace earlier ones.
+-- A resource name from the network must look like one before it is given to the game.
+local function resource(name)
+    if global.type(name) ~= "string" or #name > 96 or not global.string.match(name, "^[%w_%.%-]+$") then
+        global.error("bad-resource")
+    end
+    return name
+end
+
 local function applyUpserts(run)
     local w, api = apis(), global.api
     local hierarchy = w.editors:CreateUndoOperationsHierarchy()
@@ -587,7 +595,7 @@ local function applyUpserts(run)
     for i, f in global.ipairs(run) do
         revision[f[3]] = global.tonumber(f[5])
         if last[f[3]] == i then
-            local op = {gid = f[3], resource = f[6], x = number(f[7]), y = number(f[8]), z = number(f[9]),
+            local op = {gid = f[3], resource = resource(f[6]), x = number(f[7]), y = number(f[8]), z = number(f[9]),
                 qx = number(f[10]), qy = number(f[11]), qz = number(f[12]), qw = number(f[13]), scale = number(f[14] or 1)}
             local part = globalToLocal[op.gid]
             local token = api.entity.CreateRequestCompletionToken()
@@ -672,7 +680,7 @@ local function runOp(f)
     local kind, seq = f[1], global.tonumber(f[2])
     if kind == "U" then
         revision[f[3]] = global.tonumber(f[5])
-        applyUpsert({gid = f[3], resource = f[6], x = number(f[7]), y = number(f[8]), z = number(f[9]),
+        applyUpsert({gid = f[3], resource = resource(f[6]), x = number(f[7]), y = number(f[8]), z = number(f[9]),
             qx = number(f[10]), qy = number(f[11]), qz = number(f[12]), qw = number(f[13]), scale = number(f[14] or 1)})
     elseif kind == "D" then
         revision[f[3]] = nil

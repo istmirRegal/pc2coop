@@ -49,9 +49,24 @@ void pc2_diagnostic_event(const char* message) noexcept {
     append("\n", 1);
 }
 
+// The developer command channel (a file dropped next to the DLL) exists for automated
+// tests only. Players' installations do not have the marker file, so there it is off.
+static bool developer_mode() noexcept {
+    static int state = -1;
+    if (state < 0) {
+        wchar_t path[2048];
+        DWORD length = GetModuleFileNameW(module_handle, path, 2048);
+        wchar_t* slash = length && length < 2048 ? wcsrchr(path, L'\\') : nullptr;
+        state = slash && wcscpy_s(slash + 1, 2048 - (slash + 1 - path), L"pc2coop-dev.flag") == 0
+            && GetFileAttributesW(path) != INVALID_FILE_ATTRIBUTES ? 1 : 0;
+    }
+    return state == 1;
+}
+
 bool pc2_diagnostic_inbox(char* data, DWORD capacity, DWORD* size) noexcept {
     static FILETIME last_write{};
     static DWORD last_size = 0;
+    if (!developer_mode()) return false;
     wchar_t path[2048];
     DWORD length = GetModuleFileNameW(module_handle, path, 2048);
     if (!length || length >= 2048) return false;
