@@ -68,6 +68,24 @@ function Install-IntoGame([string]$Folder, [string]$Package, [string]$ExpectedEx
         foreach ($entry in @($journal.files)) { $oldFiles[$entry.path] = $entry }
     }
     $manifest = Get-Content -LiteralPath (Join-Path $Package 'payload-manifest.json') -Raw | ConvertFrom-Json
+    # ACSE is the mod loader that many mods share. A loader that is already there (from
+    # Nexus, ForgeUtils or another mod, or the ACSEDebug build) is used as it is and never
+    # changed; ours is only installed where there is none.
+    $acseOwned = @($oldFiles.Keys | Where-Object { $_ -like 'ACSE/*' }).Count -gt 0
+    $acseOther = $false
+    if (Test-Path -LiteralPath (Join-Path $ovldata 'ACSEDebug') -PathType Container) {
+        $acseOther = $true
+        Write-Host 'ACSEDebug ist installiert und wird als Mod-Loader verwendet (nicht veraendert).'
+    } elseif (-not $acseOwned -and (Test-Path -LiteralPath (Join-Path $ovldata 'ACSE\Main.ovl') -PathType Leaf)) {
+        $acseOther = $true
+        $versionFile = Join-Path $ovldata 'ACSE\Version.txt'
+        $found = if (Test-Path -LiteralPath $versionFile) { ((Get-Content -LiteralPath $versionFile -Raw) -split '\s')[0] } else { 'unbekannt' }
+        Write-Host "Vorhandenes ACSE ($found) wird verwendet und nicht veraendert."
+        $number = 0.0
+        if (-not [double]::TryParse($found, [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$number) -or $number -lt 0.72) {
+            Write-Host 'Hinweis: PC2Coop ist mit ACSE 0.729 getestet. Startet der Multiplayer nicht, ACSE aktualisieren.' -ForegroundColor Yellow
+        }
+    }
     $plan = @()
     $newFiles = @()
     foreach ($entry in @($manifest.files)) {
@@ -76,6 +94,14 @@ function Install-IntoGame([string]$Folder, [string]$Package, [string]$ExpectedEx
         if ((File-Hash $source) -ne $entry.sha256) { throw "Paket beschaedigt: $($entry.path). ZIP erneut entpacken." }
         $exists = Test-Path -LiteralPath $target -PathType Leaf
         $old = $oldFiles[$entry.path]
+        if ($entry.path -like 'ACSE/*') {
+            if ($acseOther) { continue }
+            # Ours was replaced since (e.g. by a newer ACSE): that one stays, and is no longer ours.
+            if ($old -and $exists -and (File-Hash $target) -ne $old.sha256) {
+                Write-Host "ACSE wurde inzwischen ersetzt und bleibt so: $($entry.path)"
+                continue
+            }
+        }
         if ($exists) {
             $actual = File-Hash $target
             if ($old -and $actual -ne $old.sha256) { throw "Lokal veraenderte Datei wird nicht ueberschrieben: $($entry.path)" }
