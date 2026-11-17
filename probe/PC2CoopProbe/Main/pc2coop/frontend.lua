@@ -19,6 +19,7 @@ function Frontend.Tick(menu)
         session.Init(write("[PC2CoopSession] "), diagnostic, idleSync, menu.parkLoadSaveManager)
         ui.Init(write("[PC2CoopUI] "), session, idleSync, nil)
         ui.SetCanHost(true)
+        ui.SetFrontend(menu)
         session.OnMenuKey = function() ui.Toggle() end
         state = {session = session, ui = ui, menu = menu, diagnostic = diagnostic}
         diagnostic.Write("[PC2CoopSession] frontend-init")
@@ -27,6 +28,7 @@ function Frontend.Tick(menu)
         local diagnostic = state.diagnostic
         state.session.Init(function(message) diagnostic.Write("[PC2CoopSession] " .. message) end, diagnostic,
             idleSync, menu.parkLoadSaveManager)
+        state.ui.SetFrontend(menu)
     end
     local ok, failure = global.pcall(state.session.Tick)
     if not ok then state.diagnostic.Write("[PC2CoopSession] frontend-tick-error|" .. global.tostring(failure)) end
@@ -41,6 +43,7 @@ function Frontend.Shutdown()
     if not state then return end
     global.pcall(state.ui.Shutdown)
     global.pcall(state.ui.SetCanHost, true)
+    global.pcall(state.ui.SetFrontend, nil)
     state = nil
 end
 

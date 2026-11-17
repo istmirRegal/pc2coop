@@ -8,8 +8,8 @@ selben Park, über Steam-Einladungen, ohne Portfreigabe oder Zusatzprogramm.
 1. Neueste ZIP unter [Releases](../../releases/latest) herunterladen und entpacken.
 2. Planet Coaster 2 beenden, `INSTALL.cmd` doppelklicken.
 3. Spiel starten: Hauptmenü → **Multiplayer** → **Lobby erstellen**, Steam-Freunde einladen.
-   In der Lobby wählt der Host, wo ihr spielt (eigener Park, Franchise, neuer Sandbox-Park);
-   sobald sein Park offen ist, lädt er bei allen automatisch. Im Park geht es auch direkt:
+   In der Lobby wählt der Host, wo ihr spielt (gespeicherter Park, neuer Sandbox-Park,
+   Franchise) – alle sehen die Auswahl; nach „Park öffnen“ lädt er bei allen automatisch. Im Park geht es auch direkt:
    Pausemenü → **Multiplayer** (F7) → **Diesen Park hosten**.
 4. Neue Version: Spiel beenden, `UPDATE.cmd` doppelklicken.
 

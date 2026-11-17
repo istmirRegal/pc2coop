@@ -1,4 +1,4 @@
-PC2Coop 1.8.0 - Planet Coaster 2 live zusammen bauen, ueber Steam
+PC2Coop 1.9.0 - Planet Coaster 2 live zusammen bauen, ueber Steam
 
 Installation (jeder Spieler, einmalig)
 1. ZIP in einen eigenen Ordner entpacken.
@@ -20,9 +20,14 @@ Spielen (Lobby)
    unten fuer das Steam-Overlay). Freunde nehmen die Einladung in Steam an - oder sehen
    in ihrer Freundesliste "hat eine offene Lobby" und klicken "Beitreten".
 3. In der Lobby seht ihr alle Spieler mit Profilbild, wer noch laedt, und ob jemand
-   DLCs oder Mods hat, die dem Host fehlen oder umgekehrt. Es gibt einen Chat.
-4. Host: "Wo spielen wir?" -> Eigener Park, Franchise oder neuer Sandbox-Park. Sobald
-   der Host den Park offen hat, wird er bei allen automatisch uebertragen und geladen.
+   DLCs oder Mods hat, die dem Host fehlen oder umgekehrt. Rechts ist der Chat: ins Feld
+   klicken, schreiben, Enter.
+4. Host: "Wo spielen wir?" - direkt in der Lobby waehlen:
+   - "Gespeichert": deine gespeicherten Sandbox-Parks,
+   - "Neu": neuer Sandbox-Park (Klima waehlen, Kreativ oder mit Budget),
+   - "Franchise": oeffnet das Franchise-Menue des Spiels.
+   Alle sehen sofort, was du ausgewaehlt hast. "Park oeffnen" startet: sobald dein Park
+   offen ist, wird er bei allen automatisch uebertragen und geladen.
    Karriere und Herausforderungen folgen spaeter.
 5. Waehrend der Host im Menue einen Park sucht (oder in den Einstellungen ist), zeigt
    eine kleine Lobby-Karte oben rechts den Stand - mit "Lobby oeffnen" und "Verlassen".
@@ -32,8 +37,8 @@ Spielen (Lobby)
    "Diesen Park hosten".
 7. Gemeinsam bauen. Oben rechts siehst du, wer im Park ist und was er tut; ueber der
    Stelle, auf die ein Mitspieler schaut, schwebt sein Namensschild. Beitritte,
-   Austritte und Chat erscheinen unten links. "Nachricht" schreibt in den Chat,
-   "Hinspringen" fliegt zur Kamera eines Mitspielers.
+   Austritte und Chat erscheinen unten links. Einen Mitspieler oben rechts anklicken:
+   deine Kamera fliegt zu ihm und folgt ihm (nochmal klicken beendet das).
 
 Was ihr braucht: Steam-Freundschaft (die Sitzung ist nur fuer Steam-Freunde des Hosts
 sichtbar). Ein Frontier-Konto oder das Franchise braucht ihr dafuer nicht.
@@ -56,10 +61,11 @@ Die anderen sehen
 - Gesperrt: ein Objekt, das ein Mitspieler gerade bearbeitet, ist eingefaerbt. Nimmst du
   es trotzdem auf, wird dein Werkzeug zurueckgesetzt und du siehst, wer es bearbeitet.
   Legt er es ab, ist es wieder frei.
-- Ping: F6 setzt an der Stelle unter dem Mauszeiger eine Markierung ("hier!") fuer alle,
-  sichtbar etwa 8 Sekunden. "Hinspringen" im Multiplayer-Fenster fliegt dann zu diesem Ping.
-- Folgen: im Multiplayer-Fenster bei einem Mitspieler "Folgen" - deine Kamera zeigt, was er
-  sieht. Bewegst du die Kamera selbst, endet das Folgen.
+- Ping: kurz mit der mittleren Maustaste klicken setzt an der Stelle unter dem Mauszeiger
+  eine Markierung ("hier!") fuer alle, sichtbar etwa 8 Sekunden. Gedrueckt halten dreht wie
+  gewohnt die Kamera und pingt nicht. "Hinspringen" im Multiplayer-Fenster fliegt zum Ping.
+- Folgen: Mitspieler oben rechts anklicken (oder "Folgen" im Multiplayer-Fenster) - deine
+  Kamera zeigt, was er sieht. Bewegst du die Kamera selbst, endet das Folgen.
 - Urheber: Waehlst du ein Objekt aus (Info-Fenster offen) oder nimmst es in die Hand,
   steht daran, wer es erstellt und wer es zuletzt bearbeitet hat. Der Host merkt sich das
   pro Park (Datei pc2coop-authors-<Park>.txt im Spielordner), auch ueber Speichern und Laden.

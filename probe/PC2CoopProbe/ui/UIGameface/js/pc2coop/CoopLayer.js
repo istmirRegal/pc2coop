@@ -13,7 +13,7 @@ import { translate } from '/js/common/core/Localisation.js';
 import * as preact from '/js/common/lib/preact.js';
 import { Button } from '/js/project/components/Button.js';
 import { Dialog } from '/js/project/components/Dialog.js';
-import { InputfieldPrompt } from '/js/project/components/InputfieldPrompt.js';
+import { InputField } from '/js/project/components/InputField.js';
 
 const CONTEXT = ['pc2coop'];
 let requestCounter = 0;
@@ -300,8 +300,13 @@ function statusOf(coop) {
     }
     if (coop.desync) return { text: 'Nicht mehr synchron: ' + coop.desync + (coop.role === 'client' ? ' - "Neu synchronisieren" lädt den Park des Hosts erneut.' : ''), tone: 'warn' };
     if (coop.stage === 'lobby') {
-        return { text: coop.role === 'host' ? 'Lobby offen. Wähle, wo ihr spielt - alle laden den Park dann automatisch.'
-            : (host ? host.name : 'Der Host') + ' wählt gerade, wo ihr spielt ...', tone: 'wait' };
+        const choice = coop.choice;
+        const hostName = host ? host.name : 'Der Host';
+        if (choice && choice.starting) return { text: hostName + ' öffnet ' + choice.title + ' - gleich lädt er bei allen.', tone: 'busy' };
+        if (coop.role === 'host') {
+            return { text: choice ? 'Ausgewählt: ' + choice.title + '. "Park öffnen" startet für alle.' : 'Wähle, wo ihr spielt. Alle sehen deine Auswahl.', tone: 'wait' };
+        }
+        return { text: choice ? hostName + ' hat gewählt: ' + choice.title + ' (' + choice.detail + ').' : hostName + ' wählt gerade, wo ihr spielt ...', tone: 'wait' };
     }
     const loading = players.filter((p) => /^holt/.test(p.act || '') || p.act === 'laedt' || p.act === 'lobby');
     if (loading.length) return { text: loading.map((p) => p.name).join(', ') + (loading.length > 1 ? ' laden' : ' lädt') + ' den Park ...', tone: 'busy' };
@@ -326,12 +331,15 @@ class PlayerBar extends StateComponent {
         const join = coop.join || {};
         return h('div', { style: { position: 'absolute', top: '84px', right: '24px', display: 'flex', flexDirection: 'column',
             alignItems: 'flex-end' } },
-            list(coop.players).map((p) => h('div', { key: p.sid, style: { display: 'flex', alignItems: 'center', margin: '3px 0',
-                padding: '4px 12px 4px 4px', borderRadius: '20px', background: 'rgba(14, 33, 48, 0.72)' } },
+            list(coop.players).map((p) => h('div', { key: p.sid, onClick: p.me ? undefined : () => request('follow', p.sid),
+                style: { display: 'flex', alignItems: 'center', margin: '3px 0', pointerEvents: p.me ? 'none' : 'auto',
+                padding: '4px 12px 4px 4px', borderRadius: '20px', background: 'rgba(14, 33, 48, 0.72)',
+                border: '2px solid ' + (coop.following === p.sid ? '#fcc419' : 'transparent') } },
                 h(Avatar, { player: p, size: 28, pic: avatars[p.sid] }),
                 h('div', { style: { color: '#ffffff', fontSize: '16px', marginLeft: '9px' } }, p.name + (p.me ? ' (du)' : '')),
                 p.host && h(Icon, { src: 'img/icons/crown.svg', style: { width: '18px', height: '18px', marginLeft: '7px' } }),
-                h('div', { style: { color: '#9fd8f0', fontSize: '13px', marginLeft: '9px' } }, playerActivity(coop, p)))),
+                h('div', { style: { color: coop.following === p.sid ? '#fcc419' : '#9fd8f0', fontSize: '13px', marginLeft: '9px' } },
+                    coop.following === p.sid ? 'du folgst - klicken beendet' : playerActivity(coop, p)))),
             join.phase === 'hostlobby' && h('div', { style: { marginTop: '6px', padding: '8px 12px', maxWidth: '360px', borderRadius: '10px',
                 background: 'rgba(14, 33, 48, 0.85)', color: '#fcc419', fontSize: '14px' } },
                 'Host ist in der Lobby - Hauptmenü öffnen, um dabei zu bleiben.'));
@@ -400,18 +408,16 @@ const buttons = (items) => h('div', { style: { display: 'flex', flexWrap: 'wrap'
     items.filter(Boolean).map((b, i) => h('div', { key: 'b' + i, style: { margin: '2px 0 2px 6px', maxWidth: '100%' } },
         h(Button, { label: literal(b.label), onSelect: b.onSelect, disabled: b.disabled, inputName: b.inputName }))));
 
-// The lobby: the same panel in the main menu and in a park.
+// The lobby: the same panel in the main menu and in a park. Three columns: players, where
+// to play (or the park), chat and friends. Fixed sizes: Gameface does not shrink flex boxes.
+const BIOMES = [['Temperate', 'Gemäßigt'], ['Mediterranean', 'Mediterran'], ['Taiga', 'Taiga'], ['Tropical', 'Tropisch']];
+const box = (height, children, extra) => h('div', { style: Object.assign({ height: height + 'px', overflowY: 'auto' }, extra || {}) }, children);
+
 class Lobby extends StateComponent {
-    state = { chatPrompt: false };
+    state = { draft: '', tab: 'save', creative: true };
     render(props, state) {
         const coop = state.coop || {};
         if (!coop.open) return null;
-        if (state.chatPrompt) {
-            return h(InputfieldPrompt, { title: literal('Chat'), description: literal('Nachricht an alle in der Lobby'),
-                commitButtonLabel: literal('Senden'), defaultInputText: literal(''), maxInput: 200,
-                onCancel: () => this.setState({ chatPrompt: false }),
-                onCloseAndCommit: (text) => { this.setState({ chatPrompt: false }); if (text) request('chat', text); } });
-        }
         const status = statusOf(coop);
         const host = hostOf(coop);
         const title = !coop.role ? 'Multiplayer'
@@ -423,36 +429,31 @@ class Lobby extends StateComponent {
             footer.push({ label: coop.context === 'menu' ? 'Lobby erstellen' : 'Diesen Park hosten', onSelect: () => request('host'), disabled: !coop.canHost });
         } else {
             if (coop.desync && coop.role === 'client') footer.push({ label: 'Neu synchronisieren', onSelect: () => request('resync') });
-            footer.push({ label: 'Einladen', onSelect: () => request('invite_overlay') });
-            footer.push({ label: 'Nachricht', onSelect: () => this.setState({ chatPrompt: true }) });
-            footer.push({ label: coop.role === 'host' ? 'Beenden' : 'Verlassen', onSelect: () => request('leave') });
+            footer.push({ label: 'Steam-Overlay', onSelect: () => request('invite_overlay') });
+            footer.push({ label: coop.role === 'host' ? 'Lobby beenden' : 'Verlassen', onSelect: () => request('leave') });
         }
         footer.push({ label: 'Schließen', onSelect: () => request('close'), inputName: 'UI_Cancel' });
-        // A dimmed backdrop keeps the menu behind it from being hovered or clicked.
+        const column = (width, children, last) => h('div', { style: { width: width + 'px', height: '636px', padding: '0 18px',
+            borderRight: last ? 'none' : '1px solid rgba(0, 120, 170, 0.18)' } }, children);
         return h('div', { style: { position: 'absolute', left: 0, top: 0, width: '100vw', height: '100vh', background: 'rgba(4, 16, 26, 0.5)' } },
-            h('div', { style: { position: 'absolute', left: '50%', top: '50%', width: '1180px', height: '780px', marginLeft: '-590px',
-            marginTop: '-390px', display: 'flex', flexDirection: 'column', borderRadius: '14px', overflow: 'hidden',
-            background: '#f4f8fa', color: INK, fontSize: '20px', boxShadow: '0 12px 40px rgba(0, 0, 0, 0.45)' } },
-            h('div', { style: { display: 'flex', alignItems: 'center', height: '72px', flexShrink: 0, padding: '0 24px', background: '#0e2130', color: '#ffffff' } },
-                h(Icon, { src: 'img/icons/collaborate.svg', style: { width: '28px', height: '28px', marginRight: '12px' } }),
-                h('div', { style: { fontSize: '30px', flexGrow: 1 } }, title),
-                coop.role && h('div', { style: { color: '#9fd8f0', fontSize: '18px' } },
-                    list(coop.players).length + ' / ' + SLOTS + ' Spieler' + (coop.stage === 'park' && coop.parkTitle ? ' · ' + coop.parkTitle : ''))),
-            h('div', { style: { display: 'flex', height: '574px', flexShrink: 0, overflow: 'hidden' } },
-                h('div', { style: { width: '440px', height: '574px', padding: '4px 20px 16px 24px', overflowY: 'auto', borderRight: '1px solid rgba(0, 120, 170, 0.18)' } },
-                    this.renderPlayers(coop)),
-                h('div', { style: { width: '740px', height: '574px', padding: '4px 24px 16px 20px', overflowY: 'auto' } },
-                    this.renderPlace(coop),
-                    this.renderChat(coop),
-                    this.renderContent(coop),
-                    this.renderFriends(coop))),
-            h('div', { style: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', height: '134px', flexShrink: 0, padding: '8px 24px', background: '#e3edf2',
-                borderTop: '1px solid rgba(0, 120, 170, 0.2)' } },
-                h('div', { style: { display: 'flex', alignItems: 'center', flexGrow: 1, flexBasis: '420px', minWidth: 0, marginRight: '12px' } },
+            h('div', { style: { position: 'absolute', left: '50%', top: '50%', width: '1320px', height: '780px', marginLeft: '-660px',
+                marginTop: '-390px', borderRadius: '14px', overflow: 'hidden', background: '#f4f8fa', color: INK, fontSize: '19px',
+                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.45)' } },
+                h('div', { style: { display: 'flex', alignItems: 'center', height: '64px', padding: '0 24px', background: '#0e2130', color: '#ffffff' } },
+                    h(Icon, { src: 'img/icons/collaborate.svg', style: { width: '28px', height: '28px', marginRight: '12px' } }),
+                    h('div', { style: { fontSize: '28px', flexGrow: 1 } }, title),
+                    coop.role && h('div', { style: { color: '#9fd8f0', fontSize: '18px' } },
+                        list(coop.players).length + ' / ' + SLOTS + ' Spieler' + (coop.stage === 'park' && coop.parkTitle ? ' · ' + coop.parkTitle : ''))),
+                h('div', { style: { display: 'flex', height: '636px' } },
+                    column(360, this.renderPlayers(coop)),
+                    column(540, [this.renderPlace(coop, state), this.renderContent(coop)]),
+                    column(420, [this.renderChat(coop, state), this.renderFriends(coop)], true)),
+                h('div', { style: { display: 'flex', alignItems: 'center', height: '80px', padding: '0 24px', background: '#e3edf2',
+                    borderTop: '1px solid rgba(0, 120, 170, 0.2)' } },
                     h('div', { style: { width: '12px', height: '12px', borderRadius: '6px', background: TONE[status.tone] || TONE.idle,
                         marginRight: '10px', flexShrink: 0 } }),
-                    h('div', null, status.text)),
-                h('div', { style: { flexBasis: '520px', flexGrow: 1, minWidth: 0 } }, buttons(footer)))));
+                    h('div', { style: { width: '760px', fontSize: '19px' } }, status.text),
+                    h('div', { style: { width: '500px' } }, buttons(footer)))));
     }
 
     renderPlayers(coop) {
@@ -462,72 +463,131 @@ class Lobby extends StateComponent {
         players.forEach((p) => {
             const content = contentLine(coop, p);
             const canLook = coop.stage === 'park' && coop.context === 'park' && !p.me && p.x !== undefined && p.act !== 'lobby';
-            slots.push(h('div', { key: 'p' + p.sid, style: { display: 'flex', alignItems: 'center', padding: '8px 10px', margin: '6px 0',
+            slots.push(h('div', { key: 'p' + p.sid, style: { display: 'flex', alignItems: 'center', padding: '7px 10px', margin: '5px 0',
                 borderRadius: '10px', background: '#ffffff', border: '1px solid rgba(0, 120, 170, 0.18)' } },
-                h(Avatar, { player: p, size: 44, pic: avatars[p.sid] }),
+                h(Avatar, { player: p, size: 40, pic: avatars[p.sid] }),
                 h('div', { style: { flexGrow: 1, minWidth: 0, marginLeft: '12px' } },
-                    h('div', { style: { display: 'flex', alignItems: 'center', fontSize: '22px', fontWeight: 'bold' } },
+                    h('div', { style: { display: 'flex', alignItems: 'center', fontSize: '20px', fontWeight: 'bold' } },
                         p.name + (p.me ? ' (du)' : ''),
                         p.host && h(Icon, { src: 'img/icons/crown.svg', style: { width: '16px', height: '16px', marginLeft: '6px' } })),
-                    h('div', { style: { color: MUTED, fontSize: '17px' } }, playerActivity(coop, p)),
-                    content && h('div', { style: { color: content.warn ? '#c2410c' : '#237a37', fontSize: '16px' } }, content.text),
+                    h('div', { style: { color: MUTED, fontSize: '16px' } }, playerActivity(coop, p)),
+                    content && h('div', { style: { color: content.warn ? '#c2410c' : '#237a37', fontSize: '15px' } }, content.text),
                     canLook && buttons([
                         { label: 'Hinspringen', onSelect: () => request('jump', p.sid) },
                         { label: coop.following === p.sid ? 'Nicht folgen' : 'Folgen', onSelect: () => request('follow', p.sid) }]))));
         });
         if (coop.role) {
             for (let i = players.length; i < SLOTS; i++) {
-                slots.push(h('div', { key: 'e' + i, style: { padding: '14px 12px', margin: '6px 0', borderRadius: '10px', color: MUTED,
-                    background: '#e8f0f4', fontSize: '17px' } }, 'Freier Platz'));
+                slots.push(h('div', { key: 'e' + i, style: { padding: '12px', margin: '5px 0', borderRadius: '10px', color: MUTED,
+                    background: '#e8f0f4', fontSize: '16px' } }, 'Freier Platz'));
             }
         }
-        return [
+        return box(636, [
             requests.length > 0 && section('Möchte beitreten'),
             ...requests.map((r) => row([h('div', null, r.name), buttons([
                 { label: 'Zulassen', onSelect: () => request('approve', r.sid) },
                 { label: 'Ablehnen', onSelect: () => request('deny', r.sid) }])], 'r' + r.sid)),
             section('Spieler'),
             !coop.role && h('div', { style: { color: MUTED, padding: '6px 0' } },
-                coop.context === 'menu' ? 'Noch keine Lobby. Erstelle eine (unten) oder tritt rechts der Lobby eines Freundes bei.'
+                coop.context === 'menu' ? 'Noch keine Lobby. "Lobby erstellen" unten - oder rechts der Lobby eines Freundes beitreten.'
                     : 'Noch keine Sitzung. "Diesen Park hosten" teilt ihn mit deinen Freunden.'),
-            ...slots,
-        ];
+            ...slots]);
     }
 
-    renderPlace(coop) {
-        if (!coop.role) return null;
-        if (coop.stage === 'lobby' && coop.role === 'host' && coop.context === 'menu') {
-            return [section('Wo spielen wir?'),
-                h('div', { style: { display: 'flex', flexWrap: 'wrap' } }, MODES.map((mode) => h('div', { key: mode.key,
-                    onClick: () => openScreen(mode),
-                    style: { width: '220px', margin: '0 10px 10px 0', padding: '12px 14px', borderRadius: '10px',
-                        background: mode.later ? '#e9eef1' : '#ffffff', color: mode.later ? '#9fb3bf' : INK,
-                        border: '1px solid ' + (mode.later ? 'rgba(0, 0, 0, 0.06)' : 'rgba(0, 160, 216, 0.5)') } },
-                    h('div', { style: { fontSize: '20px' } }, mode.title),
-                    h('div', { style: { fontSize: '16px', color: mode.later ? '#b5c4cc' : MUTED } }, mode.text))))];
+    // Host in the main menu: pick a park; everyone sees the pick before it is opened.
+    renderChooser(coop, state) {
+        const tab = state.tab;
+        const tabButton = (key, label, later) => h('div', { key, onClick: later ? undefined : () => this.setState({ tab: key }),
+            style: { padding: '6px 14px', marginRight: '6px', borderRadius: '16px', fontSize: '17px',
+                background: tab === key ? BLUE : (later ? '#e9eef1' : '#ffffff'), color: tab === key ? '#ffffff' : (later ? '#9fb3bf' : INK),
+                border: '1px solid ' + (later ? 'rgba(0, 0, 0, 0.06)' : 'rgba(0, 121, 173, 0.45)') } }, label);
+        const picked = (key) => coop.chosen === key;
+        const pickStyle = (on) => ({ padding: '8px 12px', margin: '4px 0', borderRadius: '8px', background: on ? '#d6eefa' : '#ffffff',
+            border: '1px solid ' + (on ? BLUE : 'rgba(0, 120, 170, 0.18)') });
+        let content;
+        if (tab === 'save') {
+            const parks = list(coop.parks);
+            content = box(300, parks.length === 0 ? h('div', { style: { color: MUTED, padding: '8px 0' } }, 'Keine gespeicherten Sandbox-Parks gefunden.')
+                : parks.map((park) => h('div', { key: 's' + park.id, onClick: () => request('choose', 'save|' + park.id), style: pickStyle(picked('save:' + park.id)) },
+                    h('div', { style: { fontSize: '19px', fontWeight: 'bold' } }, park.name),
+                    h('div', { style: { color: MUTED, fontSize: '15px' } }, (BIOMES.find((b) => b[0] === park.world) || [0, park.world || 'Sandbox'])[1]))));
+        } else if (tab === 'new') {
+            const pickNew = (biome, creative) => request('choose', 'new|' + biome + '|' + (creative ? '1' : '0'));
+            const current = (coop.chosen || '').indexOf('new:') === 0 ? coop.chosen.substring(4) : null;
+            content = box(300, [
+                h('div', { key: 'b', style: { display: 'flex', flexWrap: 'wrap' } }, BIOMES.map(([id, label]) => h('div', { key: id,
+                    onClick: () => pickNew(id, state.creative), style: Object.assign(pickStyle(current === id), { width: '222px', margin: '4px 8px 4px 0' }) },
+                    h('div', { style: { fontSize: '19px', fontWeight: 'bold' } }, label)))),
+                h('div', { key: 'm', style: { display: 'flex', marginTop: '10px' } },
+                    [[true, 'Kreativ (Geld unbegrenzt)'], [false, 'Mit Budget']].map(([creative, label]) => h('div', { key: label,
+                        onClick: () => { this.setState({ creative }); if (current) pickNew(current, creative); },
+                        style: Object.assign(pickStyle(state.creative === creative), { marginRight: '8px', fontSize: '17px' }) }, label)))]);
+        } else {
+            content = box(300, [
+                h('div', { key: 't', style: { color: MUTED, padding: '8px 0' } },
+                    'Franchise-Parks wählst du im Franchise-Menü des Spiels. Sobald der Park offen ist, laden ihn alle in der Lobby.'),
+                h('div', { key: 'b' }, buttons([{ label: 'Franchise-Menü öffnen', onSelect: () => { request('choose', 'franchise'); openScreen(MODES[1]); } }]))]);
         }
+        const choice = coop.choice;
+        const canStart = choice && (choice.kind === 'save' || choice.kind === 'new') && !choice.starting;
+        return [section('Wo spielen wir?', h('span', { style: { textTransform: 'none', letterSpacing: 0 } },
+                tab === 'save' ? h('span', { onClick: () => request('parks'), style: { color: BLUE, fontSize: '15px' } }, 'aktualisieren') : null)),
+            h('div', { key: 'tabs', style: { display: 'flex', marginBottom: '8px' } },
+                tabButton('save', 'Gespeichert'), tabButton('new', 'Neu'), tabButton('franchise', 'Franchise'),
+                tabButton('career', 'Karriere · später', true)),
+            content,
+            h('div', { key: 'sel', style: { display: 'flex', alignItems: 'center', height: '76px', marginTop: '8px', padding: '0 12px',
+                borderRadius: '10px', background: choice ? '#e1f3fb' : '#eef3f6' } },
+                h('div', { style: { width: '300px' } },
+                    h('div', { style: { color: MUTED, fontSize: '15px' } }, choice ? 'Ausgewählt - sehen alle' : 'Noch nichts ausgewählt'),
+                    choice && h('div', { style: { fontSize: '19px', fontWeight: 'bold' } }, choice.title),
+                    choice && h('div', { style: { color: MUTED, fontSize: '15px' } }, choice.detail)),
+                h('div', { style: { width: '190px' } }, canStart ? buttons([{ label: 'Park öffnen', onSelect: () => request('start') }]) : null))];
+    }
+
+    renderPlace(coop, state) {
+        if (!coop.role) return box(470, null);
         if (coop.stage === 'lobby') {
-            return [section('Wo spielen wir?'), h('div', { style: { color: MUTED } },
-                coop.role === 'host' ? 'Geh ins Hauptmenü, um einen Park zu wählen.' : 'Der Host wählt. Sobald der Park offen ist, lädt er bei dir automatisch.')];
+            if (coop.canChoose) return box(470, this.renderChooser(coop, state), { overflowY: 'hidden' });
+            const choice = coop.choice;
+            const host = hostOf(coop);
+            return box(470, [section('Wo spielen wir?'),
+                h('div', { key: 'c', style: { padding: '14px', borderRadius: '10px', background: choice ? '#e1f3fb' : '#eef3f6' } },
+                    choice ? [h('div', { key: 'l', style: { color: MUTED, fontSize: '15px' } }, (host ? host.name : 'Der Host') + ' hat gewählt'),
+                        h('div', { key: 't', style: { fontSize: '22px', fontWeight: 'bold' } }, choice.title),
+                        h('div', { key: 'd', style: { color: MUTED } }, choice.detail),
+                        h('div', { key: 's', style: { marginTop: '8px' } }, choice.starting ? 'Wird geöffnet - der Park lädt gleich bei dir.' : 'Wartet auf den Start durch den Host.')]
+                        : h('div', { style: { color: MUTED } }, coop.role === 'host' ? 'Geh ins Hauptmenü, um einen Park zu wählen.'
+                            : 'Der Host wählt noch. Sobald der Park offen ist, lädt er bei dir automatisch.'))]);
         }
         const out = [section('Park des Hosts', coop.parkTitle ? h('span', { style: { color: MUTED, textTransform: 'none', letterSpacing: 0 } }, coop.parkTitle) : null)];
-        if (coop.park) out.push(h('div', null, (coop.park.guests || 0).toLocaleString('de-DE') + ' Besucher · ' + money(coop.park)));
+        if (coop.park) out.push(h('div', { key: 'n' }, (coop.park.guests || 0).toLocaleString('de-DE') + ' Besucher · ' + money(coop.park)));
         list(coop.stats).forEach((s) => out.push(h('div', { key: 's' + s.name, style: { padding: '2px 0', color: MUTED } },
             s.name + ': ' + s.created + ' platziert, ' + s.edited + ' bearbeitet, ' + s.deleted + ' gelöscht')));
         if (list(coop.log).length) {
             out.push(section('Verlauf'));
-            list(coop.log).slice(-5).forEach((line, i) => out.push(h('div', { key: 'l' + i, style: { padding: '2px 0', color: '#4a6b7d' } }, line)));
+            list(coop.log).slice(-7).forEach((line, i) => out.push(h('div', { key: 'l' + i, style: { padding: '2px 0', color: '#4a6b7d' } }, line)));
         }
-        return out;
+        return box(470, out);
     }
 
-    renderChat(coop) {
+    renderChat(coop, state) {
         if (!coop.role) return null;
-        const chat = list(coop.chat).slice(-6);
-        return [section('Chat'),
-            chat.length === 0 && h('div', { style: { color: MUTED } }, 'Noch keine Nachrichten. "Nachricht" unten schreibt allen.'),
-            ...chat.map((c, i) => h('div', { key: 'c' + i, style: { padding: '2px 0' } },
-                h('span', { style: { color: '#' + (c.color || '20435a') } }, c.name + ': '), c.text))];
+        const chat = list(coop.chat).slice(-30);
+        return h('div', { key: 'chat', style: { height: '330px' } },
+            section('Chat'),
+            h('div', { style: { height: '214px', overflowY: 'auto', padding: '6px 10px', borderRadius: '8px', background: '#ffffff',
+                border: '1px solid rgba(0, 120, 170, 0.18)' } },
+                chat.length === 0 ? h('div', { style: { color: MUTED, fontSize: '16px' } }, 'Noch keine Nachrichten.')
+                    : chat.map((c, i) => h('div', { key: 'c' + i, style: { padding: '2px 0', fontSize: '17px' } },
+                        h('span', { style: { color: '#' + (c.color || '20435a'), fontWeight: 'bold' } }, c.name + ': '), c.text))),
+            h('div', { style: { marginTop: '8px' } },
+                h(InputField, { text: state.draft, promptText: literal('Nachricht an alle ... (Enter sendet)'), maxInputLength: 200,
+                    beginEditOnSelect: true, onChange: (e) => this.setState({ draft: (e && e.text) || '' }), onCommit: (e) => {
+                        const text = String((e && e.text) || '').trim();
+                        this.setState({ draft: '' });
+                        if (text) request('chat', text);
+                    }, onCancel: () => this.setState({ draft: '' }) })));
     }
 
     renderContent(coop) {
@@ -535,36 +595,34 @@ class Lobby extends StateComponent {
         if (!coop.role || players.length < 2) return null;
         const known = players.filter((p) => p.dlc !== undefined);
         const uneven = dlcPacks().filter((pack) => known.some((p) => owns(p.dlc, pack.id)) && known.some((p) => !owns(p.dlc, pack.id)));
-        const out = [section('Inhalte')];
-        if (known.length < players.length) out.push(h('div', { style: { color: MUTED } }, 'DLCs der Mitspieler werden geprüft ...'));
-        else if (uneven.length === 0) out.push(h('div', { style: { color: '#237a37' } }, 'Alle haben dieselben DLCs.'));
-        else {
-            out.push(h('div', null, 'Nicht alle haben: ' + uneven.map(packName).join(', ')));
-            out.push(h('div', { style: { color: MUTED, fontSize: '17px' } }, coop.guard
-                ? 'Objekte daraus werden nicht gebaut (gemeinsamer Nenner).'
-                : 'Objekte daraus werden trotzdem gebaut - bei wem das DLC fehlt, fehlen sie evtl.'));
-        }
-        if (coop.role === 'host') {
-            out.push(buttons([{ label: coop.guard ? 'Alle Inhalte erlauben' : 'Nur gemeinsame Inhalte', onSelect: () => request('guard', coop.guard ? '0' : '1') }]));
-        }
-        return out;
+        const text = known.length < players.length ? 'DLCs der Mitspieler werden geprüft ...'
+            : uneven.length === 0 ? 'Alle haben dieselben DLCs.'
+            : 'Nicht alle haben: ' + uneven.map(packName).join(', ') + (coop.guard ? ' - daraus wird nichts gebaut.' : ' - wird trotzdem gebaut.');
+        return h('div', { key: 'content', style: { height: '130px' } },
+            section('Inhalte'),
+            h('div', { style: { color: uneven.length ? '#c2410c' : '#237a37', fontSize: '17px' } }, text),
+            coop.role === 'host' && uneven.length > 0 && buttons([{ label: coop.guard ? 'Alle Inhalte erlauben' : 'Nur gemeinsame Inhalte',
+                onSelect: () => request('guard', coop.guard ? '0' : '1') }]));
     }
 
     renderFriends(coop) {
         if (!coop.available) return null;
-        const friends = list(coop.friends).slice(0, 30);
+        const friends = list(coop.friends).slice(0, 60);
         const inSession = {};
         list(coop.players).forEach((p) => { inSession[p.sid] = true; });
-        return [section('Steam-Freunde'),
-            friends.length === 0 && h('div', { style: { color: MUTED } }, 'Lade Freundesliste ...'),
-            ...friends.map((f) => row([
-                h('div', { style: { minWidth: 0 } }, f.name,
-                    h('span', { style: { color: f.lobby ? '#2f9e44' : f.pc2 ? '#00a65a' : MUTED, marginLeft: '10px', fontSize: '17px' } },
-                        f.lobby ? 'hat eine offene Lobby' : f.pc2 ? 'spielt Planet Coaster 2' : (FRIEND_STATE[f.state] || ''))),
-                inSession[f.sid] ? h('span', { style: { color: '#2f9e44' } }, 'ist dabei')
-                    : coop.role ? buttons([{ label: f.invited ? 'Eingeladen' : 'Einladen', disabled: f.invited, onSelect: () => request('invite', f.sid) }])
-                    : f.lobby ? buttons([{ label: 'Beitreten', onSelect: () => request('join_friend', f.sid) }]) : null,
-            ], 'f' + f.sid))];
+        return h('div', { key: 'friends', style: { height: coop.role ? '306px' : '636px' } },
+            section(coop.role ? 'Freunde einladen' : 'Steam-Freunde'),
+            h('div', { style: { height: coop.role ? '256px' : '586px', overflowY: 'auto' } },
+                friends.length === 0 ? h('div', { style: { color: MUTED } }, 'Lade Freundesliste ...')
+                    : friends.map((f) => row([
+                        h('div', { style: { width: '230px' } },
+                            h('div', { style: { fontSize: '18px' } }, f.name),
+                            h('div', { style: { color: f.lobby ? '#237a37' : f.pc2 ? '#2f9e44' : MUTED, fontSize: '15px' } },
+                                f.lobby ? 'hat eine offene Lobby' : f.pc2 ? 'spielt Planet Coaster 2' : (FRIEND_STATE[f.state] || ''))),
+                        inSession[f.sid] ? h('span', { style: { color: '#237a37', fontSize: '16px' } }, 'ist dabei')
+                            : coop.role ? buttons([{ label: f.invited ? 'Eingeladen' : 'Einladen', disabled: f.invited, onSelect: () => request('invite', f.sid) }])
+                            : f.lobby ? buttons([{ label: 'Beitreten', onSelect: () => request('join_friend', f.sid) }]) : null,
+                    ], 'f' + f.sid))));
     }
 }
 

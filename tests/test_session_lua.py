@@ -553,3 +553,20 @@ class LobbyTests(unittest.TestCase):
         pictures = host.lua.eval('session.Avatars()')
         self.assertEqual(pictures['200'], 'iVBORw0KGgo=')
         self.assertIsNone(pictures['300'])
+
+
+    def test_host_choice_is_seen_by_everyone_before_the_park_opens(self):
+        host = self.peers['100']
+        host.lua.execute('session.SetChoice("save", "Achterbahn|Tal", "Gespeicherter Park - Taiga")')
+        self.pump(40)
+        choice = self.peers['300'].lua.eval('session.View().choice')
+        self.assertEqual((choice['kind'], choice['title'], choice['detail'], choice['starting']),
+                         ('save', 'AchterbahnTal', 'Gespeicherter Park - Taiga', False))
+        self.peers['200'].lua.execute('session.SetChoice("new", "Hack", "x")')   # only the host picks
+        host.lua.execute('session.MarkStarting()')
+        self.pump(40)
+        self.assertTrue(self.peers['200'].lua.eval('session.View().choice.starting'))
+        park(host)
+        self.pump(40)
+        self.assertIsNone(host.lua.eval('session.View().choice'))
+        self.assertIsNone(self.peers['300'].lua.eval('session.View().choice'))

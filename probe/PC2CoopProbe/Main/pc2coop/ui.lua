@@ -12,6 +12,10 @@ local lastAvatars = nil
 local lastRequest
 local open = false
 local canHost = true
+local frontendMenu = nil  -- the main menu's sandbox HUD (park list, new parks); nil in a park
+local parkList = {}       -- host: saved parks to choose from
+local chosen = nil        -- host: {kind, id, biome, creative} picked in the lobby
+local BIOME_NAMES = {Temperate = "Gemaessigt", Mediterranean = "Mediterran", Taiga = "Taiga", Tropical = "Tropisch"}
 local frames = 0
 
 local function quote(text)
@@ -68,6 +72,7 @@ end
 local closedAt = -1000
 
 function Ui.SetOpen(value)
+    if value == true and not open and choosing() then global.pcall(refreshParks) end
     if open and value ~= true then closedAt = frames end
     if open ~= (value == true) then emit("ui:open|" .. global.tostring(value == true) .. "|" .. frames) end
     open = value == true
@@ -79,6 +84,18 @@ function Ui.Toggle() Ui.SetOpen(not open) end
 
 -- Hosting: a lobby in the main menu, or the loaded park.
 function Ui.SetCanHost(value) canHost = value == true end
+
+function Ui.SetFrontend(value) frontendMenu = value end
+
+local function choosing()
+    local view = session.View()
+    return frontendMenu ~= nil and view.role == "host" and view.stage == "lobby"
+end
+
+local function refreshParks()
+    local Parks = global.require("pc2coop.parks")
+    parkList = choosing() and Parks.List(frontendMenu.parkLoadSaveManager) or {}
+end
 
 -- The newest lines of the session log, oldest first.
 local function recentLog(feed)
@@ -126,6 +143,8 @@ local function buildState()
         chat = session.Chat(), toasts = session.Toasts(),
         stage = view.stage or false, parkTitle = view.parkTitle or "", guard = view.guard ~= false,
         context = view.context or false, dlc = view.dlc,
+        choice = view.choice or false, canChoose = choosing(), parks = choosing() and parkList or {},
+        chosen = chosen and (chosen.kind .. ":" .. global.tostring(chosen.id or chosen.biome or "")) or false,
     }
 end
 
@@ -165,6 +184,45 @@ local actions = {
     end,
     ping = function() session.Ping() end,
     dlc = function(arg) session.SetDlc(arg) end,
+    parks = function() refreshParks() end,
+    -- "save|<id>", "new|<biome>|<1 creative>", "franchise" or "" (nothing picked)
+    choose = function(arg)
+        if not choosing() then return end
+        local kind, a, b = global.string.match(arg or "", "^(%a*)|?([^|]*)|?(.*)$")
+        if kind == "save" then
+            for _, park in global.ipairs(parkList) do
+                if park.id == a then
+                    chosen = {kind = "save", id = a}
+                    session.SetChoice("save", park.name, "Gespeicherter Park" .. (BIOME_NAMES[park.world] and " - " .. BIOME_NAMES[park.world] or ""))
+                end
+            end
+        elseif kind == "new" and BIOME_NAMES[a] then
+            chosen = {kind = "new", biome = a, creative = b == "1"}
+            session.SetChoice("new", "Neuer Sandbox-Park", BIOME_NAMES[a] .. (b == "1" and " - Kreativ" or " - mit Budget"))
+        elseif kind == "franchise" then
+            chosen = {kind = "franchise"}
+            session.SetChoice("franchise", "Franchise", "Park im Franchise-Menue")
+        else
+            chosen = nil
+            session.SetChoice(nil)
+        end
+    end,
+    -- Host opens the chosen park; everyone in the lobby then loads it.
+    start = function()
+        if not choosing() or not chosen then return end
+        local Parks = global.require("pc2coop.parks")
+        local ok, failure
+        if chosen.kind == "save" then ok, failure = Parks.Load(frontendMenu.parkLoadSaveManager, chosen.id)
+        elseif chosen.kind == "new" then ok, failure = Parks.New(frontendMenu, chosen.biome, chosen.creative, "PC2Coop Park")
+        else return end
+        emit("ui:start|" .. chosen.kind .. "|" .. global.tostring(ok) .. "|" .. global.tostring(failure))
+        if ok then
+            session.MarkStarting()
+            Ui.SetOpen(false)
+        else
+            session.Notice("Der Park konnte nicht geoeffnet werden (" .. global.tostring(failure) .. ").", "ff922b")
+        end
+    end,
     guard = function(arg) session.SetContentGuard(arg ~= "0") end,
     join_friend = function(arg) session.JoinFriend(arg) end,
     rejoin = function() session.Rejoin() end,

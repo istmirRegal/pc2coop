@@ -780,12 +780,36 @@ void poll_key(int key, bool& down, const char* event) {
     down = pressed;
 }
 
+// Middle mouse button: Lua pings on a short click; holding it turns the camera, which Lua
+// tells apart by the press time, the cursor travel and whether the camera moved.
+void poll_middle_button() {
+    static bool down = false;
+    static ULONGLONG at = 0;
+    static POINT from{};
+    bool pressed = (GetAsyncKeyState(VK_MBUTTON) & 0x8000) != 0;
+    DWORD pid = 0;
+    GetWindowThreadProcessId(GetForegroundWindow(), &pid);
+    bool ours = pid == GetCurrentProcessId();
+    if (pressed && !down && ours) {
+        at = GetTickCount64();
+        GetCursorPos(&from);
+        queue("key:mdown");
+    } else if (!pressed && down && at) {
+        POINT to{};
+        GetCursorPos(&to);
+        long long dx = to.x - from.x, dy = to.y - from.y;
+        if (ours) queue("key:mup|" + std::to_string(GetTickCount64() - at) + "|" + std::to_string(dx * dx + dy * dy));
+        at = 0;
+    }
+    down = pressed;
+}
+
 // F7 opens the multiplayer window, F8 the developer menu.
 void poll_hotkeys() {
-    static bool f6 = false, f7 = false, f8 = false;
-    poll_key(VK_F6, f6, "key:ping");
+    static bool f7 = false, f8 = false;
     poll_key(VK_F7, f7, "key:menu");
     poll_key(VK_F8, f8, "key:dev");
+    poll_middle_button();
 }
 }
 

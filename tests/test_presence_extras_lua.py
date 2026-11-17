@@ -48,6 +48,29 @@ class PresenceExtrasTests(unittest.TestCase):
         self.peers['300'].lua.execute('for i = 1, 500 do session.Tick() end')
         self.assertEqual(self.pings('300'), {})
 
+    def test_short_middle_click_pings_but_turning_the_camera_does_not(self):
+        alex = self.peers['200']
+        alex.lua.execute(CURSOR + """
+cam = {10, 20, 30, 0.5, 0.4}
+package.loaded["pc2coop.world"].Camera = function() return cam[1], cam[2], cam[3], cam[4], cam[5] end
+""")
+        def click(ms, travel, turn=False):
+            alex.event('key:mdown')
+            alex.tick()
+            if turn:
+                alex.lua.execute('cam[4] = cam[4] + 0.3')
+            alex.event(f'key:mup|{ms}|{travel}')
+            alex.tick()
+            return len([c for c in alex.commands() if '|ping|' in c])
+        self.assertEqual(click(120, 4), 1)
+        alex.lua.execute('for i = 1, 70 do session.Tick() end')
+        self.assertEqual(click(120, 4, turn=True), 0)   # quick drag that turned the camera
+        self.assertEqual(click(900, 0), 0)              # held down
+        self.assertEqual(click(150, 400), 0)            # the cursor moved
+        alex.event('key:mup|100|0')                     # release without a press seen
+        alex.tick()
+        self.assertEqual(len([c for c in alex.commands() if '|ping|' in c]), 0)
+
     def test_ping_flood_is_cut_to_one_per_second(self):
         self.peers['200'].lua.execute(CURSOR)
         for _ in range(5):

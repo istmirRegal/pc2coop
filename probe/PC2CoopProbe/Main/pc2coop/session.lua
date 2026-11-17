@@ -15,7 +15,7 @@ local World = global.require("pc2coop.world")
 local shared = global.require("pc2coop.shared")
 
 -- Mod version; must match the database's probeVersion (checked by the tests).
-Session.VERSION = "1.8.0"
+Session.VERSION = "1.9.0"
 local COLORS = {"ff6b6b", "4dabf7", "51cf66", "fcc419", "cc5de8", "ff922b", "22b8cf", "f06595"}
 local net, sync
 local emit = function() end
@@ -79,6 +79,8 @@ local seenStage = nil     -- joiner: stage|token last acted on
 local myDlc, myMods = nil, ""  -- owned DLC packs (bit mask, from the UI) and folders of other mods
 local contentGuard = true -- host: objects from a DLC that not every player owns are not built
 local avatars, avatarAsked = {}, {}  -- sid -> profile picture (base64 PNG), asked once
+local choice = nil        -- lobby: the park the host picked {kind, title, detail, starting}
+local middle = nil        -- middle mouse button pressed: {frame, camera} (a short click pings)
 local lastRoster = 0
 local frames = 0
 
@@ -610,7 +612,7 @@ local function hostChange(sid, f)
             for _, other in global.ipairs(order) do
                 if other ~= me and other ~= sid and players[other] and not players[other].pending then send(other, line) end
             end
-            if sid ~= me then toast(nameOf(sid) .. " zeigt auf etwas (F7: Hinspringen)", players[sid].color) end
+            if sid ~= me then toast(nameOf(sid) .. " zeigt auf etwas (oben rechts anklicken: folgen)", players[sid].color) end
         end
     elseif f[1] == "who" and players[sid] and validGid(f[2] or "") then
         local creator, last = authorOf(f[2])
@@ -661,7 +663,8 @@ local function rosterLine()
         .. (n.unlimited and "1" or "0")) or ""
     return "roster|" .. global.table.concat(parts, ";") .. "|" .. global.table.concat(st, ";") .. "|" .. conflicts
         .. "|" .. numbersText .. "|" .. global.tostring(stage) .. "," .. global.tostring(parkToken or "") .. ","
-        .. (contentGuard and "1" or "0")
+        .. (contentGuard and "1" or "0") .. "|" .. (choice and global.table.concat({choice.kind, choice.title, choice.detail,
+        choice.starting and "1" or "0"}, ",") or "")
 end
 
 local function parseRoster(payload)
@@ -682,6 +685,10 @@ local function parseRoster(payload)
     roster = {players = list, stats = st, conflicts = global.tonumber(f[4]) or 0}
     local n = split(f[5] or "", ",")
     park = n[1] and {guests = global.tonumber(n[1]) or 0, cash = global.tonumber(n[2]) or 0, unlimited = n[3] == "1"} or nil
+    local ch = split(f[7] or "", ",")
+    if role == "client" then
+        choice = ch[1] and ch[1] ~= "" and {kind = ch[1], title = ch[2] or "", detail = ch[3] or "", starting = ch[4] == "1"} or nil
+    end
     local st2 = split(f[6] or "", ",")
     if role == "client" and (st2[1] == "lobby" or st2[1] == "park") then
         contentGuard = st2[3] ~= "0"
@@ -831,7 +838,7 @@ local function onMessage(from, payload)
             if x and y and z then
                 pings[f[2]] = {x = x, y = y, z = z, frame = frames}
                 for _, pl in global.ipairs(roster.players or {}) do
-                    if pl.sid == f[2] then toast(pl.name .. " zeigt auf etwas (F7: Hinspringen)", pl.color) end
+                    if pl.sid == f[2] then toast(pl.name .. " zeigt auf etwas (oben rechts anklicken: folgen)", pl.color) end
                 end
             end
         elseif kind == "who" then
@@ -962,6 +969,7 @@ local function onNet(event)
                 if again then toast("Du bist wieder in der Lobby. Oeffne einen Park - alle laden ihn dann mit.", "fcc419") end
             else
                 stage = "park"
+                choice = nil
                 if not parkToken then
                     parkToken = global.tostring((global.tonumber(memory.parks) or 0) + 1)
                     remember("parks", parkToken)
@@ -1104,6 +1112,10 @@ local function onNet(event)
         elseif f[2] == LAST_SESSION then Session._LastSession(text) end
     elseif kind == "key:ping" then
         Session.Ping()
+    elseif kind == "key:mdown" then
+        middle = {frame = frames, camera = {World.Camera()}}
+    elseif kind == "key:mup" then
+        Session._MiddleUp(global.tonumber(f[2]) or 9999, global.tonumber(f[3]) or 9999)
     elseif kind == "net:peer-stalled" then
         if players[f[2]] then players[f[2]].sending, players[f[2]].stale = false, true end
         if role == "client" and f[2] == hostId then selfStalled = true end
@@ -1267,6 +1279,33 @@ function Session.SetContentGuard(value)
 end
 
 function Session.Stage() return stage, parkTitle end
+
+-- A short click of the middle mouse button pings; holding it (camera turn) does not.
+function Session._MiddleUp(ms, travel)
+    local pressed = middle
+    middle = nil
+    if not pressed or ms > 350 or travel > 64 then return end
+    local now = {World.Camera()}
+    for i = 1, 5 do
+        local a, b = pressed.camera[i], now[i]
+        if a and b and global.math.abs(a - b) > 0.02 then return end
+    end
+    Session.Ping()
+end
+
+-- Lobby: the host picks where to play; everyone sees it before the park is opened.
+-- kind: "save" (a saved park of the host), "new" (new sandbox park), "franchise".
+function Session.SetChoice(kind, title, detail)
+    if role ~= "host" or stage ~= "lobby" then return end
+    if not kind then choice = nil; return end
+    choice = {kind = clean(kind), title = clean(title or ""), detail = clean(detail or ""), starting = false}
+end
+
+function Session.MarkStarting()
+    if choice then choice.starting = true end
+end
+
+function Session.Choice() return choice end
 
 -- Profile pictures of the players in the session (asked from Steam once per player).
 function Session.Avatars()
@@ -1487,7 +1526,7 @@ function Session.Leave()
     pings, following, whoCache, hostSilent, selfStalled, authorsFile, dirtyAuthors = {}, nil, {}, false, false, nil, {}
     if role == "client" then net.NetCommand("note-write|" .. LAST_SESSION .. "|") end
     if role == "host" then remember("admitted", "") end
-    stage, parkToken, parkTitle, seenStage = nil, nil, "", nil
+    stage, parkToken, parkTitle, seenStage, choice = nil, nil, "", nil, nil
     locks, holds, bursts, recent, park, lastNote = {}, {}, {}, {}, nil, {}
     if sync.SetRemoteLocks then sync.SetRemoteLocks({}) end
     for _, fr in global.ipairs(friends) do fr.invitedAt = nil end
@@ -1515,12 +1554,12 @@ function Session.View()
         end
         return {role = role, me = me, host = me, lobby = lobbyId, players = list, stats = stats, conflicts = conflicts, feed = feed,
             park = context == "park" and World.Numbers() or nil, stage = stage, parkTitle = parkTitle, guard = contentGuard,
-            context = context, dlc = myDlc}
+            context = context, dlc = myDlc, choice = choice}
     end
     for _, pl in global.ipairs(roster.players or {}) do pl.hold = holds[pl.sid] end
     return {role = role, me = me, host = hostId, lobby = lobbyId, players = roster.players or {}, stats = roster.stats or {},
         conflicts = roster.conflicts or 0, feed = feed, park = park, stage = stage, parkTitle = parkTitle, guard = contentGuard,
-        context = context, dlc = myDlc}
+        context = context, dlc = myDlc, choice = choice}
 end
 
 function Session.Tick()
