@@ -43,6 +43,8 @@ local function inspect()
     end
 end
 
+local testRide=nil  -- entity of the ride flatride-test placed
+
 local function testWorld()
     local apis=global.api.world.GetWorldAPIs()
     if not testParkRequested or frontend or not apis or not apis.park
@@ -379,6 +381,7 @@ local function execute(command, manager)
         end
         for i=1,10 do global.coroutine.yield() end
         local rideID=apis.flatrides:GetRideIDForToken(token)
+        testRide=rideID
         local okP,part=global.pcall(function() return apis.placement:EntityIDToPlacementID(rideID) end)
         local okS,stations=global.pcall(function() return #(apis.ridestation:GetAllStations() or {}) end)
         emit("qa:flatride-test:name=" .. name .. ";valid=" .. global.tostring(valid) .. ";reasons=" .. global.table.concat(reasons,",")
@@ -456,6 +459,49 @@ local function execute(command, manager)
                 .. global.tostring(rs:HasRideGate(station,rs.RideGateType_Entrance))
         end
         emit("qa:gate-check:" .. global.table.concat(parts,","))
+    elseif command=="ride-delete-test" then
+        -- Deletes the test ride the way the select mode does (SceneryUtils.DeleteMultiSelection
+        -- with the ride selected); the replay records it as a demolition. "replay-last" after
+        -- this removes the copy an earlier "replay-last" placed 30 m further.
+        local apis=testWorld(); if not apis then return end
+        if not testRide then emit("qa:ride-delete-test:no-ride"); return end
+        local function stations()
+            local ok,n=global.pcall(function() return #(apis.ridestation:GetAllStations() or {}) end)
+            return ok and n or -1
+        end
+        local sel={SelectionCategories_Buildings="b",SelectionCategories_Facilities="f",SelectionCategories_Scenery="s",
+            SelectionCategories_FlatRides="r",SelectionCategories_TrackedRides="t",SelectionCategories_FlumePlatforms="p"}
+        function sel:CountCategory(c) return c=="r" and 1 or 0 end
+        function sel:GetFlatRide(i) return testRide end
+        function sel:GetVolumeChunksTable() return {} end
+        function sel:GetTrackRidesTable() return {} end
+        local scenario={HandlePreventDeletingRidesScenarioParam=function() return false end}
+        local before=stations()
+        global.require("Editors.Scenery.Utils.SceneryUtils").DeleteMultiSelection(sel,apis,scenario)
+        for i=1,30 do global.coroutine.yield() end
+        testRide=nil
+        emit("qa:ride-delete-test:stations=" .. before .. "->" .. stations() .. ";cmd=" .. global.tostring(global.require("pc2coop.sync").Stats().lastCmd))
+        emit("qa:ride-delete-test:done")
+    elseif command=="ride-quickdelete-test" then
+        -- The radial menu's delete: select the test ride in the select mode, then the select
+        -- component's RequestQuickDeleteObject (the game code behind "deleteSelection").
+        local apis=testWorld(); if not apis then return end
+        if not testRide then emit("qa:ride-quickdelete-test:no-ride"); return end
+        local before=#(apis.ridestation:GetAllStations() or {})
+        local mode=apis.GameModeHelperComponent:GetCurrentMode(global.require("Editors.Shared.BaseEditMode").GetModeHelperEntity())
+        local okSel,errSel=global.pcall(function() mode:DebugSelectEntity(testRide) end)
+        for i=1,30 do global.coroutine.yield() end
+        local comp=mode and mode.selectAndEditComponent
+        emit("qa:ride-quickdelete-test:select=" .. global.tostring(okSel) .. "/" .. global.tostring(errSel) .. ";comp=" .. global.type(comp))
+        if comp then comp:RequestQuickDeleteObject() end
+        for i=1,120 do global.coroutine.yield() end
+        testRide=nil
+        emit("qa:ride-quickdelete-test:stations=" .. before .. "->" .. #(apis.ridestation:GetAllStations() or {}) .. ";cmd=" .. global.tostring(global.require("pc2coop.sync").Stats().lastCmd))
+        emit("qa:ride-quickdelete-test:done")
+    elseif command=="ride-count" then
+        local apis=global.api.world.GetWorldAPIs()
+        local ok,n=global.pcall(function() return #(apis.ridestation:GetAllStations() or {}) end)
+        emit("qa:ride-count:stations=" .. global.tostring(ok and n))
     elseif command=="replay-last" then
         -- Replays the last recorded batch 30 m further along x, as a friend's game would.
         local sync=global.require("pc2coop.sync")
@@ -949,6 +995,27 @@ local function execute(command, manager)
     elseif command=="lobby-test" then
         if frontend then frontendCoop().Ui().SetOpen(true) else global.require("pc2coop.ui").SetOpen(true) end
         emit("qa:lobby-test:open")
+    elseif command=="bar-test" or command=="bar-check" then
+        -- Park, hosting: a made-up player "Vici" (sid 777) stays in the session, so the player
+        -- bar can be clicked (follow) and the middle mouse button tried (ping) by real input.
+        local session,world=global.require("pc2coop.session"),global.require("pc2coop.world")
+        if command=="bar-test" and session.View().role~="host" then
+            session.Host()
+            for i=1,900 do if session.View().role=="host" then break end; global.coroutine.yield() end
+        end
+        if session.View().role~="host" then emit("qa:" .. command .. ":not-hosting"); return end
+        if command=="bar-test" then
+            session._onNet("msg|777|hello|Vici|-1|live|" .. session.VERSION .. "|")
+            session.Answer("777",true)
+        end
+        session._onNet("msg|777|pres|60|25|0|0.8|-0.5|4|Orbit|baut|70|0|30")
+        local count=0
+        for _ in global.ipairs(session.Pings()) do count=count+1 end
+        local x,y,z=world.Camera()
+        emit(global.string.format("qa:%s:following=%s;pings=%d;camera=%.1f,%.1f,%.1f",command,global.tostring(session.Following()),count,x or -1,y or -1,z or -1))
+    elseif command=="bar-end" then
+        global.require("pc2coop.session")._onNet("member:leave|777")
+        emit("qa:bar-end:done")
     elseif command=="chat-test" then
         global.require("pc2coop.session").SendChat("Hallo zusammen, das ist ein Test")
         emit("qa:chat-test:sent")

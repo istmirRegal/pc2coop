@@ -70,7 +70,9 @@ function undo.CommitPreview(token)
         end
     end
     for _, c in ipairs(token.cl.hierarchy.composites or {}) do
-        if c.ride and c.t then rides[#rides+1] = string.format("%s %g,%g", c.ride, c.t:GetPos():GetX(), c.t:GetPos():GetZ()) end
+        if c.demolish and c.destroyed then
+            for _, e in ipairs(c.moved or {}) do rides[#rides+1] = "demolished " .. tostring(e) end
+        elseif c.ride and c.t then rides[#rides+1] = string.format("%s %g,%g", c.ride, c.t:GetPos():GetX(), c.t:GetPos():GetZ()) end
     end
     for _, e in ipairs(token.cl.hierarchy.ops) do
         if e.destroyed then parts[e.part] = nil
@@ -128,10 +130,11 @@ function H.SetPerformTerrainModificationsModifyVolumes(self, value) self.terrain
 -- Flat rides: a composite object of the hierarchy holds the ride; placed at commit.
 rides = {}
 function H.CreateCompositeObject(self, opts)
-    local c = {t = nil}
+    local c = {t = nil, demolish = opts and opts.bDemolishOnly}
     c.SetTransform = function(me, t) me.t = t end
     c.GetTransform = function(me) return me.t end
     c.AlignCompositeRotation = function() end
+    c.Destroy = function(me) me.destroyed = true end
     self.composites = self.composites or {}
     table.insert(self.composites, c)
     return c
@@ -139,6 +142,28 @@ end
 local flatrides = {}
 function flatrides:CreateFlatRideEditToken(name) return {ride = name} end
 function flatrides:AddFlatRide(h, composite, token, terrain, everyFrame) composite.ride = token.ride end
+function flatrides:GetFlatRideEditToken(entity) return {entity = entity} end
+function flatrides:RemoveFlatRide(h, token)
+    h.composites = h.composites or {}
+    table.insert(h.composites, {demolish = true, destroyed = true, moved = {token.entity}})
+end
+function flatrides:MoveFlatRide(h, composite, token, terrain, everyFrame)
+    composite.moved = composite.moved or {}
+    table.insert(composite.moved, token.entity)
+end
+-- The game's delete of a selection (Editors.Scenery.Utils.SceneryUtils), as it moves rides.
+package.preload["Editors.Scenery.Utils.SceneryUtils"] = function()
+    local U = {}
+    U.DeleteMultiSelection_Core = function(selection, apis, scenario, h)
+        local c = h:CreateCompositeObject({bDemolishOnly = true})
+        for _, e in ipairs(selection) do
+            apis.flatrides:MoveFlatRide(h, c, apis.flatrides:GetFlatRideEditToken(e), 0, false)
+        end
+        c:Destroy()
+        return false, #selection > 0, false, false
+    end
+    return U
+end
 mgmt = {}
 local park = {}
 function park:SetParkName(name) mgmt[#mgmt+1] = "name " .. name end
@@ -433,6 +458,54 @@ class FlatRideTests(unittest.TestCase):
         self.lua.eval('function(b) sync.Receive("K|1|" .. b) end')(shifted)
         self.tick(20)
         self.assertEqual(list(self.lua.eval('rides').values()), ['FR_Teacups 90,300'])
+        self.assertEqual(len(self.records('sync:cmd|')), 1)
+
+
+    def test_deleted_rides_are_replayed_as_a_demolition(self):
+        self.lua.execute('''
+            local apis = api.world.GetWorldAPIs()
+            local h = apis.editors:CreateUndoOperationsHierarchy()
+            local deleted = {require("Editors.Scenery.Utils.SceneryUtils").DeleteMultiSelection_Core({41, 42}, apis, nil, h)}
+            assert(deleted[2] == true)
+            local wait, preview = api.undo.PreviewChangeList(h:GetFullUndoChangeList())
+            api.undo.CommitPreview(preview)
+        ''')
+        self.tick()
+        cmds = self.records('sync:cmd|')
+        self.assertEqual(len(cmds), 1)
+        batch = cmds[0][len('sync:cmd|'):]
+        self.assertTrue(batch.startswith('r1=@demolish;'), batch)
+        self.assertEqual(batch.count('flatrides.MoveFlatRide(@h,@r1,'), 2, batch)   # both rides, one record
+        self.assertNotIn('SetTransform', batch)
+        self.assertTrue(batch.endswith(';@r1.Destroy()'), batch)
+        self.lua.execute('rides = {}')
+        self.lua.eval('function(b) sync.Receive("K|1|" .. b) end')(batch)
+        self.tick(20)
+        demolished = list(self.lua.eval('rides').values())
+        self.assertEqual(len(demolished), 2)
+        self.assertTrue(all(r.startswith('demolished') for r in demolished), demolished)
+        self.assertEqual(len(self.records('sync:cmd|')), 1)
+
+
+    def test_ride_deleted_from_its_menu_is_replayed(self):
+        # SelectAndEditComponent.DeleteFlatRide: edit token, RemoveFlatRide, preview, commit.
+        self.lua.execute('''
+            local apis = api.world.GetWorldAPIs()
+            local token = apis.flatrides:GetFlatRideEditToken(41)
+            local h = apis.editors:CreateUndoOperationsHierarchy()
+            apis.flatrides:RemoveFlatRide(h, token)
+            local wait, preview = api.undo.PreviewChangeList(h:GetFullUndoChangeList())
+            api.undo.CommitPreview(preview)
+        ''')
+        self.tick()
+        cmds = self.records('sync:cmd|')
+        self.assertEqual(len(cmds), 1)
+        batch = cmds[0][len('sync:cmd|'):]
+        self.assertIn('flatrides.RemoveFlatRide(@h,', batch)   # the token: in the game @r1 of GetFlatRideEditToken
+        self.lua.execute('rides = {}')
+        self.lua.eval('function(b) sync.Receive("K|1|" .. b) end')(batch)
+        self.tick(20)
+        self.assertEqual(len(self.lua.eval('rides')), 1)
         self.assertEqual(len(self.records('sync:cmd|')), 1)
 
 

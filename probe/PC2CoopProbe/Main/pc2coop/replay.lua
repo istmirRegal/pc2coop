@@ -11,6 +11,7 @@
 -- Args: n<number> b1/b0 s<word> x<hex text> v<x>:<y>:<z> t<x>:<y>:<z>:<qx>:<qy>:<qz>:<qw>
 --   {k=arg/k=arg} (flat table) @op (terrain op) @h (change list) @rN e<gid> (shared object) _ (nil)
 --   rN=@composite            (new composite object of the change list, e.g. a flat ride)
+--   rN=@demolish             (composite that only removes what is moved into it: deleting rides)
 --   @cl (the change list of the hierarchy, for builders that take it instead of the hierarchy)
 local global = _G
 local Replay = {}
@@ -25,6 +26,7 @@ local spec = {}                 -- "api.Method" -> {kind, ...}
 local byToken = {}              -- preview token -> record
 local byChangeList = global.setmetatable({}, {__mode = "k"})
 local installed = false
+local demolishing = false       -- inside the game's delete of a selection (SceneryUtils)
 local MAX_BATCH = 3500
 
 local function newRecord() return {calls = {}, refs = {}, objects = {}, n = 0} end
@@ -56,6 +58,8 @@ local OBJECT_METHODS = {
         AddFlatRide = {hierarchy = 1, composite = 2},
         GetFlatRideEditToken = {starts = true, entities = {1}},
         MoveFlatRide = {hierarchy = 1, composite = 2},
+        -- Deleting one ride (radial menu, demolish tool): SelectAndEditComponent.DeleteFlatRide.
+        RemoveFlatRide = {hierarchy = 1},
     },
     -- Ride entrances and exits (EntranceExitPlacementMode): the gate is previewed through a
     -- path join object and placed relative to the station with UpdatePreviewTransform.
@@ -205,15 +209,22 @@ local function onCall(name, s, self, args, results)
         send("!" .. encodeCall(name, args, {}, s.entities))
         return
     end
-    if s.starts then record = newRecord() end
+    -- A delete takes all selected rides into one record; otherwise each ride starts its own.
+    if s.starts and not demolishing then record = newRecord() end
     local composite = s.composite and args[s.composite]
     if composite ~= nil and not record.refs[composite] then
         -- Created by the hierarchy itself (not an API call): recreate it on replay.
         record.n = record.n + 1
         record.refs[composite], record.objects[record.n] = record.n, composite
-        record.composites = record.composites or {}
-        record.composites[record.n] = true
-        record.calls[#record.calls+1] = "r" .. record.n .. "=@composite"
+        if demolishing then
+            record.demolish = record.demolish or {}
+            record.demolish[record.n] = true
+            record.calls[#record.calls+1] = "r" .. record.n .. "=@demolish"
+        else
+            record.composites = record.composites or {}
+            record.composites[record.n] = true
+            record.calls[#record.calls+1] = "r" .. record.n .. "=@composite"
+        end
     end
     local ctx = {refs = record.refs, hierarchyAt = s.hierarchy, changeListAt = s.changelist}
     if s.kind == "operation" then ctx.operation = args[1] end
@@ -295,12 +306,28 @@ function Replay.Install()
             try(key, method, {kind = "immediate", entities = set})
         end
     end
+    -- Deleting a selection (select mode, multi-select, Delete key in a placement mode): the
+    -- game moves each flat ride into a "demolish only" composite. Mark that time so the
+    -- composite is recreated as one on replay.
+    local okU, SceneryUtils = global.pcall(global.require, "Editors.Scenery.Utils.SceneryUtils")
+    if okU and global.type(SceneryUtils) == "table" and global.type(SceneryUtils.DeleteMultiSelection_Core) == "function" then
+        local core = SceneryUtils.DeleteMultiSelection_Core
+        -- No pcall here: the game's delete may wait for requests (coroutine yield). If it
+        -- fails, the preview that follows any edit ends the demolition mark as well.
+        local function done(...) demolishing = false; return ... end
+        SceneryUtils.DeleteMultiSelection_Core = function(...)
+            if not isOurs() then record, demolishing = newRecord(), true end
+            return done(core(...))
+        end
+        count = count + 1
+    end
     installed = true
     emit("replay:installed|" .. count)
 end
 
 -- Local preview started: the current record (and later calls to it) belong to it.
 function Replay.OnPreview(changeList, token)
+    demolishing = false
     if token == nil then return end
     local direct = byChangeList[changeList]
     if direct then byToken[token] = direct
@@ -332,7 +359,10 @@ function Replay.OnCommit(token)
     -- before its setters recompute the shape, so the position goes right after creation.
     local positions, placed = {}, {}
     for n, object in global.pairs(rec.objects) do
-        if rec.composites and rec.composites[n] then
+        if rec.demolish and rec.demolish[n] then
+            -- The game destroys the demolition composite once the rides are in it.
+            placed[#placed+1] = "@r" .. n .. ".Destroy()"
+        elseif rec.composites and rec.composites[n] then
             -- Composites (rides) are placed with their rotation, after their content is added.
             local ok, transform = global.pcall(function() return object:GetTransform() end)
             if ok and transform ~= nil then placed[#placed+1] = "@r" .. n .. ".SetTransform(" .. encodeScalar(transform, {}) .. ")" end
@@ -383,14 +413,17 @@ function Replay.Apply(batches, commit, begin, finish)
         for text in global.string.gmatch(batch, "[^;]+") do
             local objectRef, objectMethod, objectArgs = global.string.match(text, "^@r(%d+)%.([%w_]+)%((.*)%)$")
             local compositeRef = global.string.match(text, "^r(%d+)=@composite$")
+            local demolishRef = global.string.match(text, "^r(%d+)=@demolish$")
             if compositeRef then
                 ctx.refs[global.tonumber(compositeRef)] = getHierarchy():CreateCompositeObject({})
+            elseif demolishRef then
+                ctx.refs[global.tonumber(demolishRef)] = getHierarchy():CreateCompositeObject({bDemolishOnly = true})
             elseif text == "@preview" then
                 global.assert(begin and not livePreview, "unexpected preview marker")
                 if volumeBlock then getHierarchy():EndVolumeModificationsBlock(); volumeBlock = false end
                 livePreview = begin(getHierarchy():GetFullUndoChangeList())
             elseif objectRef then
-                global.assert(objectMethod == "SetPosition" or objectMethod == "SetTransform", "object method")
+                global.assert(objectMethod == "SetPosition" or objectMethod == "SetTransform" or objectMethod == "Destroy", "object method")
                 local object = ctx.refs[global.tonumber(objectRef)]
                 global.assert(object ~= nil, "unknown reference")
                 local values = {}

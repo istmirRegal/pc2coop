@@ -1,9 +1,10 @@
 # Test input for the PC2 window: click, drag or key, in full-resolution screen pixels.
 # Example: game_input.ps1 -ProcessId 123 -Action click -X 960 -Y 540
 #          game_input.ps1 -ProcessId 123 -Action drag -X 800 -Y 600 -X2 1100 -Y2 600
+#          game_input.ps1 -ProcessId 123 -Action mclick -X 960 -Y 540 -HoldMs 900   (middle button)
 #          game_input.ps1 -ProcessId 123 -Action key -Key 0x1B   (virtual-key code)
-param([Parameter(Mandatory)][int]$ProcessId, [Parameter(Mandatory)][ValidateSet('click','rclick','drag','move','key')][string]$Action,
-      [int]$X, [int]$Y, [int]$X2, [int]$Y2, [int]$Key, [int]$Steps = 20)
+param([Parameter(Mandatory)][int]$ProcessId, [Parameter(Mandatory)][ValidateSet('click','rclick','mclick','mdrag','drag','move','key')][string]$Action,
+      [int]$X, [int]$Y, [int]$X2, [int]$Y2, [int]$Key, [int]$Steps = 20, [int]$HoldMs = 80)
 Add-Type @'
 using System; using System.Runtime.InteropServices;
 public static class PC2Input {
@@ -24,6 +25,14 @@ switch ($Action) {
                [PC2Input]::mouse_event(2,0,0,0,[UIntPtr]::Zero); Start-Sleep -Milliseconds 80; [PC2Input]::mouse_event(4,0,0,0,[UIntPtr]::Zero) }
     'rclick' { [PC2Input]::SetCursorPos($X, $Y) | Out-Null; Start-Sleep -Milliseconds 250
                [PC2Input]::mouse_event(8,0,0,0,[UIntPtr]::Zero); Start-Sleep -Milliseconds 80; [PC2Input]::mouse_event(16,0,0,0,[UIntPtr]::Zero) }
+    'mclick' { [PC2Input]::SetCursorPos($X, $Y) | Out-Null; Start-Sleep -Milliseconds 250
+               [PC2Input]::mouse_event(0x20,0,0,0,[UIntPtr]::Zero); Start-Sleep -Milliseconds $HoldMs; [PC2Input]::mouse_event(0x40,0,0,0,[UIntPtr]::Zero) }
+    'mdrag'  { [PC2Input]::SetCursorPos($X, $Y) | Out-Null; Start-Sleep -Milliseconds 250
+               [PC2Input]::mouse_event(0x20,0,0,0,[UIntPtr]::Zero)
+               for ($i = 1; $i -le $Steps; $i++) {
+                   [PC2Input]::SetCursorPos([int]($X + ($X2 - $X) * $i / $Steps), [int]($Y + ($Y2 - $Y) * $i / $Steps)) | Out-Null
+                   Start-Sleep -Milliseconds 40 }
+               Start-Sleep -Milliseconds 150; [PC2Input]::mouse_event(0x40,0,0,0,[UIntPtr]::Zero) }
     'drag'   { [PC2Input]::SetCursorPos($X, $Y) | Out-Null; Start-Sleep -Milliseconds 250
                [PC2Input]::mouse_event(2,0,0,0,[UIntPtr]::Zero)
                for ($i = 1; $i -le $Steps; $i++) {

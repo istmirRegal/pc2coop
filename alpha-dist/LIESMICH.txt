@@ -1,4 +1,4 @@
-PC2Coop 1.9.0 - Planet Coaster 2 live zusammen bauen, ueber Steam
+PC2Coop 1.9.1 - Planet Coaster 2 live zusammen bauen, ueber Steam
 
 Installation (jeder Spieler, einmalig)
 1. ZIP in einen eigenen Ordner entpacken.
@@ -111,17 +111,20 @@ Live synchronisiert und im Spiel getestet:
 - Deko, Szenerie, Gebaeudeteile: platzieren, klonen, verschieben, drehen,
   Groesse aendern, loeschen - auch waehrend jemand selbst etwas haelt.
 - Gelaende (Pinsel), Wege (Spline-Wege), Parkname.
-- Fahrgeschaefte: neu platzieren.
+- Fahrgeschaefte (ebene, keine Achterbahnen): neu platzieren und abreissen - einzeln
+  ueber ihr Menue oder mehrere per Mehrfachauswahl.
 - Anzeige der Mitspieler (Marke, Sichtkegel, Geist, Sperr-Faerbung), Pause/Tempo,
   Zahlen und Meldungen des Host-Parks, Schutz vor Absturz, wenn ein Mitspieler das
   Objekt loescht, das man gerade haelt (allein getestet, mit nachgestelltem Mitspieler).
+- Mitspieler oben rechts anklicken = ihm folgen, nochmal klicken = aufhoeren.
+  Mittlere Maustaste kurz klicken = Ping; gedrueckt halten oder ziehen pingt nicht.
 Eingebaut, aber noch nicht im Spiel bestaetigt:
 - Das Zusammenspiel der Sperren zwischen zwei echten Spielern.
 - Wasser (Seen), weitere Parkverwaltung (Preise, Oeffnen/Schliessen, Kredite,
   Forschung), Fahrgeschaefte verschieben, Ein- und Ausgaenge von Fahrgeschaeften.
 Noch NICHT synchronisiert (folgt):
-- Achterbahnen und Schienenfahrgeschaefte (Streckeneditor), Wasserrutschen,
-  Fahrgeschaefte loeschen, Fahrgeschaefte aus Bauplaenen (nur deren Deko kommt an),
+- Achterbahnen und Schienenfahrgeschaefte (Streckeneditor, auch ihr Abriss), Wasserrutschen,
+  Fahrgeschaefte aus Bauplaenen (nur deren Deko kommt an),
   Pools-Editor, Wege-Pinsel und -Stempel.
   Diese Dinge sind beim Beitritt im uebertragenen Park enthalten, spaetere
   Aenderungen daran aber nur beim jeweiligen Spieler.
