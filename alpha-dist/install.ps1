@@ -86,6 +86,13 @@ function Install-IntoGame([string]$Folder, [string]$Package, [string]$ExpectedEx
             Write-Host 'Hinweis: PC2Coop ist mit ACSE 0.729 getestet. Startet der Multiplayer nicht, ACSE aktualisieren.' -ForegroundColor Yellow
         }
     }
+    # The Nexus package brings no ACSE: then a loader has to be there already.
+    $bringsAcse = @($manifest.files | Where-Object { $_.path -like 'ACSE/*' }).Count -gt 0
+    $hasAcse = (Test-Path -LiteralPath (Join-Path $ovldata 'ACSE\Main.ovl') -PathType Leaf) -or
+        (Test-Path -LiteralPath (Join-Path $ovldata 'ACSEDebug') -PathType Container)
+    if (-not $bringsAcse -and -not $hasAcse) {
+        throw 'ACSE fehlt. PC2Coop braucht den Mod-Loader ACSE: zuerst ACSE fuer Planet Coaster 2 installieren (Nexus Mods, bei PC2Coop unter "Requirements"), dann INSTALL.cmd erneut starten. Es wurde nichts installiert.'
+    }
     $plan = @()
     $newFiles = @()
     foreach ($entry in @($manifest.files)) {

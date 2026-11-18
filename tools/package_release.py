@@ -23,6 +23,31 @@ INSTALLER_FILES = ("INSTALL.cmd", "UNINSTALL.cmd", "UPDATE.cmd", "install.ps1", 
 # GitHub repository whose releases UPDATE.cmd reads ("owner/name"); set in release.json.
 RELEASE_CONFIG = PROJECT / "release.json"
 
+# The Nexus package: no ACSE (players get it from its own Nexus page), no source folder (on
+# GitHub), no self-updater (updates come from Nexus). The readme says so.
+NEXUS_INSTALLER_FILES = ("INSTALL.cmd", "UNINSTALL.cmd", "install.ps1", "LIESMICH.txt")
+NEXUS_README = [
+    ("Installation (jeder Spieler, einmalig)\n1. ZIP in einen eigenen Ordner entpacken.\n",
+     "Installation (jeder Spieler, einmalig)\n"
+     "0. ACSE (Mod-Loader fuer Planet Coaster 2) von Nexus Mods installieren, falls noch nicht\n"
+     "   vorhanden. Ohne ACSE bricht INSTALL.cmd mit einem Hinweis ab und installiert nichts.\n"
+     "1. ZIP in einen eigenen Ordner entpacken.\n"),
+    ("Planet Coaster 2 beenden, UPDATE.cmd doppelklicken. Es holt die neueste Version von\n"
+     "GitHub, prueft die Pruefsumme und installiert sie. Alle Mitspieler brauchen dieselbe\n",
+     "Planet Coaster 2 beenden, die neue Version von Nexus Mods in einen eigenen Ordner\n"
+     "entpacken und dort INSTALL.cmd doppelklicken. Alle Mitspieler brauchen dieselbe\n"),
+    ("Die neue Version liegt danach unter %LOCALAPPDATA%\\PC2Coop\\<Version>\\PC2Coop.\n", ""),
+    ("- Kein eigener Server: die Verbindung laeuft ueber Steam. UPDATE.cmd spricht nur mit\n"
+     "  GitHub (istmirRegal/pc2coop) und installiert nur, wenn die Pruefsumme stimmt.\n",
+     "- Kein eigener Server: die Verbindung laeuft ueber Steam. Der Installer laedt nichts\n"
+     "  aus dem Internet.\n"),
+    ("Eigener Code: MIT (LICENSE-PC2Coop.txt, source\\).\n"
+     "ACSE 0.729: GPL-3.0, vollstaendiger Quellcode unter source\\third-party\\ACSE\\.\n",
+     "Eigener Code: MIT (LICENSE-PC2Coop.txt). Quellcode und Bauanleitung:\n"
+     "https://github.com/istmirRegal/pc2coop\n"
+     "ACSE ist nicht enthalten (eigener Download, eigene Lizenz).\n"),
+]
+
 
 def sha(path: Path) -> str:
     with path.open("rb") as stream:
@@ -42,13 +67,14 @@ def main() -> int:
     parser.add_argument("--acse-built", type=Path, default=WORKSPACE / "work/coop-anything/local/test-install/Win64/ovldata/ACSE")
     parser.add_argument("--out", type=Path)
     parser.add_argument("--repo", help="GitHub owner/name for updates (default: release.json)")
+    parser.add_argument("--nexus", action="store_true", help="Package for Nexus Mods: without ACSE, source and updater")
     args = parser.parse_args()
     repo = args.repo or ""
     if not repo and RELEASE_CONFIG.is_file():
         repo = json.loads(RELEASE_CONFIG.read_text(encoding="utf8")).get("repo", "")
     report = json.loads((PROJECT / "build/PC2CoopProbe/build-report.json").read_text(encoding="utf8"))
     version = report["probe_version"]
-    out = args.out or PROJECT.parent / f"PC2Coop-{version}.zip"
+    out = args.out or PROJECT.parent / (f"PC2Coop-{version}-nexus.zip" if args.nexus else f"PC2Coop-{version}.zip")
     if sha(PROJECT / "build/PC2CoopProbe/Main.ovl") != report["ovl_sha256"]:
         raise RuntimeError("Probe build-report hash does not match Main.ovl")
     native = json.loads((PROJECT / "build/native/build-report.json").read_text(encoding="utf8"))
@@ -61,35 +87,45 @@ def main() -> int:
         raise RuntimeError("Unexpected ACSE license; review before distribution")
     with tempfile.TemporaryDirectory(prefix="pc2coop-release-", dir=WORKSPACE / "work") as temporary:
         stage = Path(temporary) / "PC2Coop"
-        for name in INSTALLER_FILES:
+        for name in (NEXUS_INSTALLER_FILES if args.nexus else INSTALLER_FILES):
             copy(PROJECT / "alpha-dist" / name, stage / name)
+        if args.nexus:
+            readme = (stage / "LIESMICH.txt").read_text(encoding="utf8")
+            for old, new in NEXUS_README:
+                if readme.count(old) != 1:
+                    raise RuntimeError(f"LIESMICH changed; update NEXUS_README: {old[:40]!r}")
+                readme = readme.replace(old, new)
+            (stage / "LIESMICH.txt").write_text(readme, encoding="utf8")
         copy(PROJECT / "LICENSE", stage / "LICENSE-PC2Coop.txt")
-        (stage / "update.json").write_text(json.dumps({"repo": repo}) + "\n", encoding="utf8")
+        if not args.nexus:
+            (stage / "update.json").write_text(json.dumps({"repo": repo}) + "\n", encoding="utf8")
         for file in ("Main.ovl", "Manifest.xml"):
             copy(PROJECT / "build/PC2CoopProbe" / file, stage / "payload/PC2CoopProbe" / file)
         copy(PROJECT / "build/native/PC2CoopDiagnostic.dll", stage / "payload/PC2CoopProbe/PC2CoopDiagnostic.dll")
-        for file in ACSE_FILES:
-            copy(args.acse_built / file, stage / "payload/ACSE" / file)
-        copy(args.acse_source / "LICENSE", stage / "licenses/ACSE-GPL-3.0.txt")
-        for folder in ("probe", "native", "tools", "tests", "docs", "alpha-dist"):
+        if not args.nexus:
+            for file in ACSE_FILES:
+                copy(args.acse_built / file, stage / "payload/ACSE" / file)
+            copy(args.acse_source / "LICENSE", stage / "licenses/ACSE-GPL-3.0.txt")
+        for folder in (() if args.nexus else ("probe", "native", "tools", "tests", "docs", "alpha-dist")):
             for file in sorted((PROJECT / folder).rglob("*")):
                 if file.is_file() and file.suffix in {".py", ".lua", ".cpp", ".h", ".js", ".html", ".css", ".md", ".json", ".xml", ".ps1", ".cmd", ".txt"} \
                         and "__pycache__" not in file.parts:
                     copy(file, stage / "source" / file.relative_to(PROJECT))
-        for name in ("LICENSE", "README.md"):
-            copy(PROJECT / name, stage / "source" / name)
-        for file in sorted((args.acse_source / "Source/ACSE").rglob("*")):
-            if file.is_file():
-                copy(file, stage / "source/third-party/ACSE" / file.relative_to(args.acse_source))
-        copy(args.acse_source / "LICENSE", stage / "source/third-party/ACSE/LICENSE")
-        (stage / "source/third-party/ACSE/BUILD.txt").write_text(
-            f"ACSE 0.729, https://github.com/OpenNaja/ACSE, commit {ACSE_COMMIT}, GPL-3.0.\n"
-            "Built unmodified with Cobra Tools 2dd9d1445608d6171c1ec1f2333cefb4d81a1317 (Python 3.11),\n"
-            "one OVL per folder (Init, Main, Extras), ZLIB, with the supplied Manifest.xml.\n", encoding="utf8")
+        if not args.nexus:
+            for name in ("LICENSE", "README.md"):
+                copy(PROJECT / name, stage / "source" / name)
+            for file in sorted((args.acse_source / "Source/ACSE").rglob("*")):
+                if file.is_file():
+                    copy(file, stage / "source/third-party/ACSE" / file.relative_to(args.acse_source))
+            copy(args.acse_source / "LICENSE", stage / "source/third-party/ACSE/LICENSE")
+            (stage / "source/third-party/ACSE/BUILD.txt").write_text(
+                f"ACSE 0.729, https://github.com/OpenNaja/ACSE, commit {ACSE_COMMIT}, GPL-3.0.\n"
+                "Built unmodified with Cobra Tools 2dd9d1445608d6171c1ec1f2333cefb4d81a1317 (Python 3.11),\n"
+                "one OVL per folder (Init, Main, Extras), ZLIB, with the supplied Manifest.xml.\n", encoding="utf8")
         files = [{"path": f.relative_to(stage / "payload").as_posix(), "sha256": sha(f), "bytes": f.stat().st_size}
                  for f in sorted((stage / "payload").rglob("*")) if f.is_file()]
         manifest = {"schema": 1, "version": version, "tested_steam_build": "26255360",
-                    "tested_exe_sha256": EXE_HASH, "acse_commit": ACSE_COMMIT, "files": files}
+                    "tested_exe_sha256": EXE_HASH, "acse_commit": "external" if args.nexus else ACSE_COMMIT, "files": files}
         (stage / "payload-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf8")
         temp_zip = out.with_suffix(".tmp.zip")
         with zipfile.ZipFile(temp_zip, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
@@ -102,7 +138,8 @@ def main() -> int:
         temp_zip.replace(out)
     digest = sha(out)
     # Uploaded next to the ZIP; UPDATE.cmd refuses a download without it.
-    out.with_name(out.name + ".sha256").write_text(f"{digest}  {out.name}\n", encoding="ascii")
+    if not args.nexus:
+        out.with_name(out.name + ".sha256").write_text(f"{digest}  {out.name}\n", encoding="ascii")
     print(json.dumps({"zip": str(out.resolve()), "bytes": out.stat().st_size, "sha256": digest, "version": version,
                       "update_repo": repo or None}, indent=2))
     return 0
