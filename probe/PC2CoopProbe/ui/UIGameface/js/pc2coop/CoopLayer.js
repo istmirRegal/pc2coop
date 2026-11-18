@@ -328,6 +328,8 @@ class PlayerBar extends StateComponent {
     render(props, state) {
         const coop = state.coop || {};
         if (!coop.role || coop.context === 'menu' || list(coop.players).length === 0) return null;
+        // On a ride the game's camera panel sits up here; the visitor bar shows the ride.
+        if (coop.visitor && coop.visitor.riding) return null;
         const join = coop.join || {};
         return h('div', { style: { position: 'absolute', top: '84px', right: '24px', display: 'flex', flexDirection: 'column',
             alignItems: 'flex-end' } },
@@ -339,10 +341,81 @@ class PlayerBar extends StateComponent {
                 h('div', { style: { color: '#ffffff', fontSize: '16px', marginLeft: '9px' } }, p.name + (p.me ? ' (du)' : '')),
                 p.host && h(Icon, { src: 'img/icons/crown.svg', style: { width: '18px', height: '18px', marginLeft: '7px' } }),
                 h('div', { style: { color: coop.following === p.sid ? '#fcc419' : '#9fd8f0', fontSize: '13px', marginLeft: '9px' } },
-                    coop.following === p.sid ? 'du folgst - klicken beendet' : playerActivity(coop, p)))),
+                    coop.following === p.sid ? 'du folgst - klicken beendet'
+                        : ((coop.visitor && coop.visitor.emotes && coop.visitor.emotes[p.sid]) || playerActivity(coop, p))))),
             join.phase === 'hostlobby' && h('div', { style: { marginTop: '6px', padding: '8px 12px', maxWidth: '360px', borderRadius: '10px',
                 background: 'rgba(14, 33, 48, 0.85)', color: '#fcc419', fontSize: '14px' } },
                 'Host ist in der Lobby - Hauptmenü öffnen, um dabei zu bleiben.'));
+    }
+}
+
+// Visitor mode: walk through the park as a guest, ride along, rate rides, emote. A small
+// bar at the top centre; "Fahrgeschäfte" unfolds the rides with stats and ratings.
+const EMOTE_BUTTONS = [['wave', 'Winken'], ['cheer', 'Jubeln'], ['laugh', 'Lachen'], ['up', 'Super'], ['down', 'Naja'], ['sick', 'Übel']];
+const one = (v) => (typeof v === 'number' ? (Math.round(v * 10) / 10).toFixed(1) : '-');
+
+class VisitorBar extends StateComponent {
+    state = { picked: null, stars: {}, draft: '' };
+    render(props, state) {
+        const coop = state.coop || {};
+        const visitor = coop.visitor;
+        if (!visitor || coop.context === 'menu' || coop.open) return null;
+        const pill = { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '6px 10px', borderRadius: '18px',
+            background: 'rgba(14, 33, 48, 0.82)', color: '#ffffff', fontSize: '15px' };
+        const bar = h('div', { style: pill },
+            visitor.active && h('div', { style: { margin: '0 0 4px', color: '#9fd8f0' } },
+                visitor.riding ? 'Du fährst ' + visitor.riding + ' - "Zurück" unten rechts steigt aus'
+                    : 'Du bist Besucher - WASD laufen, Shift schneller'),
+            buttons([
+                !visitor.active && { label: 'Als Besucher losgehen', onSelect: () => request('visitor', '1') },
+                ...(visitor.active && coop.role ? EMOTE_BUTTONS.map(([kind, label]) => ({ label, onSelect: () => request('emote', kind) })) : []),
+                { label: visitor.list ? 'Liste schließen' : 'Fahrgeschäfte', onSelect: () => request('visitorlist', visitor.list ? '0' : '1') },
+                visitor.active && { label: 'Zurück zum Bauen', onSelect: () => request('visitor', '0') },
+            ]));
+        const rides = list(visitor.rides);
+        const picked = rides.find((r) => r.key === state.picked);
+        const panel = visitor.list && h('div', { style: { width: '1000px', marginTop: '8px', borderRadius: '12px', overflow: 'hidden',
+            background: '#f4f8fa', color: INK, fontSize: '17px' } },
+            h('div', { style: { height: '44px', lineHeight: '44px', padding: '0 18px', background: '#0e2130', color: '#ffffff', fontSize: '18px' } },
+                'Fahrgeschäfte im Park - nächstes zuerst'),
+            box(picked && coop.role ? 330 : 400, rides.length === 0
+                ? h('div', { style: { padding: '18px', color: MUTED } }, 'Noch keine Fahrgeschäfte im Park.')
+                : rides.map((r) => {
+                    const mine = state.stars[r.key] || r.mine;
+                    const stats = typeof r.e === 'number'
+                        ? 'Spaß ' + one(r.e) + '  ·  Angst ' + one(r.f) + '  ·  Übelkeit ' + one(r.n)
+                        : 'noch nicht getestet';
+                    const extra = [r.dist !== false ? r.dist + ' m' : null, typeof r.queue === 'number' ? Math.round(r.queue) + ' in der Schlange' : null,
+                        r.trains ? r.trains + ' Züge' : null].filter(Boolean).join('  ·  ');
+                    return h('div', { key: r.key, style: { padding: '8px 18px', borderBottom: '1px solid rgba(0, 120, 170, 0.15)',
+                        background: state.picked === r.key ? '#e3edf2' : 'transparent' } },
+                        h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+                            h('div', { style: { width: '520px' } },
+                                h('div', { style: { fontSize: '18px' } }, r.name + '  ', h('span', { style: { color: MUTED, fontSize: '15px' } }, r.kind)),
+                                h('div', { style: { color: MUTED, fontSize: '15px' } }, stats + (extra ? '  ·  ' + extra : '')),
+                                h('div', { style: { color: BLUE, fontSize: '15px' } },
+                                    r.count ? 'Bewertung ' + one(r.avg) + ' / 5 (' + r.count + ')' : 'noch keine Bewertung')),
+                            buttons([
+                                { label: 'Mitfahren', onSelect: () => request('ride', r.key) },
+                                ...(coop.role ? [1, 2, 3, 4, 5].map((n) => ({ label: (mine === n ? '(' + n + ')' : String(n)),
+                                    onSelect: () => {
+                                        this.setState({ picked: r.key, stars: { ...state.stars, [r.key]: n } });
+                                        request('rate', r.key + '|' + n + '|');
+                                    } })) : []),
+                            ])),
+                        list(r.comments).slice(-2).map((c, i) => h('div', { key: 'c' + i, style: { color: INK, fontSize: '15px', marginTop: '3px' } },
+                            c.who + ' (' + c.stars + '/5): ' + c.text)));
+                })),
+            picked && coop.role && h('div', { style: { padding: '10px 18px', background: '#e3edf2' } },
+                h(InputField, { text: state.draft, promptText: literal('Vorschlag zu ' + picked.name + ' ... (Enter sendet)'), maxInputLength: 120,
+                    beginEditOnSelect: true, onChange: (e) => this.setState({ draft: (e && e.text) || '' }), onCommit: (e) => {
+                        const text = String((e && e.text) || '').trim().split('|').join(' ');
+                        this.setState({ draft: '' });
+                        const stars = state.stars[picked.key] || picked.mine;
+                        if (text && stars) request('rate', picked.key + '|' + stars + '|' + text);
+                    }, onCancel: () => this.setState({ draft: '' }) })));
+        return h('div', { style: { position: 'absolute', top: '52px', left: '50%', width: '1000px', marginLeft: '-500px',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'auto' } }, bar, panel);
     }
 }
 
@@ -732,6 +805,7 @@ class CoopLayer extends preact.Component {
         return h('div', { style: { position: 'absolute', top: 0, left: 0, width: '100vw', height: '100vh', pointerEvents: 'none', zIndex: 10000,
             fontFamily: FONT } },
             h(PlayerBar, null),
+            h(VisitorBar, null),
             h(Toasts, null),
             h(JoinProgress, null),
             h(MiniLobby, null),

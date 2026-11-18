@@ -16,6 +16,7 @@ local global = _G
 local Sync = {}
 local Replay = global.require("pc2coop.replay")
 local Rides = global.require("pc2coop.rides")
+local Visitor = global.require("pc2coop.visitor")
 local Recorder = global.require("pc2coop.recorder")
 local World = global.require("pc2coop.world")
 local shared = global.require("pc2coop.shared")
@@ -105,6 +106,8 @@ local function partsAround(position, radius)
 end
 
 local function focusPosition()
+    local feet = Visitor.Feet()
+    if feet then return feet end
     local cam = apis().CameraModeManager
     local ok, focus = global.pcall(function() return cam:GetPlacementFocusPos() end)
     if ok and focus ~= nil and global.pcall(function() return focus:GetX() end) then return focus end
@@ -750,6 +753,8 @@ end
 
 local function activity()
     if applying then return "empfaengt" end
+    local visiting = Visitor.Activity()
+    if visiting then return visiting end
     if activityText then return activityText end
     if previewing() then return "baut" end
     return "schaut"

@@ -203,7 +203,7 @@ class SyncTests(unittest.TestCase):
         self.lua = LuaRuntime(unpack_returned_tuples=True)
         self.lua.execute(FAKE_GAME)
         self.lua.execute('records = {}')
-        for name in ('shared', 'world', 'rides'):
+        for name in ('shared', 'world', 'rides', 'visitor'):
             source = (SOURCE.parent / f'{name}.lua').read_text(encoding='utf8')
             self.lua.eval('function(n, s) package.preload["pc2coop." .. n] = function() return assert(load(s, n, "t", _G))() end end')(name, source)
         recorder = (SOURCE.parent / 'recorder.lua').read_text(encoding='utf8')

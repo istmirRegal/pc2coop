@@ -1,4 +1,4 @@
-PC2Coop 1.10.0 - Planet Coaster 2 live zusammen bauen, ueber Steam
+PC2Coop 1.11.0 - Planet Coaster 2 live zusammen bauen, ueber Steam
 
 Installation (jeder Spieler, einmalig)
 1. ZIP in einen eigenen Ordner entpacken.
@@ -71,6 +71,21 @@ Die anderen sehen
   pro Park (Datei pc2coop-authors-<Park>.txt im Spielordner), auch ueber Speichern und Laden.
 Im Entwickler-Menue (F8) lassen sich Namensschilder und diese Anzeige abschalten.
 
+Besucher-Modus (Leiste oben in der Mitte)
+- "Als Besucher losgehen": du laeufst in Ich-Sicht durch den Park (WASD, Shift schneller;
+  die Laufkamera des Spiels). Die anderen sehen oben rechts "geht als Besucher durch den
+  Park" und deine Markierung dort, wo du stehst. "Zurueck zum Bauen" beendet es.
+- "Fahrgeschaefte": alle Fahrgeschaefte, das naechste zuerst, mit Spass/Angst/Uebelkeit (nach
+  dem Testlauf), Laenge der Schlange und Zahl der Zuege. "Mitfahren" setzt dich auf einen
+  Sitz (Kamera-Einstellungen des Spiels; "Zurueck" unten rechts steigt aus, danach laeufst
+  du weiter). Das Fahrgeschaeft muss geoeffnet sein, damit sich der Zug bewegt.
+- Bewerten: 1 bis 5 Sterne, danach ein kurzer Vorschlag ("mehr Schatten am Eingang").
+  Alle sehen Bewertungen, Durchschnitt und Vorschlaege; der Host hat sie im Verlauf.
+- Emotes (Winken, Jubeln, Lachen, Super, Naja, Uebel) erscheinen bei allen als Hinweis und
+  kurz neben deinem Namen.
+- Noch nicht: Dinge kaufen, Toiletten, Hunger/Laune. Bewertungen gelten fuer die laufende
+  Sitzung (nach einem Neustart sind sie weg).
+
 Verbindung weg?
 - Hakt die Verbindung, siehst du "Keine Verbindung zum Host - warte ...". Kommt sie zurueck
   und dabei ist etwas verloren gegangen, laedt dein Spiel den Park des Hosts automatisch neu.
@@ -118,6 +133,8 @@ Live synchronisiert und im Spiel getestet:
   Objekt loescht, das man gerade haelt (allein getestet, mit nachgestelltem Mitspieler).
 - Mitspieler oben rechts anklicken = ihm folgen, nochmal klicken = aufhoeren.
   Mittlere Maustaste kurz klicken = Ping; gedrueckt halten oder ziehen pingt nicht.
+- Besucher-Modus: laufen, mitfahren, bewerten, Emotes (allein getestet, nachgestellter
+  Mitspieler; die Bedienung per Maus/Tastatur ist noch nicht im Spiel geklickt worden).
 - Achterbahnen, Schienenfahrgeschaefte und Wasserrutschen (mit ihrer Plattform): neu
   bauen, im Streckeneditor aendern, abreissen, aus Bauplaenen setzen. Eine Bahn geht als
   kleine Bauplan-Datei an alle, sobald du den Streckeneditor verlaesst - solange du noch

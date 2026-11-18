@@ -25,7 +25,19 @@ session = {
     Requests = function() return {} end, Following = function() return nil end, Chat = function() return {} end,
     Toasts = function() return {} end, Avatars = function() return {} end, Notice = function() end,
     SetChoice = function(kind, title, detail) calls.choice[#calls.choice+1] = tostring(kind) .. "|" .. tostring(title) .. "|" .. tostring(detail) end,
-    MarkStarting = function() calls.starting = true end}
+    MarkStarting = function() calls.starting = true end,
+    Ratings = function() return {F1_0_2 = {avg = 4.5, count = 2, mine = 5, comments = {{who = "Vici", stars = 4, text = "mehr Schatten"}}}} end,
+    Emotes = function() return {["200"] = "winkt"} end,
+    Emote = function(kind) calls.emote = kind end,
+    Rate = function(key, stars, name, text) calls.rate = key .. "|" .. stars .. "|" .. name .. "|" .. text end}
+visitor = {active = false, ticks = 0}
+package.preload["pc2coop.visitor"] = function() return {
+    Tick = function() visitor.ticks = visitor.ticks + 1 end,
+    Start = function() visitor.active = true end, Stop = function() visitor.active = false end,
+    Active = function() return visitor.active end, Riding = function() return nil end,
+    Ride = function(key, find) calls.ride = key; return true end,
+    Rides = function(keyOf, cache) return {{key = "F1_0_2", name = "Conlan", kind = "Achterbahn", e = 6.5, f = 4.2, n = 1.8, dist = 40}} end} end
+package.preload["pc2coop.sync"] = function() return {RideKey = function() return "F1_0_2" end, GidToEntity = function() return 1 end} end
 package.preload["pc2coop.parks"] = function() return {
     List = function(manager) calls.list = calls.list + 1; return {{id = "1", name = "Talpark", world = "Taiga", time = 0}} end,
     Load = function(manager, id) calls.load[#calls.load+1] = id; return true end,
@@ -47,6 +59,24 @@ class UiTests(unittest.TestCase):
     def state(self):
         self.lua.execute('ui.Tick()')
         return json.loads(self.lua.eval('store.state'))
+
+    def test_visitor_mode_in_a_park(self):
+        state = self.state()
+        ride = state['visitor']['rides'][0]
+        self.assertEqual((ride['name'], ride['avg'], ride['mine'], ride['comments'][0]['text']), ('Conlan', 4.5, 5, 'mehr Schatten'))
+        self.assertEqual(state['visitor']['emotes'], {'200': 'winkt'})
+        self.lua.execute('ui.SetOpen(true)')
+        self.ui._Request('91|visitor|1')
+        self.assertTrue(self.lua.eval('visitor.active'))
+        self.assertFalse(self.state()['open'], 'the window closes when the walk starts')
+        self.ui._Request('92|rate|F1_0_2|4|mehr Schatten')
+        self.ui._Request('93|emote|wave')
+        self.ui._Request('94|ride|F1_0_2')
+        self.assertEqual((self.lua.eval('calls.rate'), self.lua.eval('calls.emote'), self.lua.eval('calls.ride')),
+                         ('F1_0_2|4|Conlan|mehr Schatten', 'wave', 'F1_0_2'))
+        self.assertGreater(self.lua.eval('visitor.ticks'), 0)
+        self.ui._Request('95|visitor|0')
+        self.assertFalse(self.lua.eval('visitor.active'))
 
     def open_close_open(self):
         self.lua.execute('ui.SetOpen(true)')

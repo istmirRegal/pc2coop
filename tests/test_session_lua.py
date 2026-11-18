@@ -43,7 +43,7 @@ class Peer:
         self.sid, self.name = sid, name
         self.lua = LuaRuntime(unpack_returned_tuples=True)
         self.lua.execute(FAKES)
-        for module in ('shared', 'world', 'rides'):
+        for module in ('shared', 'world', 'rides', 'visitor'):
             source = (SOURCE.parent / f'{module}.lua').read_text(encoding='utf8')
             self.lua.eval('function(n, s) package.preload["pc2coop." .. n] = function() return assert(load(s, n, "t", _G))() end end')(module, source)
         loader = self.lua.eval('function(s) return assert(load(s, "session", "t", _G))() end')
@@ -664,3 +664,42 @@ class RideSnapshotTests(SessionTests.__bases__[0]):
             host.event('file:done|200|pc2coop-ride-1-1.blueprint|10')
         self.pump()
         self.assertEqual(self.ride_ops(host), [])
+
+
+@unittest.skipIf(LuaRuntime is None, 'Optional lupa.lua53 runtime is not installed')
+class VisitorTests(SessionTests.__bases__[0]):
+    """Visitor mode: emotes and ride ratings reach everyone through the host."""
+    setUp = SessionTests.setUp
+    lobby_enter = SessionTests.lobby_enter
+    pump = SessionTests.pump
+
+    def toasts(self, peer):
+        return [t['text'] for t in peer.lua.eval('session.Toasts()').values()]
+
+    def test_an_emote_reaches_everyone_once_per_second(self):
+        alex, host, sam = self.peers['200'], self.peers['100'], self.peers['300']
+        self.assertTrue(alex.lua.eval('session.Emote("wave")'))
+        self.assertFalse(alex.lua.eval('session.Emote("dance|x")'))
+        self.pump()
+        self.assertIn('Alex winkt', self.toasts(host))
+        self.assertIn('Alex winkt', self.toasts(sam))
+        self.assertEqual(dict(sam.lua.eval('session.Emotes()').items()), {'200': 'winkt'})
+        alex.lua.execute('session.Emote("cheer")')
+        self.pump()
+        self.assertNotIn('Alex jubelt', self.toasts(sam), 'second emote within a second is dropped')
+
+    def test_a_rating_with_a_suggestion_is_shared_and_averaged(self):
+        alex, host, sam = self.peers['200'], self.peers['100'], self.peers['300']
+        self.assertTrue(alex.lua.eval('session.Rate("F1_0_2", 4, "Conlan", "mehr Schatten | bitte")'))
+        self.assertTrue(sam.lua.eval('session.Rate("F1_0_2", 5, "Conlan", "")'))
+        self.assertFalse(sam.lua.eval('session.Rate("S1_0_2", 5, "x", "")'))
+        self.assertFalse(sam.lua.eval('session.Rate("F1_0_2", 9, "x", "")'))
+        self.pump()
+        for peer in (host, alex, sam):
+            r = peer.lua.eval('session.Ratings()')['F1_0_2']
+            self.assertEqual((r['name'], r['avg'], r['count']), ('Conlan', 4.5, 2))
+            self.assertEqual([dict(c.items()) for c in r['comments'].values()],
+                             [{'who': 'Alex', 'stars': 4, 'text': 'mehr Schatten   bitte'}])
+        self.assertEqual(sam.lua.eval('session.Ratings()')['F1_0_2']['mine'], 5)
+        self.assertTrue(any('Alex bewertet Conlan mit 4/5: mehr Schatten' in t for t in self.toasts(sam)))
+        self.assertTrue(any('bewertet Conlan' in line for line in host.lua.eval('session.View().feed').values()))

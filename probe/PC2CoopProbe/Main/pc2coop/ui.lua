@@ -115,6 +115,26 @@ local function statsList(stats)
     return out
 end
 
+-- Visitor mode: walking, riding along, the park's rides with stats and ratings.
+local visitorList = false   -- the rides list of the visitor bar is unfolded
+
+local function visitorState()
+    local Visitor = global.require("pc2coop.visitor")
+    if frontendMenu ~= nil or session.View().context == "menu" then return false end
+    local ratings = session.Ratings and session.Ratings() or {}
+    local rides = {}
+    local okR, list = global.pcall(Visitor.Rides, global.require("pc2coop.sync").RideKey, true)
+    for _, r in global.ipairs(okR and list or {}) do
+        local rated = ratings[r.key] or {}
+        rides[#rides+1] = {key = r.key, name = r.name, kind = r.kind, e = r.e or false, f = r.f or false, n = r.n or false,
+            queue = r.queue or false, trains = r.trains or false, dist = r.dist or false,
+            avg = rated.avg or false, count = rated.count or 0, mine = rated.mine or false, comments = rated.comments or {}}
+    end
+    local riding = Visitor.Riding()
+    return {active = Visitor.Active(), riding = riding and riding.name or false, rides = rides, list = visitorList,
+        emotes = session.Emotes and session.Emotes() or {}}
+end
+
 local function buildState()
     local view = session.View()
     local players = {}
@@ -146,6 +166,7 @@ local function buildState()
         context = view.context or false, dlc = view.dlc,
         choice = view.choice or false, canChoose = choosing(), parks = choosing() and parkList or {},
         chosen = chosen and (chosen.kind .. ":" .. global.tostring(chosen.id or chosen.biome or "")) or false,
+        visitor = visitorState(),
     }
 end
 
@@ -184,6 +205,28 @@ local actions = {
         if session.Following() == arg then session.SetFollow(nil) else session.SetFollow(arg); Ui.SetOpen(false) end
     end,
     ping = function() session.Ping() end,
+    -- Visitor mode: "1" walk as a guest, "0" back to building.
+    visitor = function(arg)
+        local Visitor = global.require("pc2coop.visitor")
+        if arg == "1" then Visitor.Start(); Ui.SetOpen(false) else Visitor.Stop() end
+    end,
+    ride = function(arg)
+        local Visitor = global.require("pc2coop.visitor")
+        local ok, failure = Visitor.Ride(arg, global.require("pc2coop.sync").GidToEntity)
+        if not ok then session.Notice("Mitfahren geht gerade nicht (" .. global.tostring(failure) .. ").", "ff922b") end
+    end,
+    emote = function(arg) session.Emote(arg) end,
+    visitorlist = function(arg) visitorList = arg == "1" end,
+    -- "<ride key>|<stars>|<suggestion>"
+    rate = function(arg)
+        local key, stars, text = global.string.match(arg or "", "^([^|]+)|(%d)|?(.*)$")
+        if not key then return end
+        local name = "?"
+        for _, r in global.ipairs(global.require("pc2coop.visitor").Rides(global.require("pc2coop.sync").RideKey, true)) do
+            if r.key == key then name = r.name end
+        end
+        session.Rate(key, global.tonumber(stars), name, text)
+    end,
     dlc = function(arg) session.SetDlc(arg) end,
     parks = function() refreshParks() end,
     -- "save|<id>", "new|<biome>|<1 creative>", "franchise" or "" (nothing picked)
@@ -271,6 +314,7 @@ end
 function Ui.Tick()
     frames = frames + 1
     local ok, failure = global.pcall(function()
+        if not frontendMenu then global.require("pc2coop.visitor").Tick() end
         ensureBridge()
         local ctx = ensureContext()
         if frames % 10 == 0 or lastState == nil then

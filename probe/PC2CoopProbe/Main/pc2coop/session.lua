@@ -15,7 +15,7 @@ local World = global.require("pc2coop.world")
 local shared = global.require("pc2coop.shared")
 
 -- Mod version; must match the database's probeVersion (checked by the tests).
-Session.VERSION = "1.10.0"
+Session.VERSION = "1.11.0"
 local COLORS = {"ff6b6b", "4dabf7", "51cf66", "fcc419", "cc5de8", "ff922b", "22b8cf", "f06595"}
 local net, sync
 local emit = function() end
@@ -58,6 +58,12 @@ local gameVersion = ""    -- this game's version; players of different versions 
 local pings = {}          -- sid -> {x, y, z, frame}: "here!" markers, shown for PING_FRAMES
 local PING_FRAMES = 480
 local lastPing = {}       -- host: sid -> frame of their last ping (one per second at most)
+-- Visitor mode (visitor.lua): emotes and ratings of rides, for everyone in the session.
+local EMOTES = {wave = "winkt", cheer = "jubelt", laugh = "lacht", sick = "ist schlecht", up = "findet das super",
+    down = "findet das nicht gut"}
+local emotes = {}         -- sid -> {kind, frame}
+local lastEmote = {}      -- host: sid -> frame of the last emote (one per second at most)
+local ratings = {}        -- ride key -> {name, by = {sid -> {stars, text, who}}}
 local following = nil     -- sid whose camera this player follows
 local savedAuthors = {}   -- host: local part -> {res, creator, last} from earlier sessions in this park
 local authorsFile = nil   -- host: "pc2coop-authors-<park>.txt"
@@ -95,6 +101,14 @@ local function clean(name)
     name = global.string.gsub(global.tostring(name or "?"), "[|;,\n\r]", "")
     return global.string.sub(name, 1, 32)
 end
+
+-- A short text a player typed (rating comment): no separators, at most 120 characters.
+local function cleanText(text)
+    text = global.string.gsub(global.tostring(text or ""), "[|\n\r]", " ")
+    return global.string.sub(text, 1, 120)
+end
+
+local function validRideKey(key) return global.string.match(key or "", "^F%-?%d+_%-?%d+_%-?%d+$") ~= nil and #key <= 40 end
 
 local send
 
@@ -478,6 +492,12 @@ local function catchUp(sid)
     p.pending, p.manifest, p.missing = nil, nil, nil
     sendRideFiles(sid, lines)
     sendOps(sid, lines)
+    -- Ratings so far (quiet: no toast for old ones).
+    for key, r in global.pairs(ratings) do
+        for by, v in global.pairs(r.by) do
+            send(sid, "rt|" .. by .. "|" .. key .. "|" .. v.stars .. "|" .. r.name .. "|" .. v.who .. "|" .. v.text .. "|0")
+        end
+    end
 end
 
 local function join(sid, name, mode)
@@ -676,6 +696,30 @@ local function hostChange(sid, f)
             if other ~= me and other ~= sid and players[other] and not players[other].pending then send(other, line) end
         end
         addFeed(timeText(nameOf(sid), paused, index))
+    elseif f[1] == "emote" and players[sid] and EMOTES[f[2] or ""] then
+        if not lastEmote[sid] or frames - lastEmote[sid] >= 60 then
+            lastEmote[sid] = frames
+            emotes[sid] = {kind = f[2], frame = frames}
+            local line = "em|" .. sid .. "|" .. f[2]
+            for _, other in global.ipairs(order) do
+                if other ~= me and other ~= sid and players[other] and not players[other].pending then send(other, line) end
+            end
+            toast(nameOf(sid) .. " " .. EMOTES[f[2]], players[sid].color)
+        end
+    elseif f[1] == "rate" and players[sid] and validRideKey(f[2]) then
+        local stars = global.tonumber(f[3])
+        if stars and stars >= 1 and stars <= 5 and stars == global.math.floor(stars) then
+            local name, text, who = clean(f[4] or "?"), cleanText(f[5] or ""), nameOf(sid)
+            ratings[f[2]] = ratings[f[2]] or {name = name, by = {}}
+            ratings[f[2]].name = name
+            ratings[f[2]].by[sid] = {stars = stars, text = text, who = who}
+            local line = "rt|" .. sid .. "|" .. f[2] .. "|" .. stars .. "|" .. name .. "|" .. who .. "|" .. text .. "|1"
+            for _, other in global.ipairs(order) do
+                if other ~= me and players[other] and not players[other].pending then send(other, line) end
+            end
+            local said = who .. " bewertet " .. name .. " mit " .. stars .. "/5" .. (text ~= "" and (": " .. text) or "")
+            addFeed(said)
+        end
     elseif f[1] == "ride" and players[sid] then
         -- A ride (coaster) as a blueprint file: passed on once the file is complete here.
         local Rides = global.require("pc2coop.rides")
@@ -904,6 +948,26 @@ local function onMessage(from, payload)
                         pl.x, pl.y, pl.z = global.tonumber(f[7]), global.tonumber(f[8]), global.tonumber(f[9])
                         pl.yaw, pl.pitch = global.tonumber(f[10]), global.tonumber(f[11])
                     end
+                end
+            end
+        elseif kind == "em" then
+            local f = split(payload, "|")
+            if EMOTES[f[3] or ""] then
+                emotes[f[2]] = {kind = f[3], frame = frames}
+                for _, pl in global.ipairs(roster.players or {}) do
+                    if pl.sid == f[2] then toast(pl.name .. " " .. EMOTES[f[3]], pl.color) end
+                end
+            end
+        elseif kind == "rt" then
+            local f = split(payload, "|")
+            local stars = global.tonumber(f[4])
+            if validRideKey(f[3]) and stars and stars >= 1 and stars <= 5 then
+                ratings[f[3]] = ratings[f[3]] or {name = clean(f[5]), by = {}}
+                ratings[f[3]].name = clean(f[5])
+                ratings[f[3]].by[f[2]] = {stars = stars, text = cleanText(f[7] or ""), who = clean(f[6])}
+                if f[8] == "1" then
+                    toast(clean(f[6]) .. " bewertet " .. clean(f[5]) .. " mit " .. stars .. "/5"
+                        .. ((f[7] or "") ~= "" and (": " .. cleanText(f[7])) or ""))
                 end
             end
         elseif kind == "pg" then
@@ -1467,6 +1531,49 @@ function Session.Ping()
     pings[me] = {x = x, y = y, z = z, frame = frames}
     local wire = "ping|" .. num(x) .. "|" .. num(y) .. "|" .. num(z)
     if role == "host" then hostChange(me, split(wire, "|")) else send(hostId, wire) end
+end
+
+-- Visitor mode: wave, cheer ... (EMOTES) for everyone.
+function Session.Emote(kind)
+    if not role or not EMOTES[kind or ""] then return false end
+    local wire = "emote|" .. kind
+    if role == "host" then hostChange(me, split(wire, "|")) else send(hostId, wire) end
+    if role ~= "host" then emotes[me] = {kind = kind, frame = frames} end
+    return true
+end
+
+-- Visitor mode: 1-5 stars and a short suggestion for a ride (key: sync.RideKey).
+function Session.Rate(key, stars, name, text)
+    stars = global.tonumber(stars)
+    if not role or not validRideKey(key) or not stars or stars < 1 or stars > 5 then return false end
+    local wire = "rate|" .. key .. "|" .. global.math.floor(stars) .. "|" .. clean(name or "?") .. "|" .. cleanText(text)
+    if role == "host" then hostChange(me, split(wire, "|")) else send(hostId, wire) end
+    return true
+end
+
+-- key -> {name, avg, count, mine, comments = {{who, stars, text}}}
+function Session.Ratings()
+    local out = {}
+    for key, r in global.pairs(ratings) do
+        local sum, n, comments, mine = 0, 0, {}, nil
+        for by, v in global.pairs(r.by) do
+            sum, n = sum + v.stars, n + 1
+            if v.text ~= "" then comments[#comments+1] = {who = v.who, stars = v.stars, text = v.text} end
+            if by == me then mine = v.stars end
+        end
+        out[key] = {name = r.name, avg = n > 0 and global.math.floor(sum / n * 10 + 0.5) / 10 or 0, count = n,
+            mine = mine or false, comments = comments}
+    end
+    return out
+end
+
+-- sid -> what the player does right now (emotes of the last four seconds).
+function Session.Emotes()
+    local out = {}
+    for sid, e in global.pairs(emotes) do
+        if frames - e.frame < 240 then out[sid] = EMOTES[e.kind] else emotes[sid] = nil end
+    end
+    return out
 end
 
 -- Current pings: {sid, x, y, z, age (0..1)}.
