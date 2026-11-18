@@ -37,6 +37,8 @@ local settle = {}          -- key -> frame: a remote change there is still settl
 local candidates = {}      -- ride -> true: new since the last scan; counts if still there next time
 local vanished = {}        -- ride -> true: missing since the last scan; removed if still gone next time
 local SETTLE_FRAMES = 180
+local knownFlat = nil      -- flat ride entities seen in the last scan
+local blueprintAt = -100000 -- frame of the last local blueprint placement
 local SCAN_FRAMES = 45
 local KEEP_FILES = 40
 
@@ -70,7 +72,11 @@ local function printOf(ride)
             if apis().ridestation:GetRideEntityIDFromStationEntityID(s) == ride then n = n + 1 end
         end
         local r = function(v) return global.math.floor(v + 0.5) end
-        return global.string.format("%d,%d,%d,%d,%d,%d,%d", r(a:GetX()), r(a:GetY()), r(a:GetZ()), r(b:GetX()), r(b:GetY()), r(b:GetZ()), n)
+        -- Name and trains: renamed rides and changed trains go out as well.
+        local okN, name = global.pcall(function() return apis().rides:GetRideName(ride) end)
+        local okI, info = global.pcall(function() return apis().rides:GetRideInfo(ride) end)
+        return global.string.format("%d,%d,%d,%d,%d,%d,%d,%s,%s", r(a:GetX()), r(a:GetY()), r(a:GetZ()), r(b:GetX()), r(b:GetY()), r(b:GetZ()), n,
+            global.tostring(okN and name or ""), global.tostring(okI and global.type(info) == "table" and info.numTrains or ""))
     end)
     return ok and text or "?"
 end
@@ -127,11 +133,22 @@ local function findUnit(key)
     end
 end
 
-local function queue(ride, old)
+local function queue(ride, old, flat)
     for _, j in global.ipairs(jobs) do
         if j.ride == ride then j.after = frames + 20; return end
     end
-    jobs[#jobs+1] = {ride = ride, old = old, after = frames + 20}
+    jobs[#jobs+1] = {ride = ride, old = old, after = frames + 20, flat = flat}
+end
+
+-- Flat rides: placed, moved and deleted through the replay; only those that came out of a
+-- blueprint travel as files (the replay never saw them being built).
+local function flats()
+    local out = {}
+    for _, s in global.ipairs(stations()) do
+        local ok, ride = global.pcall(function() return apis().ridestation:GetRideEntityIDFromStationEntityID(s) end)
+        if ok and ride and not isTracked(ride) and alive(ride) then out[ride] = true end
+    end
+    return out
 end
 
 local function remember(file)
@@ -183,6 +200,14 @@ function Rides.Install()
     local trackedrides = apis().trackedrides
     local original = trackedrides and trackedrides.NotifyTrackedRideOfTrackEdit
     if global.type(original) ~= "function" then emit("rides:no-track-hook"); return false end
+    -- The blueprint tool calls this after its commit: its flat rides go out as files.
+    local complete = trackedrides.CompleteBlueprintSerialisationLoad
+    if global.type(complete) == "function" then
+        trackedrides.CompleteBlueprintSerialisationLoad = function(self, ...)
+            if not ours() then blueprintAt = frames end
+            return complete(self, ...)
+        end
+    end
     trackedrides.NotifyTrackedRideOfTrackEdit = function(self, trackEntity, bEditing, ...)
         local ok, failure = global.pcall(onTrackEdit, trackEntity, bEditing)
         if not ok then emit("rides:hook-error|" .. global.tostring(failure)) end
@@ -207,6 +232,11 @@ end
 
 local function send(j)
     local state = current()[j.ride]
+    if j.flat then
+        local key = alive(j.ride) and keyOf(j.ride)
+        state = key and {key = key} or nil
+        if not state then return end
+    end
     if not state then
         if j.old ~= "-" then emit("sync:ride|" .. j.old .. "|-|-") end
         if known then known[j.ride] = nil end
@@ -222,7 +252,7 @@ local function send(j)
     if not ok then emit("rides:save-failed|" .. global.tostring(failure)); return end
     ready[file] = true
     remember(file)
-    if known then known[j.ride] = state end
+    if known and not j.flat then known[j.ride] = state end
     emit("sync:ride|" .. j.old .. "|" .. key .. "|" .. file)
 end
 
@@ -231,12 +261,20 @@ local function settling(key) return key and settle[key] and frames < settle[key]
 -- What everyone has: taken when the session starts here (all games have the same park then).
 function Rides.Baseline()
     known, candidates, vanished = current(), {}, {}
+    knownFlat = flats()
 end
 
 -- A new or vanished ride counts only when two scans in a row agree: tools briefly show
 -- ghosts of rides being placed (seen in game between two previews).
 local function scan()
     local now = current()
+    local flatNow = flats()
+    if knownFlat and frames - blueprintAt < 600 then
+        for ride in global.pairs(flatNow) do
+            if not knownFlat[ride] then queue(ride, "-", true) end
+        end
+    end
+    knownFlat = flatNow
     if not known then known = now; return end
     local nextKnown, nextCandidates, nextVanished = {}, {}, {}
     for ride, state in global.pairs(now) do
@@ -376,6 +414,7 @@ function Rides.Apply(old, new, file, tools)
     local now = current()
     for ride in global.pairs(editing) do now[ride] = known and known[ride] end
     known = now
+    knownFlat = flats()
     -- The new ride may still settle for a few frames (size, entity): not a local change.
     if old ~= "-" then settle[old] = frames + SETTLE_FRAMES end
     if new ~= "-" then settle[new] = frames + SETTLE_FRAMES end
@@ -385,6 +424,7 @@ end
 function Rides.Stop()
     for _, file in global.ipairs(mine) do emit("sync:ridedel|" .. file) end
     known, editing, jobs, job, ready, mine, settle = nil, {}, {}, nil, {}, {}, {}
+    knownFlat, blueprintAt = nil, -100000
 end
 
 function Rides._State() return {known = known, editing = editing, jobs = jobs, tag = tag, files = mine} end

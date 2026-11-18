@@ -110,7 +110,11 @@ local function focusPosition()
     if feet then return feet end
     local cam = apis().CameraModeManager
     local ok, focus = global.pcall(function() return cam:GetPlacementFocusPos() end)
-    if ok and focus ~= nil and global.pcall(function() return focus:GetX() end) then return focus end
+    if ok and focus ~= nil and global.pcall(function() return focus:GetX() end)
+        and (global.math.abs(focus:GetX()) + global.math.abs(focus:GetZ())) > 0.01 then return focus end
+    -- (0,0,0): no placement tool - the middle of the view on the ground
+    local okW, point = global.pcall(function() return global.require("pc2coop.world").FocusPoint() end)
+    if okW and point then return point end
     local pos = cam:GetPosYPRZoom()
     return pos
 end
@@ -168,7 +172,8 @@ function Handlers.BeforeCommit(token)
     if batch then lastCmd = batch end
     if batch and active then
         cmdSent = cmdSent + 1
-        emit("sync:cmd|" .. batch)
+        -- Long batches (a path brush stroke) go in parts; replay puts them together.
+        for _, part in global.ipairs(Replay.Split(batch)) do emit("sync:cmd|" .. part) end
     end
     if not active then return nil end
     local ok, focus = global.pcall(focusPosition)

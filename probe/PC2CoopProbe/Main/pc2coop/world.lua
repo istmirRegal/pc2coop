@@ -61,7 +61,8 @@ function World.HookNotifications(module, trace)
         if shared.onNotification then
             global.pcall(function()
                 local text = self:GetNotificationString(kind, context, contextType)
-                if global.type(text) == "string" and text ~= "" then shared.onNotification(text) end
+                local okE, entity = global.pcall(function() return self:GetEntityFromContext(context, contextType) end)
+                if global.type(text) == "string" and text ~= "" then shared.onNotification(text, okE and entity or nil) end
             end)
         end
         return global.table.unpack(results, 1, results.n)
@@ -234,6 +235,26 @@ function World.SelectedPart()
 end
 
 -- Camera: position and yaw/pitch, as presence reports them.
+-- Where the middle of the view meets the ground. The game's placement focus is (0,0,0)
+-- while no tool places anything (tested 1.12.0), so it is only used when it is set.
+function World.FocusPoint()
+    local ok, point = global.pcall(function()
+        local Vector3 = global.require("Vector3")
+        local apis = global.api.world.GetWorldAPIs()
+        local cam = apis.CameraModeManager
+        local okP, focus = global.pcall(function() return cam:GetPlacementFocusPos() end)
+        if okP and focus and (global.math.abs(focus:GetX()) + global.math.abs(focus:GetZ())) > 0.01 then return focus end
+        local pos, ypr = cam:GetPosYPRZoom()
+        local yaw, pitch = ypr:GetX(), ypr:GetY()
+        local dir = Vector3:new(global.math.sin(yaw) * global.math.cos(pitch), -global.math.sin(pitch), global.math.cos(yaw) * global.math.cos(pitch))
+        local terrain = apis.voxelterrain
+        local d = terrain:RayCast(terrain:GetPrimaryVoxelTerrainEntityID(), pos, dir, 2000)
+        if d and d > 0.5 then return pos + dir * d end
+        return Vector3:new(pos:GetX() + global.math.sin(yaw) * 40, pos:GetY(), pos:GetZ() + global.math.cos(yaw) * 40)
+    end)
+    if ok then return point end
+end
+
 function World.Camera()
     local ok, x, y, z, yaw, pitch = global.pcall(function()
         local position, ypr = global.api.world.GetWorldAPIs().CameraModeManager:GetPosYPRZoom()

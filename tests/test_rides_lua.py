@@ -195,6 +195,20 @@ class RidesTests(unittest.TestCase):
         self.assertEqual(sorted(self.lua.eval('removed').values()), [51, 52])
         self.assertEqual(list(self.lua.eval('platformMoves').values()), ['50:2'])
 
+    def test_flat_rides_from_a_blueprint_travel_as_files_others_through_the_replay(self):
+        self.lua.execute('rides[40] = {x = 3, z = 4, tracked = false, size = 5}')   # placed with the flat ride tool
+        self.tick(160)
+        self.assertEqual(self.sent(), [])
+        self.lua.execute('''
+            rides[41] = {x = 6, z = 7, tracked = false, size = 5}
+            apis.trackedrides:CompleteBlueprintSerialisationLoad()               -- the blueprint tool's commit
+        ''')
+        self.tick(160)
+        self.assertEqual(self.sent(), ['sync:ride|-|F6_0_7|pc2coop-ride-76561190000000001-1.blueprint'])
+        self.lua.execute('rides[41] = nil')
+        self.tick(160)
+        self.assertEqual(len(self.sent()), 1, 'its delete goes through the replay, not as a ride file')
+
     def test_lines_are_checked(self):
         for key, ok in (('F1_-2_3', True), ('-', True), ('S1_2_3', False), ('F1_2', False), ('F1_2_3|x', False)):
             self.assertEqual(self.rides.ValidKey(key), ok, key)

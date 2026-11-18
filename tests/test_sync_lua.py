@@ -37,6 +37,17 @@ function H.StartEditingPart_Scenery(self, e) return e end
 function H.StartEditingParts_Scenery(self, es) return es end
 function H.GetFullUndoChangeList(self) return {hierarchy = self} end
 local function newHierarchy() return setmetatable({ops = {}}, meta) end
+-- Paths and pools: volumes by id (ids differ between games), chunks by entity.
+fakeVolumes = {}          -- id -> x of the path
+chunkPos, chunkVolume = {}, {}
+volumeLog = {}
+function H.RemoveVolume(self, volume, flag) self.removedVolumes = self.removedVolumes or {}; table.insert(self.removedVolumes, volume) end
+function H.AddVolumeChunkToCompositeObject(self, composite, chunk, flag)
+    composite.chunks = composite.chunks or {}; table.insert(composite.chunks, chunk)
+end
+function H.BeginVolumeModificationsBlock(self) self.block = true end
+function H.EndVolumeModificationsBlock(self) self.block = false end
+function H.SetPerformTerrainModificationsModifyVolumes(self, value) self.terrainFollows = value end
 
 local previews, waits = {}, {}
 local undo = {}
@@ -69,7 +80,18 @@ function undo.CommitPreview(token)
             else terrainCalls[#terrainCalls+1] = c end
         end
     end
+    for _, v in ipairs(token.cl.hierarchy.removedVolumes or {}) do volumeLog[#volumeLog+1] = "removed " .. tostring(v) end
     for _, c in ipairs(token.cl.hierarchy.composites or {}) do
+        if c.handles then volumeLog[#volumeLog+1] = "painted " .. c.handles end
+        if c.outline then
+            local n = 0
+            for _ in ipairs(c.outline) do n = n + 1 end
+            volumeLog[#volumeLog+1] = string.format("%s %d points %s at %g,%g", tostring(c.outline.sRenderType), n,
+                c.origin and "centred" or "raw", c.t and c.t:GetPos():GetX() or -1, c.t and c.t:GetPos():GetZ() or -1)
+        end
+        if c.demolish and c.destroyed then
+            for _, ch in ipairs(c.chunks or {}) do volumeLog[#volumeLog+1] = "chunk removed " .. tostring(ch) end
+        end
         if c.demolish and c.destroyed then
             for _, e in ipairs(c.moved or {}) do rides[#rides+1] = "demolished " .. tostring(e) end
         elseif c.ride and c.t then rides[#rides+1] = string.format("%s %g,%g", c.ride, c.t:GetPos():GetX(), c.t:GetPos():GetZ()) end
@@ -124,9 +146,21 @@ function volumes:SetSplinePathData(mo, outline, render, edge, width, depth, clip
     mo.data = outline .. "/" .. render .. "/" .. width .. "/" .. tostring(colour[1])
 end
 function H.SetErrorOnPathMergeUnchangedModifyVolumes(self, value) self.mergeError = value end
-function H.BeginVolumeModificationsBlock(self) self.block = true end
-function H.EndVolumeModificationsBlock(self) self.block = false end
-function H.SetPerformTerrainModificationsModifyVolumes(self, value) self.terrainFollows = value end
+hierMeta, baseRemoveVolume, baseAddChunk = meta, H.RemoveVolume, H.AddVolumeChunkToCompositeObject
+function volumes:Raycast(start, dir)
+    for id, x in pairs(fakeVolumes) do if math.abs(x - start:GetX()) < 1 then return 10, id, 0 end end
+end
+function volumes:GetVolumeIDFromEntityID(entity) return chunkVolume[entity] end
+function volumes:AppendBrushHandles(kind, flags, pos, radius, height, selection)
+    table.insert(selection, string.format("%g", pos:GetX()))
+end
+function volumes:CreateMoveObjectsForControlHandles(composite, h, selection)
+    composite.handles = table.concat(selection, ",")
+end
+function volumes:CreateMoveObjectForVolumeOutline(composite, h, outline, clip, grounded)
+    composite.outline = outline
+end
+function volumes:CreateMoveObjectHeightStick(composite, h, pos) composite.stick = pos:GetX() end
 -- Flat rides: a composite object of the hierarchy holds the ride; placed at commit.
 rides = {}
 function H.CreateCompositeObject(self, opts)
@@ -134,6 +168,7 @@ function H.CreateCompositeObject(self, opts)
     c.SetTransform = function(me, t) me.t = t end
     c.GetTransform = function(me) return me.t end
     c.AlignCompositeRotation = function() end
+    c.SetCompositeOriginToOBBCentre = function(me) me.origin = true end
     c.Destroy = function(me) me.destroyed = true end
     self.composites = self.composites or {}
     table.insert(self.composites, c)
@@ -159,6 +194,7 @@ package.preload["Editors.Scenery.Utils.SceneryUtils"] = function()
         for _, e in ipairs(selection) do
             apis.flatrides:MoveFlatRide(h, c, apis.flatrides:GetFlatRideEditToken(e), 0, false)
         end
+        for _, chunk in ipairs(selection.chunks or {}) do h:AddVolumeChunkToCompositeObject(c, chunk, false) end
         c:Destroy()
         return false, #selection > 0, false, false
     end
@@ -181,8 +217,20 @@ package.preload["Editors.Shared.BaseUIMode"] = function() return {GetModeHelperE
 apis.GameModeHelperComponent = {GetCurrentModeName = function() return editor.edit end, GetCurrentMode = function() return editor.mode end}
 apis.UIModeHelperComponent = {GetCurrentModeName = function() return editor.ui end}
 api = {undo = undo, world = {GetWorldAPIs = function() return apis end},
-    entity = {CreateRequestCompletionToken=function() return {} end, HaveRequestsCompleted=function() return true end},
+    physics = {Flag_Volume = 8, RayCast = function(world, from, to, flags, n)
+        local hits = {}
+        for e, pos in pairs(chunkPos) do
+            if math.abs(pos[1] - from:GetX()) < 0.5 and math.abs(pos[3] - from:GetZ()) < 0.5 then hits[#hits+1] = {nEntityID = e} end
+        end
+        return hits
+    end},
+    entity = {CreateRequestCompletionToken=function() return {} end, HaveRequestsCompleted=function() return true end,
+        FindEntityByName=function() return 1 end},
     transform = {CalculateWorldTransform=function(entity)
+        if chunkPos[entity] then
+            local c = chunkPos[entity]
+            return {GetPos=function() return vec(c[1], c[2], c[3]) end, GetOr=function() return quat(0, 0, 0, 1) end}
+        end
         local p = parts[entities[entity]]
         return {GetPos=function() return p.p end, GetOr=function() return p.q end}
     end},
@@ -507,6 +555,164 @@ class FlatRideTests(unittest.TestCase):
         self.tick(20)
         self.assertEqual(len(self.lua.eval('rides')), 1)
         self.assertEqual(len(self.records('sync:cmd|')), 1)
+
+
+@unittest.skipIf(LuaRuntime is None, 'Optional lupa.lua53 runtime is not installed')
+class VolumeTests(unittest.TestCase):
+    """Paths and pools beyond the line tool: delete, brush, stamps, deleting a selection."""
+    setUp = SyncTests.setUp
+    records = SyncTests.records
+    tick = SyncTests.tick
+
+    def batch(self):
+        cmds = self.records('sync:cmd|')
+        self.assertEqual(len(cmds), 1, cmds)
+        return cmds[0][len('sync:cmd|'):]
+
+    def replay(self, *batches):
+        seq = 1
+        for b in batches:
+            self.lua.eval('function(b) sync.Receive(b) end')(f'K|{seq}|{b}')
+            seq += 1
+        self.tick(20)
+
+    def test_path_deleted_under_the_cursor_is_found_again_by_its_ray(self):
+        self.lua.execute('''
+            local V = require("Vector3")
+            fakeVolumes = {[7] = 50}
+            local apis = api.world.GetWorldAPIs()
+            local dist, volume = apis.volumes:Raycast(V:new(50, 10, 0), V:new(0, -1, 0))
+            local h = apis.editors:CreateUndoOperationsHierarchy()
+            h:RemoveVolume(volume, false)
+            local wait, preview = api.undo.PreviewChangeList(h:GetFullUndoChangeList())
+            api.undo.CommitPreview(preview)
+        ''')
+        self.tick()
+        batch = self.batch()
+        self.assertIn('hier.RemoveVolume(@h,y50:10:0:0:-1:0,b0)', batch)
+        self.lua.execute('fakeVolumes = {[70] = 50}; volumeLog = {}')   # the other game numbers it 70
+        self.replay(batch)
+        self.assertEqual(list(self.lua.eval('volumeLog').values()), ['removed 70'])
+        self.assertEqual(len(self.records('sync:cmd|')), 1, 'not sent back')
+
+    def test_path_delete_still_recorded_after_the_game_swaps_the_method_table(self):
+        # Seen in game: the hierarchy's method table is replaced after a park finished loading.
+        self.lua.execute('''
+            local fresh = {}
+            for k, v in pairs(hierMeta.__index) do fresh[k] = v end
+            fresh.RemoveVolume, fresh.AddVolumeChunkToCompositeObject = baseRemoveVolume, baseAddChunk
+            fresh.__index = fresh
+            hierMeta.__index = fresh
+            local V = require("Vector3")
+            fakeVolumes = {[7] = 50}
+            local apis = api.world.GetWorldAPIs()
+            local dist, volume = apis.volumes:Raycast(V:new(50, 10, 0), V:new(0, -1, 0))
+            local h = apis.editors:CreateUndoOperationsHierarchy()
+            h:RemoveVolume(volume, false)
+            local wait, preview = api.undo.PreviewChangeList(h:GetFullUndoChangeList())
+            api.undo.CommitPreview(preview)
+        ''')
+        self.tick()
+        self.assertIn('hier.RemoveVolume(@h,y50:10:0:0:-1:0,b0)', self.batch())
+
+    def test_brush_stroke_survives_the_editor_previewing_anew_every_frame(self):
+        self.lua.execute('''
+            local V = require("Vector3")
+            local apis = api.world.GetWorldAPIs()
+            local sel, preview = {}, nil
+            for i = 1, 3 do
+                apis.volumes:AppendBrushHandles(2, 1, V:new(i, 0, 0), 4, 1, sel)
+                apis.volumes:AppendBrushHandles(2, 1, V:new(i, 0, 0), 4, 1, sel)   -- same frame twice: once
+                if preview then api.undo.CancelPreview(preview) end
+                local h = apis.editors:CreateUndoOperationsHierarchy()
+                local c = h:CreateCompositeObject({})
+                apis.volumes:CreateMoveObjectsForControlHandles(c, h, sel)
+                local wait
+                wait, preview = api.undo.PreviewChangeList(h:GetFullUndoChangeList())
+            end
+            volumeLog = {}
+            api.undo.CommitPreview(preview)
+        ''')
+        self.tick()
+        batch = self.batch()
+        self.assertEqual(batch.count('volumes.AppendBrushHandles('), 3, batch)
+        self.assertEqual(list(self.lua.eval('volumeLog').values()), ['painted 1,1,2,2,3,3'])   # the author's own world
+        self.lua.execute('volumeLog = {}')
+        self.replay(batch)
+        self.assertEqual(list(self.lua.eval('volumeLog').values()), ['painted 1,2,3'])
+
+    def test_long_brush_stroke_travels_in_parts(self):
+        self.lua.execute('''
+            local V = require("Vector3")
+            local apis = api.world.GetWorldAPIs()
+            local sel = {}
+            for i = 1, 120 do apis.volumes:AppendBrushHandles(2, 1, V:new(i + 0.123456, 0, 0), 4, 1, sel) end
+            local h = apis.editors:CreateUndoOperationsHierarchy()
+            local c = h:CreateCompositeObject({})
+            apis.volumes:CreateMoveObjectsForControlHandles(c, h, sel)
+            local wait, preview = api.undo.PreviewChangeList(h:GetFullUndoChangeList())
+            api.undo.CommitPreview(preview)
+            volumeLog = {}
+        ''')
+        self.tick()
+        parts = [c[len('sync:cmd|'):] for c in self.records('sync:cmd|')]
+        self.assertGreater(len(parts), 1)
+        self.assertTrue(all(len(x) <= 3000 for x in parts))
+        # Another player's change arrives between the parts; order of parts does not matter.
+        self.replay(parts[-1], '!park.SetParkName(sMitte)', *parts[:-1])
+        log = list(self.lua.eval('volumeLog').values())
+        self.assertEqual(len(log), 1)
+        self.assertEqual(log[0].count(','), 119)
+        self.assertIn('name Mitte', list(self.lua.eval('mgmt').values()))
+
+    def test_stamp_or_pool_outline_lands_where_the_author_put_it(self):
+        self.lua.execute('''
+            local V, Q, T = require("Vector3"), require("Quaternion"), require("TransformQ")
+            local apis = api.world.GetWorldAPIs()
+            local h = apis.editors:CreateUndoOperationsHierarchy()
+            local c = h:CreateCompositeObject({})
+            local outline = {sRenderType = "PoolTiles", nClipPriority = 2,
+                {vPos = V:new(0, 0, 0), r = 0}, {vPos = V:new(4, 0, 0), r = 0.5}, {vPos = V:new(4, 0, 4), r = 0}}
+            apis.volumes:CreateMoveObjectForVolumeOutline(c, h, outline, 2, 1)
+            c:SetCompositeOriginToOBBCentre()
+            c:SetTransform(T.FromOrPos(Q.Identity, V:new(30, 0, 40)))
+            local wait, preview = api.undo.PreviewChangeList(h:GetFullUndoChangeList())
+            api.undo.CommitPreview(preview)
+            volumeLog = {}
+        ''')
+        self.tick()
+        batch = self.batch()
+        self.assertIn('vPos=v4:0:4', batch)
+        self.assertIn('sRenderType=sPoolTiles', batch)
+        self.lua.execute('rides = {}')
+        self.replay(batch)
+        self.assertEqual(list(self.lua.eval('volumeLog').values()), ['PoolTiles 3 points centred at 30,40'])
+
+    def test_deleted_path_piece_of_a_selection_is_found_by_a_probe(self):
+        self.lua.execute('''
+            chunkPos[900], chunkVolume[900] = {12, 0, 8}, 7
+            local apis = api.world.GetWorldAPIs()
+            local h = apis.editors:CreateUndoOperationsHierarchy()
+            require("Editors.Scenery.Utils.SceneryUtils").DeleteMultiSelection_Core({chunks = {900}}, apis, nil, h)
+            local wait, preview = api.undo.PreviewChangeList(h:GetFullUndoChangeList())
+            api.undo.CommitPreview(preview)
+        ''')
+        self.tick()
+        batch = self.batch()
+        self.assertIn('hier.AddVolumeChunkToCompositeObject(@h,@r1,k12:0:8,b0)', batch)
+        self.lua.execute('chunkPos, chunkVolume = {[901] = {12, 0, 8}}, {[901] = 70}; volumeLog = {}')
+        self.replay(batch)
+        self.assertEqual(list(self.lua.eval('volumeLog').values()), ['chunk removed 901'])
+
+    def test_nested_tables_round_trip(self):
+        out = self.lua.eval('''(function()
+            local R = require("pc2coop.replay")
+            local t = {a = 1, {b = true, c = {d = "x y"}}}
+            local text = R._encode(t, {}, 1)
+            local back = R._decode(text, {})
+            return text .. "|" .. tostring(back.a) .. "|" .. tostring(back[1].b) .. "|" .. back[1].c.d
+        end)()''')
+        self.assertTrue(out.endswith('|1|true|x y'), out)
 
 
 @unittest.skipIf(LuaRuntime is None, 'Optional lupa.lua53 runtime is not installed')

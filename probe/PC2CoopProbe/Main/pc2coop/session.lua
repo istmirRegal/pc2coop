@@ -15,7 +15,7 @@ local World = global.require("pc2coop.world")
 local shared = global.require("pc2coop.shared")
 
 -- Mod version; must match the database's probeVersion (checked by the tests).
-Session.VERSION = "1.11.0"
+Session.VERSION = "1.12.0"
 local COLORS = {"ff6b6b", "4dabf7", "51cf66", "fcc419", "cc5de8", "ff922b", "22b8cf", "f06595"}
 local net, sync
 local emit = function() end
@@ -64,6 +64,35 @@ local EMOTES = {wave = "winkt", cheer = "jubelt", laugh = "lacht", sick = "ist s
 local emotes = {}         -- sid -> {kind, frame}
 local lastEmote = {}      -- host: sid -> frame of the last emote (one per second at most)
 local ratings = {}        -- ride key -> {name, by = {sid -> {stars, text, who}}}
+local lastUnsupported = -100000
+local ratingsFile = nil   -- host: "pc2coop-ratings-<park>.txt", ratings kept between game starts
+-- Team features (docs/KONZEPT.md): board, park events, session rules, last visit, checkpoints.
+local Board = global.require("pc2coop.board")
+local boardFile, visitsFile = nil, nil
+local events = {}         -- park events with a place: {text, x, y, z, frame}
+local EVENT_FRAMES = 7200 -- about two minutes
+local rules = {speed = "all", visitors = "1", foreign = "free"}
+local RULE_VALUES = {speed = {all = true, host = true}, visitors = {["1"] = true, ["0"] = true}, foreign = {free = true, ask = true}}
+local lastVisit = {}      -- host: sid -> {cash, rides = {key = name}} when the player last left
+local sinceText = nil     -- shown to this player: what changed since the last visit
+local checkpoints = {}    -- host: {n, base, label, frame}
+local vote = nil          -- {id, kind, arg, text, by, answers = {sid = true/false}}
+local voteSerial = 0
+local rideLister = nil    -- function() -> {key = name}; set for tests, else the visitor module
+local invitation = nil    -- {by, key, name, frame}: someone invites everyone to a test ride
+local pingContext = nil   -- {x, y, z, frame}: own ping just made; the panel offers actions for that spot
+local CONTEXT_FRAMES = 600
+local lastTakeAsk = {}    -- sid -> frame (host: one takeover question per player every 5 s)
+local parkFrames = 0      -- frames in a park with a session (the first-use hint waits a bit)
+-- Competition (docs/KONZEPT.md "Wettbewerb"): the host keeps it, the others get "cp" lines.
+--   cp|<id>|<mode>|<phase build|rate|done>|<seconds left>|<topic>|<sid:name;...>|<sid:design10:tech10:count,...>
+local COMP_MODES = {duel = "Bauduell", timer = "Koop gegen die Uhr"}
+local comp = nil          -- host: {id, mode, phase, minutes, endMs, topic, entries, names, ratings, sent}
+local compView = nil      -- others: the last cp line, read
+local compMine = {}       -- sid -> {d, t}: what this player gave
+local compSerial = 0
+local nowMs = nil         -- real time from the DLL ("now" events)
+local INVITE_RIDE_FRAMES = 3600
 local following = nil     -- sid whose camera this player follows
 local savedAuthors = {}   -- host: local part -> {res, creator, last} from earlier sessions in this park
 local authorsFile = nil   -- host: "pc2coop-authors-<park>.txt"
@@ -97,15 +126,31 @@ local function split(text, sep)
     return out
 end
 
+-- At most limit bytes, never through the middle of a UTF-8 letter (umlauts in names).
+local function cut(text, limit)
+    if #text <= limit then return text end
+    local i = limit
+    while i > 0 do
+        local b = global.string.byte(text, i + 1) or 0
+        if b < 128 or b >= 192 then break end
+        i = i - 1
+    end
+    return global.string.sub(text, 1, i)
+end
+
 local function clean(name)
     name = global.string.gsub(global.tostring(name or "?"), "[|;,\n\r]", "")
-    return global.string.sub(name, 1, 32)
+    return cut(name, 32)
 end
 
 -- A short text a player typed (rating comment): no separators, at most 120 characters.
 local function cleanText(text)
     text = global.string.gsub(global.tostring(text or ""), "[|\n\r]", " ")
-    return global.string.sub(text, 1, 120)
+    return cut(text, 120)
+end
+
+local function takeText(name, label)
+    return name .. " moechte bei \"" .. label .. "\" weitermachen - fertig bauen und freigeben?"
 end
 
 local function validRideKey(key) return global.string.match(key or "", "^F%-?%d+_%-?%d+_%-?%d+$") ~= nil and #key <= 40 end
@@ -415,6 +460,13 @@ end
 local function authorityDelete(sid, part, gid, rev)
     if gid == "" or not validGid(gid) then return {} end
     if lockedByOther(sid, gid) then return refuseLocked(sid, gid) end
+    -- Session rule: others' builds are not torn down without asking.
+    local o = objects[gid]
+    if rules.foreign == "ask" and o and o.creator and o.creator ~= "Park" and o.creator ~= nameOf(sid) then
+        if sid ~= me then send(sid, "ruledeny|Das hat " .. clean(o.creator) .. " gebaut - frag erst nach (Sitzungsregel).")
+        else toast("Das hat " .. clean(o.creator) .. " gebaut - frag erst nach (Sitzungsregel).", "ff922b") end
+        return restore(sid, gid, "fremd")
+    end
     local res
     if objects[gid] then
         if rev ~= objects[gid].rev then return restore(sid, gid, "veraltet") end
@@ -498,6 +550,10 @@ local function catchUp(sid)
             send(sid, "rt|" .. by .. "|" .. key .. "|" .. v.stars .. "|" .. r.name .. "|" .. v.who .. "|" .. v.text .. "|0")
         end
     end
+    for _, line in global.ipairs(Board.Lines()) do send(sid, line) end
+    send(sid, "rules|" .. rules.speed .. "|" .. rules.visitors .. "|" .. rules.foreign)
+    local since = Session._Since(sid)
+    if since then send(sid, "since|" .. since) end
 end
 
 local function join(sid, name, mode)
@@ -529,6 +585,7 @@ local function join(sid, name, mode)
         end
         local paused, index = World.Time()
         if paused ~= nil then send(sid, "time|" .. (paused and "1" or "0") .. "|" .. index .. "|") end
+        if comp then send(sid, Session._CompLine()) end
     else
         if not returning then addFeed(players[sid].name .. " ist beigetreten") end
         local snapshot = {}
@@ -541,6 +598,7 @@ local hostHold
 
 local function leave(sid)
     if players[sid] then
+        global.pcall(Session._RememberVisit, sid)
         addFeed(players[sid].name .. " hat die Sitzung verlassen")
         if holds[sid] or global.next(locks) then hostHold(sid, "", "", "") end
         net.NetCommand("del|pc2coop-host-" .. sid .. ".bin")
@@ -688,6 +746,11 @@ local function hostChange(sid, f)
         end
     elseif f[1] == "hold" and players[sid] then
         hostHold(sid, f[2] or "", f[3] or "", f[4] or "")
+    elseif f[1] == "time" and players[sid] and rules.speed == "host" and sid ~= me then
+        -- Only the host sets the game speed: the player's game goes back to the host's.
+        local hostPaused, hostIndex = World.Time()
+        if hostPaused ~= nil then send(sid, "time|" .. (hostPaused and "1" or "0") .. "|" .. hostIndex .. "|") end
+        send(sid, "ruledeny|Nur der Host aendert das Spieltempo (Sitzungsregel).")
     elseif f[1] == "time" and players[sid] then
         local paused, index = f[2] == "1", global.tonumber(f[3]) or 1
         if sid ~= me then World.SetTime(paused, index) end
@@ -696,6 +759,54 @@ local function hostChange(sid, f)
             if other ~= me and other ~= sid and players[other] and not players[other].pending then send(other, line) end
         end
         addFeed(timeText(nameOf(sid), paused, index))
+    elseif f[1] == "board" and players[sid] then
+        -- add|kind|x|y|z|radius|title|text|assignee   set|id|field|value   del|id
+        local changed, removed
+        if f[2] == "add" then
+            local item = Board.Make(f[3], f[4], f[5], f[6], f[7], f[8], f[9], nameOf(sid), f[10])
+            if item then changed = Board.Add(item) end
+        elseif f[2] == "set" and f[4] == "vote" then
+            changed = Board.Set(f[3] or "", "vote", clean(nameOf(sid)) .. ":" .. (f[5] == "1" and "1" or "0"))
+        elseif f[2] == "set" then
+            changed = Board.Set(f[3] or "", f[4], f[5])
+        elseif f[2] == "del" and Board.Get(f[3] or "") then
+            removed = f[3]; Board.Remove(removed)
+        end
+        local line = changed and Board.Line(changed) or (removed and ("bd-|" .. removed))
+        if line then
+            for _, other in global.ipairs(order) do
+                if other ~= me and players[other] and not players[other].pending then send(other, line) end
+            end
+            if boardFile then net.NetCommand("note-append|" .. boardFile .. "|" .. line .. "\n") end
+            if changed and f[2] == "add" then addFeed(nameOf(sid) .. ": " .. Board.KINDS[changed.kind] .. " \"" .. changed.title .. "\"")
+            elseif changed and f[3] and f[4] == "done" and changed.done then addFeed(nameOf(sid) .. " hat erledigt: " .. changed.title) end
+        end
+    elseif f[1] == "comp-rate" and players[sid] and comp and comp.phase == "rate" and f[2] == comp.id
+        and comp.names[f[3] or ""] and f[3] ~= sid then
+        local d, t = global.tonumber(f[4]), global.tonumber(f[5])
+        if d and t and d >= 1 and d <= 5 and t >= 1 and t <= 5 then
+            comp.ratings[sid] = comp.ratings[sid] or {}
+            comp.ratings[sid][f[3]] = {d = global.math.floor(d), t = global.math.floor(t)}
+            Session._CompCheck()
+        end
+    elseif f[1] == "take-ask" and players[sid] and players[f[2] or ""] and holds[f[2]] then
+        -- Someone would like to go on with what another player is editing: the editor is asked.
+        if not lastTakeAsk[sid] or frames - lastTakeAsk[sid] >= 300 then
+            lastTakeAsk[sid] = frames
+            if f[2] == me then toast(takeText(nameOf(sid), holds[f[2]].label), players[sid].color)
+            else send(f[2], "tk|" .. clean(nameOf(sid)) .. "|" .. clean(holds[f[2]].label)) end
+            addFeed(nameOf(sid) .. " fragt " .. nameOf(f[2]) .. " nach Uebernahme")
+        end
+    elseif f[1] == "ride-invite" and players[sid] and validRideKey(f[2]) then
+        local line = "iv|" .. clean(nameOf(sid)) .. "|" .. f[2] .. "|" .. clean(f[3] or "?")
+        for _, other in global.ipairs(order) do
+            if other ~= me and other ~= sid and players[other] and not players[other].pending then send(other, line) end
+        end
+        if sid ~= me then invitation = {by = nameOf(sid), key = f[2], name = clean(f[3] or "?"), frame = frames} end
+        addFeed(nameOf(sid) .. " laedt zur Testfahrt auf " .. clean(f[3] or "?") .. " ein")
+    elseif f[1] == "vote-answer" and players[sid] and vote and f[2] == vote.id then
+        vote.answers[sid] = f[3] == "1"
+        Session._VoteCheck()
     elseif f[1] == "emote" and players[sid] and EMOTES[f[2] or ""] then
         if not lastEmote[sid] or frames - lastEmote[sid] >= 60 then
             lastEmote[sid] = frames
@@ -719,6 +830,9 @@ local function hostChange(sid, f)
             end
             local said = who .. " bewertet " .. name .. " mit " .. stars .. "/5" .. (text ~= "" and (": " .. text) or "")
             addFeed(said)
+            if ratingsFile then
+                net.NetCommand("note-append|" .. ratingsFile .. "|" .. global.table.concat({f[2], sid, stars, name, who, text}, "|") .. "\n")
+            end
         end
     elseif f[1] == "ride" and players[sid] then
         -- A ride (coaster) as a blueprint file: passed on once the file is complete here.
@@ -836,7 +950,16 @@ function Session.OnSyncLine(line)
     if kind == "rejected" then
         local reason = global.string.match(rest, "|(.*)$") or ""
         if reason == "gesperrt" then toast("Zurueckgenommen: ein Mitspieler bearbeitet dieses Objekt gerade.", "ff922b")
+        elseif reason == "fremd" then return
         elseif reason == "veraltet" then toast("Zurueckgenommen: ein Mitspieler war bei diesem Objekt schneller.", "ff922b") end
+        return
+    end
+    if kind == "unsupported" then
+        if frames - lastUnsupported > 600 then
+            lastUnsupported = frames
+            toast("Hinweis: \"" .. clean(rest) .. "\" wird noch nicht an die anderen uebertragen. Sie koennen im "
+                .. "Multiplayer-Fenster \"Neu synchronisieren\".", "ff922b")
+        end
         return
     end
     if kind == "ridedel" then
@@ -938,7 +1061,14 @@ local function onMessage(from, payload)
             World.SetTime(paused, index)
             if f[4] and f[4] ~= "" then toast(timeText(clean(f[4]), paused, index)) end
         elseif kind == "note" then
-            toast(global.string.sub(payload, 6), "fcc419", true)
+            -- note|x|y|z|text: a park event of the host with the place it happened
+            local x, y, z, text = global.string.match(payload, "^note|([^|]*)|([^|]*)|([^|]*)|(.*)$")
+            text = text or global.string.sub(payload, 6)
+            toast(text, "fcc419", true)
+            if global.tonumber(x) and global.tonumber(z) then
+                events[#events+1] = {text = text, x = global.tonumber(x), y = global.tonumber(y) or 0, z = global.tonumber(z), frame = frames}
+                while #events > 20 do global.table.remove(events, 1) end
+            end
         elseif kind == "p" then
             local f = split(payload, "|")
             for _, pl in global.ipairs(roster.players or {}) do
@@ -958,6 +1088,30 @@ local function onMessage(from, payload)
                     if pl.sid == f[2] then toast(pl.name .. " " .. EMOTES[f[3]], pl.color) end
                 end
             end
+        elseif kind == "bd" or kind == "bd-" then
+            Board.Apply(payload)
+        elseif kind == "rules" then
+            local f = split(payload, "|")
+            if RULE_VALUES.speed[f[2] or ""] then rules.speed = f[2] end
+            if RULE_VALUES.visitors[f[3] or ""] then rules.visitors = f[3] end
+            if RULE_VALUES.foreign[f[4] or ""] then rules.foreign = f[4] end
+        elseif kind == "cp" then
+            Session._CompRead(payload)
+        elseif kind == "tk" then
+            local f = split(payload, "|")
+            toast(takeText(clean(f[2] or "?"), clean(f[3] or "?")), "ffd43b")
+        elseif kind == "iv" then
+            local f = split(payload, "|")
+            if validRideKey(f[3]) then invitation = {by = clean(f[2]), key = f[3], name = clean(f[4] or "?"), frame = frames} end
+        elseif kind == "since" then
+            sinceText = global.string.sub(global.string.gsub(global.string.sub(payload, 7), "[\n\r]", " "), 1, 600)
+            toast("Seit deinem letzten Besuch: Multiplayer-Fenster > Verlauf", "00c6ff")
+        elseif kind == "ruledeny" then
+            toast(global.string.sub(global.string.gsub(global.string.sub(payload, 10), "[\n\r]", " "), 1, 160), "ff922b")
+        elseif kind == "vote" then
+            local f = split(payload, "|")
+            if f[2] == "-" then vote = nil
+            else vote = {id = f[2], kind = clean(f[3]), arg = clean(f[4]), text = global.string.sub(f[5] or "", 1, 160), by = clean(f[6]), answers = {}} end
         elseif kind == "rt" then
             local f = split(payload, "|")
             local stars = global.tonumber(f[4])
@@ -1118,6 +1272,13 @@ local function onNet(event)
                     parkTitle = clean(name)
                     authorsFile = "pc2coop-authors-" .. global.string.sub(global.string.gsub(global.tostring(name), "[^%w%-]", "_"), 1, 40) .. ".txt"
                     net.NetCommand("note-read|" .. authorsFile)
+                    ratingsFile = "pc2coop-ratings-" .. global.string.sub(global.string.gsub(global.tostring(name), "[^%w%-]", "_"), 1, 40) .. ".txt"
+                    net.NetCommand("note-read|" .. ratingsFile)
+                    local base = global.string.sub(global.string.gsub(global.tostring(name), "[^%w%-]", "_"), 1, 40)
+                    boardFile, visitsFile = "pc2coop-board-" .. base .. ".txt", "pc2coop-visits-" .. base .. ".txt"
+                    Board.Reset()
+                    net.NetCommand("note-read|" .. boardFile)
+                    net.NetCommand("note-read|" .. visitsFile)
                 end)
                 sync.Receive("S|" .. myName)
             end
@@ -1225,8 +1386,17 @@ local function onNet(event)
         end
     elseif kind == "invite:failed" then
         toast("Einladung konnte nicht gesendet werden")
+    elseif kind == "now" then
+        nowMs = global.tonumber(f[2])
+        Session._CompClock()
     elseif kind == "kv" then
         memory[f[2]] = f[3]
+        if f[2] == "rules" and f[3] then
+            local speed, visitors, foreign = global.string.match(f[3], "^(%a+),(%d),(%a+)$")
+            if speed and RULE_VALUES.speed[speed] then rules.speed = speed end
+            if visitors and RULE_VALUES.visitors[visitors] then rules.visitors = visitors end
+            if foreign and RULE_VALUES.foreign[foreign] then rules.foreign = foreign end
+        end
     elseif kind == "file:progress" then
         progress[f[2]] = {global.tonumber(f[3]) or 0, global.tonumber(f[4]) or 1}
     elseif kind == "file:done" and global.string.match(f[3] or "", "^pc2coop%-ride%-%d+%-%d+%.blueprint$") then
@@ -1255,6 +1425,32 @@ local function onNet(event)
         local text = notes[f[2]] or ""
         notes[f[2]] = nil
         if f[2] == authorsFile then loadAuthors(text)
+        elseif boardFile and f[2] == boardFile then
+            for line in global.string.gmatch(text, "[^\n]+") do Board.Apply(line) end
+        elseif visitsFile and f[2] == visitsFile then
+            -- "sid|cash|key:name,key:name" lines, later lines win.
+            for line in global.string.gmatch(text, "[^\n]+") do
+                local v = split(line, "|")
+                if v[1] and global.string.match(v[1], "^%d+$") then
+                    local seen = {}
+                    for entry in global.string.gmatch(v[3] or "", "[^,]+") do
+                        local key, name = global.string.match(entry, "^([^:]+):(.*)$")
+                        if key then seen[key] = name end
+                    end
+                    lastVisit[v[1]] = {cash = global.tonumber(v[2]), rides = seen}
+                end
+            end
+            if me and lastVisit[me] then sinceText = Session._Since(me) end
+        elseif ratingsFile and f[2] == ratingsFile then
+            -- "key|sid|stars|ride|who|text" lines, later lines win.
+            for line in global.string.gmatch(text, "[^\n]+") do
+                local r = split(line, "|")
+                local stars = global.tonumber(r[3])
+                if validRideKey(r[1]) and r[2] and stars and stars >= 1 and stars <= 5 then
+                    ratings[r[1]] = ratings[r[1]] or {name = clean(r[4]), by = {}}
+                    ratings[r[1]].by[r[2]] = {stars = stars, who = clean(r[5]), text = cleanText(r[6] or "")}
+                end
+            end
         elseif f[2] == LAST_SESSION then Session._LastSession(text) end
     elseif kind == "key:ping" then
         Session.Ping()
@@ -1262,6 +1458,17 @@ local function onNet(event)
         middle = {frame = frames, camera = {World.Camera()}}
     elseif kind == "key:mup" then
         Session._MiddleUp(global.tonumber(f[2]) or 9999, global.tonumber(f[3]) or 9999)
+    elseif kind == "key:v" then
+        -- Visitor mode keys (DLL, only while it is on): Tab, T, E, 1-6.
+        local Visitor = global.require("pc2coop.visitor")
+        local todo = Visitor.OnKey(f[2], f[3] == "1")
+        if todo == "stop" then Visitor.Stop()
+        elseif todo == "interact" then
+            local ok, failure = Visitor.Interact(sync.RideKey, sync.GidToEntity)
+            if not ok then toast("E: " .. global.tostring(failure) .. ".", "ff922b") end
+        end
+    elseif kind == "mouse" then
+        global.require("pc2coop.visitor").OnMouse(global.tonumber(f[2]) or 0, global.tonumber(f[3]) or 0)
     elseif kind == "net:peer-stalled" then
         if players[f[2]] then players[f[2]].sending, players[f[2]].stale = false, true end
         if role == "client" and f[2] == hostId then selfStalled = true end
@@ -1285,9 +1492,13 @@ function Session.Init(logger, diagnostic, syncModule, parkManager)
     global.pcall(function() gameVersion = clean(global.api.game.GetVersionString()) end)
     if context == "park" then
         shared.onTime = function(paused, index) Session._LocalTime(paused, index) end
-        shared.onNotification = function(text) Session._ParkNote(text) end
+        shared.onNotification = function(text, entity) Session._ParkNote(text, entity) end
     end
     helloLobby = nil   -- a new menu or park: the DLL reports the lobby again
+    global.pcall(function()
+        global.require("pc2coop.visitor").Init(function(command) net.NetCommand(command) end,
+            function(kind) Session.Emote(kind) end)
+    end)
     emit("session:init|" .. global.tostring(net.NetStatus and net.NetStatus()))
     -- Module state was reset (new park); the DLL still knows lobby and phase.
     if Session.Available() then
@@ -1436,7 +1647,25 @@ function Session._MiddleUp(ms, travel)
         local a, b = pressed.camera[i], now[i]
         if a and b and global.math.abs(a - b) > 0.02 then return end
     end
-    Session.Ping()
+    if Session.Ping() and pings[me] then
+        pingContext = {x = pings[me].x, y = pings[me].y, z = pings[me].z, frame = frames}
+    end
+end
+
+-- Actions for the spot of the own last ping (shown next to the cursor for a few seconds).
+function Session.Context()
+    if pingContext and (not role or frames - pingContext.frame > CONTEXT_FRAMES) then pingContext = nil end
+    return pingContext
+end
+
+function Session.CloseContext() pingContext = nil end
+
+-- Ask the player who edits something to hand it over when done.
+function Session.AskTakeover(sid)
+    if not role or not sid then return false end
+    local wire = "take-ask|" .. clean(sid)
+    if role == "host" then hostChange(me, split(wire, "|")) else send(hostId, wire) end
+    return true
 end
 
 -- Lobby: the host picks where to play; everyone sees it before the park is opened.
@@ -1531,6 +1760,7 @@ function Session.Ping()
     pings[me] = {x = x, y = y, z = z, frame = frames}
     local wire = "ping|" .. num(x) .. "|" .. num(y) .. "|" .. num(z)
     if role == "host" then hostChange(me, split(wire, "|")) else send(hostId, wire) end
+    return true
 end
 
 -- Visitor mode: wave, cheer ... (EMOTES) for everyone.
@@ -1566,6 +1796,386 @@ function Session.Ratings()
     end
     return out
 end
+
+-- Team board (board.lua): everyone adds; the host keeps it and passes it on.
+local function boardWire(wire)
+    if not role then return false end
+    if role == "host" then hostChange(me, split(wire, "|")) else send(hostId, wire) end
+    return true
+end
+
+function Session.BoardAdd(kind, x, y, z, radius, title, text, assignee)
+    local f = function(v) return v and global.string.format("%.2f", v) or "" end
+    local clip = function(t) return global.string.gsub(global.tostring(t or ""), "[|\n\r]", " ") end
+    return boardWire(global.table.concat({"board", "add", global.tostring(kind), f(x), f(y), f(z), f(radius or 0),
+        clip(title), clip(text), clip(assignee)}, "|"))
+end
+
+function Session.BoardSet(id, field, value)
+    return boardWire("board|set|" .. clean(id) .. "|" .. clean(field) .. "|" .. global.string.gsub(global.tostring(value or ""), "[|\n\r]", " "))
+end
+
+function Session.BoardRemove(id) return boardWire("board|del|" .. clean(id)) end
+
+-- Short German words for the game's notification kinds (markers and labels in the park).
+local EVENT_WORDS = {RideBroken = "Panne", RideNeedsMaintenance = "Wartung faellig", RideServiceExpired = "Wartung ueberfaellig",
+    GuestsTrapped = "Gaeste eingeschlossen", GuestsStuckInPark = "Gaeste stecken fest", LightningStruckRide = "Blitzeinschlag",
+    LightningStruckParade = "Blitzeinschlag", ParadeBroken = "Parade kaputt", LowGuestsOnRides = "Wenig Fahrgaeste",
+    RideNoPower = "Kein Strom", RideUntested = "Nicht getestet"}
+
+function Session.EventLabel(text)
+    local kind = global.string.match(text or "", "Notification_([%a]+)")
+    local name = global.string.match(text or "", "Name=|([^|]*)|")
+    local word = kind and EVENT_WORDS[kind] or "Meldung"
+    return name and name ~= "" and (word .. ": " .. name) or word
+end
+
+-- Park events with a place (ride broken down, guests trapped ...), newest last.
+function Session.Events()
+    local out = {}
+    for i = #events, 1, -1 do
+        local e = events[i]
+        if frames - e.frame > EVENT_FRAMES then global.table.remove(events, i)
+        else global.table.insert(out, 1, {text = e.text, label = Session.EventLabel(e.text), x = e.x, y = e.y, z = e.z,
+            age = (frames - e.frame) / EVENT_FRAMES}) end
+    end
+    return out
+end
+
+-- Competition --------------------------------------------------------------------------
+local function entryName(name) return (global.string.gsub(clean(name), ":", "")) end
+
+local function compResults()
+    if not comp or comp.phase ~= "done" then return "" end
+    local sums = {}
+    for _, given in global.pairs(comp.ratings) do
+        for target, r in global.pairs(given) do
+            local s = sums[target] or {d = 0, t = 0, n = 0}
+            s.d, s.t, s.n = s.d + r.d, s.t + r.t, s.n + 1
+            sums[target] = s
+        end
+    end
+    local out = {}
+    for _, sid in global.ipairs(comp.entries) do
+        local s = sums[sid]
+        if s then
+            out[#out+1] = sid .. ":" .. global.math.floor(s.d * 10 / s.n + 0.5) .. ":" .. global.math.floor(s.t * 10 / s.n + 0.5) .. ":" .. s.n
+        else out[#out+1] = sid .. ":0:0:0" end
+    end
+    return global.table.concat(out, ",")
+end
+
+local function compLeft()
+    if not comp or comp.phase ~= "build" or not comp.endMs or not nowMs then return comp and comp.minutes * 60 or 0 end
+    return global.math.max(0, global.math.floor((comp.endMs - nowMs) / 1000))
+end
+
+function Session._CompLine()
+    if not comp then return "cp|-" end
+    local entries = {}
+    for _, sid in global.ipairs(comp.entries) do entries[#entries+1] = sid .. ":" .. entryName(comp.names[sid]) end
+    return global.table.concat({"cp", comp.id, comp.mode, comp.phase, global.tostring(compLeft()), comp.topic,
+        global.table.concat(entries, ";"), compResults()}, "|")
+end
+
+local function broadcastComp()
+    local line = Session._CompLine()
+    if comp then comp.sent = frames end
+    for _, other in global.ipairs(order) do
+        if other ~= me and players[other] and not players[other].pending then send(other, line) end
+    end
+end
+
+function Session._CompRead(payload)
+    local f = split(payload, "|")
+    if f[2] == "-" or not COMP_MODES[f[3] or ""] then compView = nil; return end
+    if not compView or compView.id ~= f[2] then compMine = {} end
+    local entries, names = {}, {}
+    for sid, name in global.string.gmatch(f[7] or "", "([^:;]+):([^;]*)") do entries[#entries+1] = sid; names[sid] = name end
+    local results = {}
+    for sid, d, t, n in global.string.gmatch(f[8] or "", "([^:,]+):(%d+):(%d+):(%d+)") do
+        results[#results+1] = {sid = sid, d = global.tonumber(d) / 10, t = global.tonumber(t) / 10, n = global.tonumber(n)}
+    end
+    compView = {id = f[2], mode = f[3], phase = f[4], left = global.tonumber(f[5]) or 0, frame = frames,
+        topic = cleanText(f[6] or ""), entries = entries, names = names, results = results}
+end
+
+-- Host: a new real time from the DLL (end of the build time, a fresh countdown for everyone).
+function Session._CompClock()
+    if role ~= "host" or not comp or not nowMs then return end
+    if not comp.endMs then comp.endMs = nowMs + comp.minutes * 60000; broadcastComp(); return end
+    if comp.phase == "build" and nowMs >= comp.endMs then Session.CompetitionNext()
+    elseif frames - (comp.sent or 0) > 1800 then broadcastComp() end
+end
+
+-- Host: a duel is rated when everyone has rated everyone else.
+function Session._CompCheck()
+    if role ~= "host" or not comp or comp.phase ~= "rate" then return end
+    for _, rater in global.ipairs(comp.entries) do
+        if players[rater] then
+            for _, target in global.ipairs(comp.entries) do
+                if target ~= rater and not (comp.ratings[rater] and comp.ratings[rater][target]) then broadcastComp(); return end
+            end
+        end
+    end
+    Session.CompetitionNext()
+end
+
+-- Host: start a competition: mode duel|timer, 1-240 minutes, a topic ("Wikinger", "max. 20.000 €").
+function Session.StartCompetition(mode, minutes, topic)
+    minutes = global.tonumber(minutes)
+    if role ~= "host" or comp or not COMP_MODES[mode or ""] or not minutes or minutes < 1 or minutes > 240 then return false end
+    compSerial = compSerial + 1
+    local entries, names = {}, {}
+    for _, sid in global.ipairs(order) do
+        if players[sid] and not players[sid].pending then entries[#entries+1] = sid; names[sid] = nameOf(sid) end
+    end
+    comp = {id = "c" .. compSerial, mode = mode, phase = "build", minutes = global.math.floor(minutes),
+        topic = global.string.gsub(cleanText(topic or ""), "[;:,]", " "), entries = entries, names = names, ratings = {}}
+    compMine = {}
+    net.NetCommand("now")
+    addFeed(COMP_MODES[mode] .. " gestartet: " .. comp.minutes .. " Minuten" .. (comp.topic ~= "" and (", Thema: " .. comp.topic) or ""))
+    broadcastComp()
+    return true
+end
+
+-- Host: build -> rate (duel) or done (timer); rate -> done; done -> over.
+function Session.CompetitionNext()
+    if role ~= "host" or not comp then return false end
+    if comp.phase == "build" then
+        comp.phase = comp.mode == "duel" and "rate" or "done"
+        addFeed(comp.mode == "duel" and "Zeit um! Jetzt die Bauten der anderen bewerten (Multiplayer > Sitzung)" or "Zeit um!")
+    elseif comp.phase == "rate" then
+        comp.phase = "done"
+        addFeed("Bewertung abgeschlossen - Ergebnis unter Multiplayer > Sitzung")
+    else
+        comp = nil
+    end
+    broadcastComp()
+    return true
+end
+
+-- Rate another player's build: design and technique, 1-5 each.
+function Session.RateEntry(target, design, tech)
+    design, tech = global.tonumber(design), global.tonumber(tech)
+    local current = comp or compView
+    if not role or not current or current.phase ~= "rate" or not design or not tech or target == me then return false end
+    compMine[target] = {d = global.math.floor(design), t = global.math.floor(tech)}
+    local wire = "comp-rate|" .. current.id .. "|" .. clean(target) .. "|" .. compMine[target].d .. "|" .. compMine[target].t
+    if role == "host" then hostChange(me, split(wire, "|")) else send(hostId, wire) end
+    return true
+end
+
+-- For the panel: {mode, label, phase, left, topic, entries = {{sid, name, me, mine}}, results}.
+function Session.Competition()
+    if role == "host" and not comp then compView = nil; return nil end   -- closed (or never started)
+    if role == "host" then Session._CompRead(Session._CompLine()) end
+    local view = compView
+    if not view then return nil end
+    local left = view.left
+    if view.phase == "build" and role ~= "host" then left = global.math.max(0, left - global.math.floor((frames - view.frame) / 60)) end
+    local entries = {}
+    for _, sid in global.ipairs(view.entries) do
+        local mine = compMine[sid]
+        entries[#entries+1] = {sid = sid, name = view.names[sid] or "?", me = sid == me, d = mine and mine.d or 0, t = mine and mine.t or 0}
+    end
+    local results = {}
+    for _, r in global.ipairs(view.results) do
+        results[#results+1] = {name = view.names[r.sid] or "?", d = r.d, t = r.t, n = r.n}
+    end
+    global.table.sort(results, function(a, b) return a.d + a.t > b.d + b.t end)
+    return {id = view.id, mode = view.mode, label = COMP_MODES[view.mode], phase = view.phase, left = left, topic = view.topic,
+        entries = entries, results = results}
+end
+
+-- Shared test ride: everyone gets an invitation to ride along.
+function Session.InviteRide(key, name)
+    if not role or not validRideKey(key) then return false end
+    local wire = "ride-invite|" .. key .. "|" .. clean(name or "?")
+    if role == "host" then hostChange(me, split(wire, "|")) else send(hostId, wire) end
+    return true
+end
+
+function Session.Invitation()
+    if invitation and frames - invitation.frame > INVITE_RIDE_FRAMES then invitation = nil end
+    return invitation
+end
+
+function Session.DismissInvitation() invitation = nil end
+
+-- Session rules (host): speed all|host, visitors 1|0, foreign free|ask.
+function Session.Rules() return rules end
+
+local RULE_WORDS = {
+    speed = {all = "Spieltempo: alle", host = "Spieltempo: nur der Host"},
+    visitors = {["1"] = "Besucher-Modus: erlaubt", ["0"] = "Besucher-Modus: aus"},
+    foreign = {free = "Fremde Bauten abreissen: erlaubt", ask = "Fremde Bauten abreissen: erst fragen"},
+}
+
+-- Host: several rules at once ({speed = "host", ...}); one line in the log (label or the changes).
+function Session.SetRules(values, label)
+    if role ~= "host" then return false end
+    local changed = {}
+    for _, name in global.ipairs({"speed", "visitors", "foreign"}) do
+        local value = values[name]
+        if value ~= nil then
+            if not RULE_VALUES[name][value] then return false end
+            if rules[name] ~= value then rules[name] = value; changed[#changed+1] = RULE_WORDS[name][value] end
+        end
+    end
+    if #changed == 0 then return true end
+    remember("rules", rules.speed .. "," .. rules.visitors .. "," .. rules.foreign)
+    local line = "rules|" .. rules.speed .. "|" .. rules.visitors .. "|" .. rules.foreign
+    for _, sid in global.ipairs(order) do
+        if sid ~= me and players[sid] and not players[sid].pending then send(sid, line) end
+    end
+    addFeed("Regeln" .. (label and (" \"" .. label .. "\"") or "") .. ": " .. global.table.concat(changed, ", "))
+    return true
+end
+
+function Session.SetRule(name, value)
+    if not RULE_VALUES[name or ""] then return false end
+    return Session.SetRules({[name] = value})
+end
+
+local function ridesNow()
+    if rideLister then return rideLister() end
+    local out = {}
+    local ok, list = global.pcall(function()
+        return global.require("pc2coop.visitor").Rides(global.require("pc2coop.sync").RideKey)
+    end)
+    for _, r in global.ipairs(ok and list or {}) do out[r.key] = r.name end
+    return out
+end
+
+-- Host: what the player saw when leaving, kept in pc2coop-visits-<park>.txt.
+function Session._RememberVisit(sid)
+    if role ~= "host" or not sid then return end
+    local numbers = World.Numbers() or {}
+    local rides = ridesNow()
+    lastVisit[sid] = {cash = numbers.cash, rides = rides}
+    if visitsFile then
+        local entries = {}
+        for key, name in global.pairs(rides) do
+            entries[#entries+1] = key .. ":" .. global.string.gsub(global.tostring(name), "[|,:\n\r]", " ")
+            if #entries >= 120 then break end
+        end
+        net.NetCommand("note-append|" .. visitsFile .. "|" .. sid .. "|" .. global.tostring(numbers.cash or "")
+            .. "|" .. global.table.concat(entries, ",") .. "\n")
+    end
+end
+
+-- "Since your last visit": new and removed rides, money, done tasks, open problems.
+function Session._Since(sid)
+    local before = lastVisit[sid]
+    if not before then return nil end
+    local now, parts = ridesNow(), {}
+    local added, gone = {}, {}
+    for key, name in global.pairs(now) do if not before.rides[key] then added[#added+1] = name end end
+    for key, name in global.pairs(before.rides) do if not now[key] then gone[#gone+1] = name end end
+    global.table.sort(added); global.table.sort(gone)
+    if #added > 0 then parts[#parts+1] = #added .. " neue Fahrgeschaefte (" .. global.table.concat(added, ", ", 1, global.math.min(#added, 5)) .. ")" end
+    if #gone > 0 then parts[#parts+1] = #gone .. " abgerissen (" .. global.table.concat(gone, ", ", 1, global.math.min(#gone, 5)) .. ")" end
+    local numbers = World.Numbers() or {}
+    if before.cash and numbers.cash and not numbers.unlimited then
+        local delta = global.math.floor(numbers.cash - before.cash)
+        if delta ~= 0 then parts[#parts+1] = "Kasse " .. (delta > 0 and "+" or "") .. delta .. " EUR" end
+    end
+    local open, done = 0, 0
+    for _, item in global.ipairs(Board.List()) do
+        if item.kind == "task" then if item.done then done = done + 1 else open = open + 1 end end
+    end
+    if open + done > 0 then parts[#parts+1] = "Aufgaben: " .. done .. " erledigt, " .. open .. " offen" end
+    local problems = Session.Events()
+    if #problems > 0 then parts[#parts+1] = "offene Meldung: " .. problems[#problems].text end
+    if #parts == 0 then return "Nichts Neues - der Park ist wie beim letzten Mal." end
+    return global.table.concat(parts, "; ")
+end
+
+function Session._SetRideLister(fn) rideLister = fn end
+
+-- Checkpoints (host): a copy of the park next to the game; back to it only by vote.
+function Session.Checkpoint()
+    if role ~= "host" or not manager then return false end
+    local n = (#checkpoints > 0 and checkpoints[#checkpoints].n or 0) + 1
+    local name = "Park"
+    global.pcall(function() name = global.api.world.GetWorldAPIs().park:GetParkName() end)
+    local base = "pc2coop-backup-" .. global.string.sub(global.string.gsub(global.tostring(name), "[^%w%-]", "_"), 1, 30) .. "-" .. n
+    local okT = manager:SaveTerrainToFile("/run/" .. base .. ".trn", true)
+    local okP = okT and manager:SaveParkToFile("/run/" .. base .. ".bin", true, false)
+    if not okP then toast("Sicherungspunkt konnte nicht gespeichert werden.", "ff922b"); return false end
+    checkpoints[#checkpoints+1] = {n = n, base = base, label = "Stand " .. n, frame = frames}
+    while #checkpoints > 3 do
+        local old = global.table.remove(checkpoints, 1)
+        net.NetCommand("del|" .. old.base .. ".bin"); net.NetCommand("del|" .. old.base .. ".trn")
+    end
+    addFeed(nameOf(me) .. " hat einen Sicherungspunkt erstellt (Stand " .. n .. ")")
+    return true
+end
+
+local function broadcastVote()
+    local line = vote and ("vote|" .. vote.id .. "|" .. vote.kind .. "|" .. vote.arg .. "|" .. vote.text .. "|" .. vote.by) or "vote|-"
+    for _, sid in global.ipairs(order) do
+        if sid ~= me and players[sid] and not players[sid].pending then send(sid, line) end
+    end
+end
+
+-- Host: everyone present must agree (e.g. back to a checkpoint, which reloads the park).
+function Session.Propose(kind, arg)
+    if role ~= "host" or vote then return false end
+    if kind ~= "restore" then return false end
+    local target
+    for _, c in global.ipairs(checkpoints) do if global.tostring(c.n) == global.tostring(arg) then target = c end end
+    if not target then return false end
+    voteSerial = voteSerial + 1
+    vote = {id = "v" .. voteSerial, kind = kind, arg = global.tostring(target.n), by = nameOf(me), answers = {[me] = true},
+        text = "Park auf " .. target.label .. " zuruecksetzen? Alle laden den Park dann neu."}
+    broadcastVote()
+    Session._VoteCheck()
+    return true
+end
+
+function Session.Vote(yes)
+    if not vote then return false end
+    if role == "host" then vote.answers[me] = yes == true; Session._VoteCheck()
+    else send(hostId, "vote-answer|" .. vote.id .. "|" .. (yes and "1" or "0")) end
+    return true
+end
+
+function Session._VoteCheck()
+    if role ~= "host" or not vote then return end
+    for _, sid in global.ipairs(order) do
+        if players[sid] and not players[sid].pending then
+            if vote.answers[sid] == false then
+                addFeed("Abstimmung abgelehnt (" .. nameOf(sid) .. ")"); vote = nil; broadcastVote(); return
+            elseif vote.answers[sid] == nil then return end
+        end
+    end
+    local done = vote
+    vote = nil
+    broadcastVote()
+    if done.kind == "restore" then
+        for _, c in global.ipairs(checkpoints) do
+            if global.tostring(c.n) == done.arg then
+                addFeed("Alle einverstanden: zurueck auf " .. c.label)
+                global.pcall(function()
+                    local world = global.api.world.GetActive()
+                    manager:RequestLoadParkFromFile("/run/" .. c.base .. ".bin", world, nil, parkTitle ~= "" and parkTitle or "Park", false)
+                end)
+            end
+        end
+    end
+end
+
+function Session.VoteView()
+    if not vote then return false end
+    local mine = vote.answers[me]
+    return {id = vote.id, text = vote.text, by = vote.by, answered = mine ~= nil}
+end
+
+-- Test seam: the host's ratings file (set when the park session starts).
+function Session._RatingsFile(name) ratingsFile = name end
+function Session._BoardFile(name) boardFile = name end
 
 -- sid -> what the player does right now (emotes of the last four seconds).
 function Session.Emotes()
@@ -1650,14 +2260,24 @@ function Session._LocalTime(paused, index)
 end
 
 -- Host: a notification of the host's park (ride broken down, ...) goes to everyone.
-function Session._ParkNote(text)
+function Session._ParkNote(text, entity)
     if role ~= "host" or global.type(text) ~= "string" then return end
     if lastNote[text] and frames - lastNote[text] < 600 then return end
     emit("session:park-note|" .. global.string.sub(text, 1, 160))
     lastNote[text] = frames
     text = global.string.gsub(global.string.sub(text, 1, 300), "[\n\r]", " ")
+    -- Where it happened (the ride, the stuck guests): a marker in the park for everyone.
+    local x, y, z = "", "", ""
+    if entity then
+        global.pcall(function()
+            local p = global.api.transform.CalculateWorldTransform(entity):GetPos()
+            x, y, z = num(p:GetX()), num(p:GetY()), num(p:GetZ())
+            events[#events+1] = {text = text, x = p:GetX(), y = p:GetY(), z = p:GetZ(), frame = frames}
+            while #events > 20 do global.table.remove(events, 1) end
+        end)
+    end
     for _, sid in global.ipairs(order) do
-        if sid ~= me and players[sid] and not players[sid].pending then send(sid, "note|" .. text) end
+        if sid ~= me and players[sid] and not players[sid].pending then send(sid, "note|" .. x .. "|" .. y .. "|" .. z .. "|" .. text) end
     end
 end
 
@@ -1713,6 +2333,15 @@ function Session.Leave()
     joining, progress, desync, joinFailure, helloLobby = false, {}, nil, nil, nil
     invited, approved, requests, confirm, waiting, joinSource = {}, {}, {}, nil, false, nil
     pings, following, whoCache, hostSilent, selfStalled, authorsFile, dirtyAuthors = {}, nil, {}, false, false, nil, {}
+    ratingsFile = nil
+    if role == "host" then for _, sid in global.ipairs(order) do global.pcall(Session._RememberVisit, sid) end end
+    boardFile, visitsFile, events, sinceText, vote, checkpoints, invitation = nil, nil, {}, nil, nil, {}, nil
+    pingContext, lastTakeAsk = nil, {}
+    comp, compView, compMine = nil, nil, {}
+    if role == "host" then remember("rules", "") end
+    rules.speed, rules.visitors, rules.foreign = "all", "1", "free"
+    rules = {speed = "all", visitors = "1", foreign = "free"}
+    Board.Reset()
     if role == "client" then net.NetCommand("note-write|" .. LAST_SESSION .. "|") end
     if role == "host" then remember("admitted", "") end
     stage, parkToken, parkTitle, seenStage, choice = nil, nil, "", nil, nil
@@ -1743,15 +2372,29 @@ function Session.View()
         end
         return {role = role, me = me, host = me, lobby = lobbyId, players = list, stats = stats, conflicts = conflicts, feed = feed,
             park = context == "park" and World.Numbers() or nil, stage = stage, parkTitle = parkTitle, guard = contentGuard,
-            context = context, dlc = myDlc, choice = choice}
+            context = context, dlc = myDlc, choice = choice, board = Board.List(), events = Session.Events(),
+        rules = rules, since = sinceText or false, checkpoints = checkpoints, vote = Session.VoteView()}
     end
     for _, pl in global.ipairs(roster.players or {}) do pl.hold = holds[pl.sid] end
     return {role = role, me = me, host = hostId, lobby = lobbyId, players = roster.players or {}, stats = roster.stats or {},
         conflicts = roster.conflicts or 0, feed = feed, park = park, stage = stage, parkTitle = parkTitle, guard = contentGuard,
-        context = context, dlc = myDlc, choice = choice}
+        context = context, dlc = myDlc, choice = choice, board = Board.List(), events = Session.Events(),
+        rules = rules, since = sinceText or false, checkpoints = checkpoints, vote = Session.VoteView()}
+end
+
+-- Once per game start (DLL memory): the two ways into the multiplayer features.
+local function firstUseHint()
+    if not role or context ~= "park" then parkFrames = 0; return end
+    parkFrames = parkFrames + 1
+    if parkFrames ~= 600 or memory.hinted == "1" then return end
+    remember("hinted", "1")
+    toast("Tipp: Kurzer Mittelklick zeigt allen eine Stelle und bietet Aktionen dafuer an (Kommentar, Testfahrt, Uebernahme). "
+        .. "Alles weitere: Multiplayer unten im Baumenue oder F7.", "4dabf7")
 end
 
 function Session.Tick()
+    firstUseHint()
+    if comp and comp.phase == "build" and frames % 30 == 0 then net.NetCommand("now") end
     frames = frames + 1
     if not Session.Available() then return end
     for _ = 1, 64 do

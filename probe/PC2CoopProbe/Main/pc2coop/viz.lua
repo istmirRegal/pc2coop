@@ -20,6 +20,19 @@ local failed = false
 
 local CHANNEL = 3
 local DISC = "pc_primitive_circle_game"
+-- Figure of a player in visitor mode: the avatar of the start screen (display only).
+-- A guest statue of the park scenery. NOT peep_avatar_startscreen: that one crashes the game
+-- when it is created in a park (tested 1.12.0).
+local FIGURE = "my_stoneguests_01_game"
+local figureChecked, figureFound = false, false
+local function figureOK()
+    if not figureChecked then
+        figureChecked = true
+        local ok, found = global.pcall(global.api.entity.FindPrefab, FIGURE)
+        figureFound = ok and found ~= nil and found ~= false
+    end
+    return figureFound
+end
 -- The wedge: five dots along each edge and three across its far end.
 -- Each entry: {share of the half angle, share of the reach}.
 local DOTS = {}
@@ -141,6 +154,7 @@ end
 
 local function drop(state)
     destroy(state.marker and state.marker.entity)
+    destroy(state.figure and state.figure.entity)
     for _, dot in global.ipairs(state.dots or {}) do destroy(dot.entity) end
     for _, ghost in global.ipairs(state.ghosts or {}) do destroy(ghost.entity) end
     destroy(state.big and state.big.entity)
@@ -180,10 +194,23 @@ local function update(p, dt)
         state.targets = targets
     end
     local m = state.targets.marker
-    place(state.marker, m[1], m[2], m[3], dt)
+    -- A visitor: the figure where the player stands, in the player's colour. The figure is the
+    -- marker then: the ground disc and the view dots would cover everything close up.
+    local visiting = global.string.find(global.tostring(p.act or ""), "Besucher", 1, true) ~= nil
+    place(state.marker, m[1], visiting and -500 or m[2], m[3], dt)
+    if visiting and not state.figure and figureOK() then state.figure = spawn(FIGURE, 1) end
+    if state.figure then
+        if visiting then
+            local yaw = ((p.x and p.fx) and global.math.atan((p.fx or 0) - p.x, (p.fz or 0) - p.z) or 0) + global.math.pi / 2  -- statue looks along -x
+            local Quaternion = global.require("Quaternion")
+            place(state.figure, fx, (fy or 0), fz, dt, Quaternion.Identity:WithY(global.math.sin(yaw / 2)):WithW(global.math.cos(yaw / 2)))
+        else
+            destroy(state.figure.entity); state.figure = nil
+        end
+    end
     for i, dot in global.ipairs(state.dots) do
         local t = state.targets[i]
-        if t then place(dot, t[1], t[2], t[3], dt) else place(dot, m[1], -500, m[3], dt) end
+        if t and not visiting then place(dot, t[1], t[2], t[3], dt) else place(dot, m[1], -500, m[3], dt) end
     end
     -- What the player holds: ghosts of up to MAX_GHOSTS parts, or a large disc for things
     -- that cannot be shown as a model (rides, blueprints of rides).
@@ -245,7 +272,9 @@ local function beacon(sid, ping, dt)
     local y = ground(ping.x, ping.z, ping.y)
     place(state.ring, ping.x, y + 0.15, ping.z, 1)
     if state.ring and state.ring.ready then
-        global.pcall(X().SetScale, state.ring.entity, 2 + 4 * ((ping.age * 6) % 1))
+        -- Build areas: a ring the size of the area; pings and events pulse.
+        local scale = (ping.radius and ping.radius > 0) and ping.radius * 2 or (2 + 4 * ((ping.age * 6) % 1))
+        global.pcall(X().SetScale, state.ring.entity, scale)
     end
     for i, item in global.ipairs(state.column) do
         local bob = global.math.sin(frames / 12 + i) * 0.25

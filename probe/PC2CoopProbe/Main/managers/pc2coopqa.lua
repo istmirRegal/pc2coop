@@ -95,6 +95,31 @@ Manager.Advance=function(self,delta)
                 end
             end
         end
+        -- Team board and park events: a beacon and a label each (the nearest 15 within 300 m).
+        if view.role then
+            local cam=global.api.world.GetWorldAPIs().CameraModeManager
+            local okC,camPos=global.pcall(function() return cam:GetPosYPRZoom() end)
+            local near={}
+            local words={area="Baugebiet",task="Aufgabe",comment="Kommentar",meet="Treffpunkt"}
+            for _,item in global.ipairs(view.board or {}) do
+                if item.x and item.x~=false and not (item.kind=="task" and item.done) then
+                    local d=okC and camPos and ((item.x-camPos:GetX())^2+(item.z-camPos:GetZ())^2) or 0
+                    if d<90000 then near[#near+1]={d=d,item=item} end
+                end
+            end
+            global.table.sort(near,function(a,b) return a.d<b.d end)
+            for i=1,global.math.min(15,#near) do
+                local item=near[i].item
+                pings[#pings+1]={sid="board:" .. item.id,x=item.x,y=item.y,z=item.z,age=0,radius=item.kind=="area" and item.radius or nil}
+                local what=words[item.kind] or ""
+                if item.assignee and item.assignee~="" then what=what .. " - " .. item.assignee end
+                tags[#tags+1]={key="board:" .. item.id,name=item.title,activity=what,x=item.x,y=item.y+9,z=item.z}
+            end
+            for i,e in global.ipairs(view.events or {}) do
+                pings[#pings+1]={sid="event:" .. i,x=e.x,y=e.y,z=e.z,age=e.age}
+                tags[#tags+1]={key="event:" .. i,name=e.label or "Meldung",activity="Meldung des Parks",x=e.x,y=e.y+12,z=e.z}
+            end
+        end
         -- Author of what the local player selects or holds.
         self.authorFrames=(self.authorFrames or 0)+1
         if view.role and self.authorFrames%10==0 then

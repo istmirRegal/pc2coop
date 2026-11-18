@@ -43,7 +43,7 @@ class Peer:
         self.sid, self.name = sid, name
         self.lua = LuaRuntime(unpack_returned_tuples=True)
         self.lua.execute(FAKES)
-        for module in ('shared', 'world', 'rides', 'visitor'):
+        for module in ('shared', 'world', 'rides', 'visitor', 'board'):
             source = (SOURCE.parent / f'{module}.lua').read_text(encoding='utf8')
             self.lua.eval('function(n, s) package.preload["pc2coop." .. n] = function() return assert(load(s, n, "t", _G))() end end')(module, source)
         loader = self.lua.eval('function(s) return assert(load(s, "session", "t", _G))() end')
@@ -703,3 +703,236 @@ class VisitorTests(SessionTests.__bases__[0]):
         self.assertEqual(sam.lua.eval('session.Ratings()')['F1_0_2']['mine'], 5)
         self.assertTrue(any('Alex bewertet Conlan mit 4/5: mehr Schatten' in t for t in self.toasts(sam)))
         self.assertTrue(any('bewertet Conlan' in line for line in host.lua.eval('session.View().feed').values()))
+
+
+    def test_ratings_are_kept_in_a_note_file_of_the_park(self):
+        host, alex = self.peers['100'], self.peers['200']
+        host.lua.execute('session._RatingsFile("pc2coop-ratings-Testpark.txt")')
+        alex.lua.execute('session.Rate("F1_0_2", 3, "Conlan", "mehr Schatten")')
+        self.pump()
+        notes = [n for n in host.sent_notes if 'pc2coop-ratings-Testpark.txt' in n]
+        self.assertEqual(notes, ['note-append|pc2coop-ratings-Testpark.txt|F1_0_2|200|3|Conlan|Alex|mehr Schatten\n'])
+        sam = self.peers['300']
+        host.event('note:data|pc2coop-ratings-Testpark.txt|F9_0_9|400|5|Wilde Maus|Kim|top\nF9_0_9|bad|9|x|y|z')
+        host.event('note:end|pc2coop-ratings-Testpark.txt')
+        self.pump()
+        r = host.lua.eval('session.Ratings()')['F9_0_9']
+        self.assertEqual((r['name'], r['avg'], r['count']), ('Wilde Maus', 5, 1))
+
+
+@unittest.skipIf(LuaRuntime is None, 'Optional lupa.lua53 runtime is not installed')
+class TeamTests(SessionTests.__bases__[0]):
+    """Board, park events, session rules, last visit and checkpoints (docs/KONZEPT.md)."""
+    setUp = SessionTests.setUp
+    lobby_enter = SessionTests.lobby_enter
+    pump = SessionTests.pump
+
+    def toasts(self, peer):
+        return [t['text'] for t in peer.lua.eval('session.Toasts()').values()]
+
+    def board(self, peer):
+        return [dict(i.items()) for i in peer.lua.eval('session.View().board').values()]
+
+    def test_board_items_reach_everyone_and_are_written_to_the_park_file(self):
+        host, alex, sam = self.peers['100'], self.peers['200'], self.peers['300']
+        host.lua.execute('session._BoardFile("pc2coop-board-Testpark.txt")')
+        alex.lua.execute('session.BoardAdd("area", 10, 0, 20, 15, "Wikingerland", "Familienattraktion, max. 15.000", "")')
+        alex.lua.execute('session.BoardAdd("task", nil, nil, nil, 0, "Toiletten am Eingang", "", "Sam")')
+        alex.lua.execute('session.BoardAdd("comment", nil, nil, nil, 0, "ohne Ort", "", "")')   # needs a place
+        self.pump()
+        for peer in (host, alex, sam):
+            items = self.board(peer)
+            self.assertEqual(sorted((i['kind'], i['title']) for i in items), [('area', 'Wikingerland'), ('task', 'Toiletten am Eingang')])
+        task = [i for i in self.board(sam) if i['kind'] == 'task'][0]
+        self.assertEqual((task['by'], task['assignee'], task['done']), ('Alex', 'Sam', False))
+        sam.lua.execute(f'session.BoardSet("{task["id"]}", "done", "1")')
+        self.pump()
+        self.assertTrue([i for i in self.board(alex) if i['kind'] == 'task'][0]['done'])
+        area = [i for i in self.board(host) if i['kind'] == 'area'][0]
+        host.lua.execute(f'session.BoardRemove("{area["id"]}")')
+        self.pump()
+        self.assertEqual([i['kind'] for i in self.board(alex)], ['task'])
+        notes = [n for n in host.sent_notes if 'pc2coop-board-Testpark.txt' in n]
+        self.assertEqual(len(notes), 4)
+        self.assertTrue(notes[-1].startswith('note-append|pc2coop-board-Testpark.txt|bd-|'))
+        self.assertTrue(any('erledigt: Toiletten am Eingang' in line for line in host.lua.eval('session.View().feed').values()))
+
+    def test_board_comes_back_from_the_file_and_late_joiners_get_it(self):
+        host = self.peers['100']
+        host.lua.execute('session._BoardFile("pc2coop-board-Testpark.txt")')
+        host.event('note:data|pc2coop-board-Testpark.txt|bd|b4|meet|1.00|2.00|3.00|0.00|Treffen|am Brunnen|Kim||0\nbd|b5|task||||0.00|Weg|x|Kim||1\nbd-|b5')
+        host.event('note:end|pc2coop-board-Testpark.txt')
+        self.pump()
+        self.assertEqual([(i['id'], i['title']) for i in self.board(host)], [('b4', 'Treffen')])
+        host.lua.execute('session.BoardAdd("task", nil, nil, nil, 0, "Neu", "", "")')
+        self.pump()
+        self.assertIn(('b6', 'Neu'), [(i['id'], i['title']) for i in self.board(host)])
+
+    def test_proposals_count_one_vote_per_player_by_the_senders_name(self):
+        host, alex, sam = self.peers['100'], self.peers['200'], self.peers['300']
+        alex.lua.execute('session.BoardAdd("proposal", 5, 0, 5, 0, "Wildwasserbahn am See?", "", "")')
+        self.pump()
+        item = self.board(sam)[0]
+        self.assertEqual(item['kind'], 'proposal')
+        sam.lua.execute(f'session.BoardSet("{item["id"]}", "vote", "1")')
+        alex.lua.execute(f'session.BoardSet("{item["id"]}", "vote", "1")')
+        sam.lua.execute(f'session.BoardSet("{item["id"]}", "vote", "0")')    # changes the own vote
+        self.pump()
+        for peer in (host, alex, sam):
+            votes = dict(peer.lua.eval('session.View().board[1].votes').items())
+            self.assertEqual(votes, {'Alex': True, 'Sam': False})
+
+    def test_test_ride_invitation_reaches_the_others_and_runs_out(self):
+        host, alex, sam = self.peers['100'], self.peers['200'], self.peers['300']
+        self.assertTrue(alex.lua.eval('session.InviteRide("F1_2_3", "Donnerkeil")'))
+        self.assertFalse(alex.lua.eval('session.InviteRide("bad key", "x")'))
+        self.pump()
+        for peer in (host, sam):
+            invite = peer.lua.eval('session.Invitation()')
+            self.assertEqual((invite['by'], invite['key'], invite['name']), ('Alex', 'F1_2_3', 'Donnerkeil'))
+        self.assertIsNone(alex.lua.eval('session.Invitation()'))
+        sam.lua.execute('session.DismissInvitation()')
+        self.assertIsNone(sam.lua.eval('session.Invitation()'))
+        host.lua.execute('for i = 1, 3700 do session.Tick() end')
+        self.assertIsNone(host.lua.eval('session.Invitation()'))
+
+    def test_takeover_question_goes_to_the_editor_only(self):
+        host, alex, sam = self.peers['100'], self.peers['200'], self.peers['300']
+        sam.local_change("sync:hold|Achterbahn|g1|")
+        self.pump()
+        alex.lua.execute('session.AskTakeover("300")')
+        alex.lua.execute('session.AskTakeover("300")')        # once every 5 s
+        self.pump()
+        asked = [t for t in self.toasts(sam) if 'weitermachen' in t]
+        self.assertEqual(len(asked), 1)
+        self.assertIn('Alex', asked[0])
+        self.assertIn('Achterbahn', asked[0])
+        self.assertFalse(any('weitermachen' in t for t in self.toasts(host)))
+        alex.lua.execute('session.AskTakeover("100")')        # the host edits nothing
+        self.pump()
+        self.assertFalse(any('weitermachen' in t for t in self.toasts(host)))
+
+    def test_rules_are_kept_in_the_dll_over_the_park_load(self):
+        host = self.peers['100']
+        host.lua.execute('session.SetRule("visitors", "0")')
+        self.assertIn('kv|rules|all,0,free', host.commands())
+        fresh = host.lua.eval('session.View().rules')
+        self.assertEqual(fresh['visitors'], '0')
+        host.event('kv|rules|host,1,ask')
+        host.tick()
+        rules = host.lua.eval('session.View().rules')
+        self.assertEqual((rules['speed'], rules['visitors'], rules['foreign']), ('host', '1', 'ask'))
+
+    def comp(self, peer):
+        view = peer.lua.eval('session.Competition()')
+        return None if view is None else view
+
+    def test_build_duel_runs_on_real_time_and_rates_design_and_technique_apart(self):
+        host, alex, sam = self.peers['100'], self.peers['200'], self.peers['300']
+        self.assertFalse(alex.lua.eval('session.StartCompetition("duel", 15, "Wikinger")'))
+        self.assertTrue(host.lua.eval('session.StartCompetition("duel", 15, "Wikinger")'))
+        self.assertFalse(host.lua.eval('session.StartCompetition("duel", 15, "nochmal")'))
+        self.assertIn('now', host.commands())
+        host.event('now|1000000')
+        host.tick()
+        self.pump()
+        view = self.comp(sam)
+        self.assertEqual((view['mode'], view['phase'], view['left'], view['topic']), ('duel', 'build', 900, 'Wikinger'))
+        self.assertEqual(sorted(e['name'] for e in view['entries'].values()), ['Alex', 'Host', 'Sam'])
+        host.event('now|1900001')                     # 15 minutes later
+        host.tick()
+        self.pump()
+        self.assertEqual(self.comp(alex)['phase'], 'rate')
+        self.assertFalse(alex.lua.eval('session.RateEntry("200", 5, 5)'))  # not the own build
+        self.pump()
+        for rater, targets in (('100', ('200', '300')), ('200', ('100', '300')), ('300', ('100', '200'))):
+            for target in targets:
+                design, tech = (5, 4) if target == '300' else (3, 4)
+                self.peers[rater].lua.execute(f'session.RateEntry("{target}", {design}, {tech})')
+        self.pump()
+        view = self.comp(alex)
+        self.assertEqual(view['phase'], 'done')
+        results = [(r['name'], r['d'], r['t'], r['n']) for r in view['results'].values()]
+        self.assertEqual(results[0], ('Sam', 5, 4, 2))
+        self.assertEqual(sorted(results[1:]), [('Alex', 3, 4, 2), ('Host', 3, 4, 2)])
+        host.lua.execute('session.CompetitionNext()')
+        self.pump()
+        self.assertIsNone(self.comp(sam))
+        self.assertIsNone(self.comp(host))
+
+    def test_coop_timer_ends_without_ratings_and_late_joiners_see_it(self):
+        host, alex = self.peers['100'], self.peers['200']
+        host.lua.execute('session.StartCompetition("timer", 30, "")')
+        self.pump()
+        self.assertEqual(self.comp(alex)['phase'], 'build')
+        self.assertIn('cp|c1|timer|build|', host.lua.eval('session._CompLine()'))
+        host.lua.execute('session.CompetitionNext()')
+        self.pump()
+        self.assertEqual(self.comp(alex)['phase'], 'done')
+
+    def test_park_event_with_a_place_becomes_a_marker_for_everyone(self):
+        host, alex = self.peers['100'], self.peers['200']
+        host.lua.execute('''
+            api.transform = {CalculateWorldTransform = function(e) return {GetPos = function()
+                return {GetX = function() return 68.2 end, GetY = function() return 9.1 end, GetZ = function() return 411.8 end} end} end}
+            session._ParkNote("[Notification_RideBroken:Name=|Conlan|]", 56466)
+        ''')
+        self.pump()
+        for peer in (host, alex):
+            events = [dict(e.items()) for e in peer.lua.eval('session.Events()').values()]
+            self.assertEqual(len(events), 1)
+            self.assertEqual((round(events[0]['x'], 1), round(events[0]['z'], 1)), (68.2, 411.8))
+        self.assertIn('[Notification_RideBroken:Name=|Conlan|]', self.toasts(alex))
+
+    def test_speed_rule_only_the_host_changes_the_speed(self):
+        host, alex = self.peers['100'], self.peers['200']
+        self.assertFalse(alex.lua.eval('session.SetRule("speed", "host")'))
+        self.assertTrue(host.lua.eval('session.SetRule("speed", "host")'))
+        self.pump()
+        self.assertEqual(alex.lua.eval('session.Rules().speed'), 'host')
+        alex.lua.execute('session._LocalTime(true, 1)')
+        self.pump()
+        self.assertTrue(any('Nur der Host' in t for t in self.toasts(alex)))
+        self.assertFalse(any('pausiert' in line for line in host.lua.eval('session.View().feed').values()))
+
+    def test_foreign_build_rule_refuses_tearing_down_others_work(self):
+        host, alex, sam = self.peers['100'], self.peers['200'], self.peers['300']
+        host.lua.execute('session.SetRule("foreign", "ask")')
+        alex.local_change('sync:up|988||0|Rock_01|1|2|3|0|0|0|1|1')
+        self.pump()
+        gid = next(op.split('|')[2] for op in sam.ops() if op.startswith('U|'))
+        sam.local_change(f'sync:del|988|{gid}|1')
+        self.pump()
+        self.assertTrue(any('Alex gebaut' in t for t in self.toasts(sam)))
+        self.assertFalse(any(op.startswith('D|') for op in alex.ops()), 'not removed for the builder')
+        alex.local_change(f'sync:del|988|{gid}|1')   # the builder may
+        self.pump()
+        self.assertTrue(any(op.startswith('D|') for op in sam.ops()))
+
+    def test_since_your_last_visit(self):
+        host, alex = self.peers['100'], self.peers['200']
+        host.lua.execute('''
+            rides = {F1_0_1 = "Conlan", F2_0_2 = "Teetassen"}
+            session._SetRideLister(function() local out = {} for k, v in pairs(rides) do out[k] = v end return out end)
+            session._RememberVisit("200")
+            rides.F2_0_2 = nil; rides.F3_0_3 = "Wilde Maus"
+        ''')
+        text = host.lua.eval('session._Since("200")')
+        self.assertIn('1 neue Fahrgeschaefte (Wilde Maus)', text)
+        self.assertIn('1 abgerissen (Teetassen)', text)
+        self.assertIsNone(host.lua.eval('session._Since("300")'))
+
+    def test_checkpoint_and_vote_back(self):
+        host, alex, sam = self.peers['100'], self.peers['200'], self.peers['300']
+        self.assertTrue(host.lua.eval('session.Checkpoint()'))
+        self.assertEqual(len(host.lua.eval('session.View().checkpoints')), 1)
+        self.assertTrue(host.lua.eval('session.Propose("restore", 1)'))
+        self.pump()
+        self.assertIn('zuruecksetzen', alex.lua.eval('session.VoteView().text'))
+        alex.lua.execute('session.Vote(true)')
+        self.pump()
+        self.assertEqual(len(host.lua.eval('loads')), 0, 'Sam has not answered yet')
+        sam.lua.execute('session.Vote(true)')
+        self.pump()
+        self.assertEqual(len(host.lua.eval('loads')), 1)
+        self.assertFalse(alex.lua.eval('session.VoteView()'))

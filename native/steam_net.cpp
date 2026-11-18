@@ -21,6 +21,9 @@ void pc2_diagnostic_event(const char*) noexcept;
 int pc2_push_string(void* state, const char* text, size_t size) noexcept;
 
 namespace {
+// Visitor mode input (see poll_visitor).
+bool visitor_keys = false, mouse_look = false;
+ULONGLONG visitor_until = 0;
 using u64 = unsigned long long;
 using SteamAPICall = u64;
 
@@ -626,11 +629,14 @@ std::string mod_list() {
 }
 
 // Small text files the mod keeps between game starts, next to the game's exe: who built
-// what in a park (pc2coop-authors-<park>.txt) and the last session (pc2coop-lastsession.txt).
+// what in a park (pc2coop-authors-<park>.txt), ride ratings of visitors
+// (pc2coop-ratings-<park>.txt) and the last session (pc2coop-lastsession.txt).
 // Only these names; nothing received from the network decides about them.
 bool note_name(const std::string& name) {
     if (!safe_name(name) || name.size() < 5 || name.compare(name.size() - 4, 4, ".txt") != 0) return false;
-    return name == "pc2coop-lastsession.txt" || name.rfind("pc2coop-authors-", 0) == 0;
+    return name == "pc2coop-lastsession.txt" || name.rfind("pc2coop-authors-", 0) == 0
+        || name.rfind("pc2coop-ratings-", 0) == 0 || name.rfind("pc2coop-board-", 0) == 0
+        || name.rfind("pc2coop-visits-", 0) == 0;
 }
 
 void note_write(const std::string& name, const std::string& data, bool append) {
@@ -757,6 +763,14 @@ void command(const char* bytes, unsigned int size) {
     } else if (verb == "avatar") {
         u64 id = parse_id(rest);
         if (id && !send_avatar(id)) avatar_waiting.push_back(id);
+    } else if (verb == "now") {
+        // Real time in milliseconds (competition timers; frames depend on the frame rate).
+        queue("now|" + std::to_string(GetTickCount64()));
+    } else if (verb == "visitor") {
+        // visitor|<1 keys>|<1 mouse look>
+        visitor_keys = rest.size() >= 1 && rest[0] == '1';
+        mouse_look = rest.size() >= 3 && rest[2] == '1';
+        visitor_until = GetTickCount64() + 2000;
     } else if (verb == "mods") {
         queue("mods|" + mod_list());
     } else if (verb == "note-read") {
@@ -823,12 +837,50 @@ void poll_middle_button() {
     down = pressed;
 }
 
+// Visitor mode (switched on by Lua with "visitor|<keys>|<mouse look>", renewed every second):
+// Tab, T, E and 1-6 go to Lua as "key:v|<name>|<1 down, 0 up>". With mouse look the cursor
+// is kept in the middle of the game window and its travel goes to Lua as "mouse|dx|dy".
+// Without a renewal for two seconds everything switches off, so the cursor is never caught.
+
+void poll_visitor() {
+    if (!visitor_keys && !mouse_look) return;
+    if (GetTickCount64() > visitor_until) { visitor_keys = mouse_look = false; return; }
+    HWND window = GetForegroundWindow();
+    DWORD pid = 0;
+    GetWindowThreadProcessId(window, &pid);
+    if (pid != GetCurrentProcessId()) return;
+    static bool down[9] = {};
+    static const int keys[9] = {VK_TAB, 'T', 'E', '1', '2', '3', '4', '5', '6'};
+    static const char* names[9] = {"tab", "t", "e", "1", "2", "3", "4", "5", "6"};
+    for (int i = 0; visitor_keys && i < 9; ++i) {
+        bool pressed = (GetAsyncKeyState(keys[i]) & 0x8000) != 0;
+        if (pressed != down[i]) {
+            down[i] = pressed;
+            queue(std::string("key:v|") + names[i] + "|" + (pressed ? "1" : "0"));
+        }
+    }
+    if (mouse_look) {
+        RECT rect{};
+        if (!GetClientRect(window, &rect)) return;
+        POINT centre{(rect.right - rect.left) / 2, (rect.bottom - rect.top) / 2};
+        ClientToScreen(window, &centre);
+        POINT at{};
+        GetCursorPos(&at);
+        long dx = at.x - centre.x, dy = at.y - centre.y;
+        if (dx || dy) {
+            queue("mouse|" + std::to_string(dx) + "|" + std::to_string(dy));
+            SetCursorPos(centre.x, centre.y);
+        }
+    }
+}
+
 // F7 opens the multiplayer window, F8 the developer menu.
 void poll_hotkeys() {
     static bool f7 = false, f8 = false;
     poll_key(VK_F7, f7, "key:menu");
     poll_key(VK_F8, f8, "key:dev");
     poll_middle_button();
+    poll_visitor();
 }
 }
 

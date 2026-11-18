@@ -359,17 +359,19 @@ class VisitorBar extends StateComponent {
     render(props, state) {
         const coop = state.coop || {};
         const visitor = coop.visitor;
-        if (!visitor || coop.context === 'menu' || coop.open) return null;
+        if (!visitor || !visitor.active || coop.context === 'menu' || coop.open) return null;
         const pill = { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '6px 10px', borderRadius: '18px',
             background: 'rgba(14, 33, 48, 0.82)', color: '#ffffff', fontSize: '15px' };
         const bar = h('div', { style: pill },
             visitor.active && h('div', { style: { margin: '0 0 4px', color: '#9fd8f0' } },
                 visitor.riding ? 'Du fährst ' + visitor.riding + ' - "Zurück" unten rechts steigt aus'
-                    : 'Du bist Besucher - WASD laufen, Shift schneller'),
+                    : visitor.guest ? 'Ich-Sicht des Spiels: WASD laufen, Alt springen, Strg ducken, L Lampe - "Zurück" beendet das'
+                    : 'Besucher: Maus umsehen · WASD laufen · Shift rennen · T Emotes · E einsteigen · Tab zurück'),
             buttons([
                 !visitor.active && { label: 'Als Besucher losgehen', onSelect: () => request('visitor', '1') },
                 ...(visitor.active && coop.role ? EMOTE_BUTTONS.map(([kind, label]) => ({ label, onSelect: () => request('emote', kind) })) : []),
                 { label: visitor.list ? 'Liste schließen' : 'Fahrgeschäfte', onSelect: () => request('visitorlist', visitor.list ? '0' : '1') },
+                visitor.active && !visitor.riding && !visitor.guest && { label: 'Ich-Sicht', onSelect: () => request('guest', '1') },
                 visitor.active && { label: 'Zurück zum Bauen', onSelect: () => request('visitor', '0') },
             ]));
         const rides = list(visitor.rides);
@@ -416,6 +418,102 @@ class VisitorBar extends StateComponent {
                     }, onCancel: () => this.setState({ draft: '' }) })));
         return h('div', { style: { position: 'absolute', top: '52px', left: '50%', width: '1000px', marginLeft: '-500px',
             display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'auto' } }, bar, panel);
+    }
+}
+
+// Visitor mode: T held shows the emote wheel; the mouse (or 1-6) picks, letting go of T sends.
+const WHEEL = [['Winken', 0], ['Jubeln', 1], ['Lachen', 2], ['Super', 3], ['Naja', 4], ['Übel', 5]];
+class EmoteWheel extends StateComponent {
+    render(props, state) {
+        const coop = state.coop || {};
+        const wheel = coop.visitor && coop.visitor.wheel;
+        if (!wheel) return null;
+        const radius = 150;
+        return h('div', { style: { position: 'absolute', left: '50%', top: '50%', width: '0px', height: '0px' } },
+            WHEEL.map(([label, i]) => {
+                const angle = i * Math.PI / 3;
+                const on = wheel.selected === i + 1;
+                return h('div', { key: label, style: { position: 'absolute', left: (Math.sin(angle) * radius - 70) + 'px',
+                    top: (-Math.cos(angle) * radius - 24) + 'px', width: '140px', height: '48px', lineHeight: '48px', textAlign: 'center',
+                    borderRadius: '24px', fontSize: '19px', background: on ? BLUE : 'rgba(14, 33, 48, 0.85)', color: '#ffffff',
+                    border: '2px solid ' + (on ? '#ffffff' : 'rgba(255, 255, 255, 0.25)') } }, (i + 1) + '  ' + label);
+            }),
+            h('div', { style: { position: 'absolute', left: '-110px', top: '-14px', width: '220px', textAlign: 'center', color: '#ffffff',
+                fontSize: '15px', textShadow: '0 1px 3px #000' } }, 'Maus bewegen, T loslassen'));
+    }
+}
+
+// A decision for everyone (e.g. back to a checkpoint): a banner at the top until answered.
+class VoteBanner extends StateComponent {
+    render(props, state) {
+        const coop = state.coop || {};
+        const vote = coop.team && coop.team.vote;
+        if (!vote) return null;
+        return h('div', { style: { position: 'absolute', top: '140px', left: '50%', width: '760px', marginLeft: '-380px', padding: '14px 18px',
+            borderRadius: '12px', background: 'rgba(14, 33, 48, 0.92)', color: '#ffffff', fontSize: '18px', pointerEvents: 'auto' } },
+            h('div', { style: { marginBottom: '8px' } }, 'Abstimmung von ' + vote.by + ': ' + vote.text),
+            vote.answered ? h('div', { style: { color: '#9fd8f0' } }, 'Deine Stimme ist abgegeben - warte auf die anderen.')
+                : buttons([{ label: 'Ja', onSelect: () => request('vote', '1') }, { label: 'Nein', onSelect: () => request('vote', '0') }]));
+    }
+}
+
+// Where the mouse was last: the context menu opens there.
+let mouseAt = null;
+try { document.addEventListener('mousemove', (e) => { mouseAt = { x: e.clientX, y: e.clientY }; }); } catch (e) { mouseAt = null; }
+
+// After an own ping (short middle click): what can be done at that spot.
+class ContextMenu extends StateComponent {
+    render(props, state) {
+        const coop = state.coop || {};
+        const ctx = coop.team && coop.team.context;
+        if (!ctx || coop.open || (coop.visitor && coop.visitor.active)) { this.at = null; return null; }
+        const key = ctx.x + ',' + ctx.z;
+        if (!this.at || this.at.key !== key) {
+            const w = window.innerWidth || 1920, hgt = window.innerHeight || 1080;
+            const m = mouseAt || { x: w / 2, y: hgt / 2 };
+            this.at = { key, x: Math.min(m.x + 18, w - 380), y: Math.min(Math.max(m.y - 20, 10), hgt - 420) };
+        }
+        const item = (label, arg, strong) => h('div', { key: arg, onClick: () => request('ctx', arg),
+            style: { padding: '9px 14px', fontSize: '17px', cursor: 'pointer', borderTop: '1px solid rgba(255, 255, 255, 0.12)',
+                color: strong ? '#9fe3ff' : '#ffffff' } }, label);
+        return h('div', { style: { position: 'absolute', left: this.at.x + 'px', top: this.at.y + 'px', width: '360px', borderRadius: '10px',
+            background: 'rgba(14, 33, 48, 0.94)', color: '#ffffff', pointerEvents: 'auto', overflow: 'hidden' } },
+            h('div', { style: { padding: '8px 14px', fontSize: '15px', color: '#9fd8f0' } }, ctx.ride ? ctx.ride.name : 'Hier'),
+            ctx.ride && item('Team zur Testfahrt einladen', 'invite', true),
+            ctx.ride && item('Selbst mitfahren', 'ride'),
+            ...list(ctx.editors).map((e) => item('Übernahme bei ' + e.name + ' anfragen (' + e.label + ')', 'take|' + e.sid, true)),
+            item('Kommentar anheften', 'comment'),
+            item('Bauvorschlag machen', 'proposal'),
+            item('Hier bauen (Baugebiet)', 'area'),
+            item('Treffpunkt', 'meet'),
+            item('Schließen', 'close'));
+    }
+}
+
+// A running competition: a small clock at the top for everyone.
+class CompBanner extends StateComponent {
+    render(props, state) {
+        const coop = state.coop || {};
+        const comp = coop.team && coop.team.competition;
+        if (!comp || coop.open || comp.phase === 'done') return null;
+        const s = comp.left || 0;
+        const text = comp.phase === 'build' ? comp.label + (comp.topic ? ' · ' + comp.topic : '') + ' · noch ' + Math.floor(s / 60) + ':' + (s % 60 < 10 ? '0' : '') + (s % 60)
+            : 'Bewerten: Multiplayer > Sitzung';
+        return h('div', { style: { position: 'absolute', top: '18px', left: '50%', width: '520px', marginLeft: '-260px', textAlign: 'center',
+            padding: '6px 12px', borderRadius: '16px', background: 'rgba(14, 33, 48, 0.85)', color: '#ffffff', fontSize: '17px' } }, text);
+    }
+}
+
+// A test ride invitation from another player.
+class InviteBanner extends StateComponent {
+    render(props, state) {
+        const coop = state.coop || {};
+        const invite = coop.team && coop.team.invitation;
+        if (!invite || coop.open) return null;
+        return h('div', { style: { position: 'absolute', top: '140px', left: '50%', width: '640px', marginLeft: '-320px', padding: '12px 16px',
+            borderRadius: '12px', background: 'rgba(14, 33, 48, 0.92)', color: '#ffffff', fontSize: '18px', pointerEvents: 'auto' } },
+            h('div', { style: { marginBottom: '8px' } }, invite.by + ' lädt zur Testfahrt auf ' + invite.name + ' ein.'),
+            buttons([{ label: 'Mitfahren', onSelect: () => request('invitation', '1') }, { label: 'Später', onSelect: () => request('invitation', '0') }]));
     }
 }
 
@@ -486,8 +584,18 @@ const buttons = (items) => h('div', { style: { display: 'flex', flexWrap: 'wrap'
 const BIOMES = [['Temperate', 'Gemäßigt'], ['Mediterranean', 'Mediterran'], ['Taiga', 'Taiga'], ['Tropical', 'Tropisch']];
 const box = (height, children, extra) => h('div', { style: Object.assign({ height: height + 'px', overflowY: 'auto' }, extra || {}) }, children);
 
+// Tabs of the multiplayer window in a park (docs/KONZEPT.md).
+const PANEL_TABS = [['team', 'Team'], ['visit', 'Besuchen'], ['plan', 'Planen'], ['history', 'Verlauf'], ['session', 'Sitzung']];
+const BOARD_KINDS = [['task', 'Aufgabe'], ['area', 'Baugebiet'], ['proposal', 'Vorschlag'], ['comment', 'Kommentar'], ['meet', 'Treffpunkt']];
+const BOARD_WORD = { task: 'Aufgabe', area: 'Baugebiet', proposal: 'Vorschlag', comment: 'Kommentar', meet: 'Treffpunkt' };
+const RULES = [
+    ['speed', 'Spieltempo und Pause', [['all', 'alle'], ['host', 'nur der Host']]],
+    ['foreign', 'Fremde Bauten abreißen', [['free', 'erlaubt'], ['ask', 'erst fragen']]],
+    ['visitors', 'Besucher-Modus', [['1', 'erlaubt'], ['0', 'aus']]],
+];
+
 class Lobby extends StateComponent {
-    state = { draft: '', tab: 'save', creative: true };
+    state = { draft: '', tab: 'save', creative: true, kind: 'task', title: '', text: '', assignee: '', radius: 20 };
     render(props, state) {
         const coop = state.coop || {};
         if (!coop.open) return null;
@@ -517,16 +625,240 @@ class Lobby extends StateComponent {
                     h('div', { style: { fontSize: '28px', flexGrow: 1 } }, title),
                     coop.role && h('div', { style: { color: '#9fd8f0', fontSize: '18px' } },
                         list(coop.players).length + ' / ' + SLOTS + ' Spieler' + (coop.stage === 'park' && coop.parkTitle ? ' · ' + coop.parkTitle : ''))),
-                h('div', { style: { display: 'flex', height: '636px' } },
-                    column(360, this.renderPlayers(coop)),
-                    column(540, [this.renderPlace(coop, state), this.renderContent(coop)]),
-                    column(420, [this.renderChat(coop, state), this.renderFriends(coop)], true)),
+                this.renderBody(coop, state, column),
                 h('div', { style: { display: 'flex', alignItems: 'center', height: '80px', padding: '0 24px', background: '#e3edf2',
                     borderTop: '1px solid rgba(0, 120, 170, 0.2)' } },
                     h('div', { style: { width: '12px', height: '12px', borderRadius: '6px', background: TONE[status.tone] || TONE.idle,
                         marginRight: '10px', flexShrink: 0 } }),
                     h('div', { style: { width: '640px', fontSize: '19px' } }, status.text),
                     h('div', { style: { width: '620px' } }, buttons(footer)))));
+    }
+
+    // In a park with a session: five tabs; everywhere else the lobby as before.
+    renderBody(coop, state, column) {
+        const team = coop.team;
+        const inPark = coop.role && coop.context !== 'menu' && team;
+        const tab = inPark ? team.tab : 'team';
+        const bar = inPark && h('div', { style: { display: 'flex', height: '44px', alignItems: 'center', padding: '0 18px',
+            background: '#e3edf2', borderBottom: '1px solid rgba(0, 120, 170, 0.2)' } },
+            PANEL_TABS.map(([key, label]) => h('div', { key, onClick: () => request('paneltab', key),
+                style: { padding: '6px 18px', marginRight: '8px', borderRadius: '16px', fontSize: '18px',
+                    background: tab === key ? BLUE : '#ffffff', color: tab === key ? '#ffffff' : INK,
+                    border: '1px solid rgba(0, 121, 173, 0.45)' } }, label)));
+        const height = inPark ? 592 : 636;
+        let body;
+        if (tab === 'visit') body = this.renderVisit(coop, height);
+        else if (tab === 'plan') body = this.renderPlan(coop, state, height);
+        else if (tab === 'history') body = this.renderHistory(coop, height);
+        else if (tab === 'session') body = this.renderSession(coop, height);
+        else body = h('div', { style: { display: 'flex', height: height + 'px' } },
+            column(360, this.renderPlayers(coop)),
+            column(540, [this.renderPlace(coop, state), this.renderContent(coop)]),
+            column(420, [this.renderChat(coop, state), this.renderFriends(coop)], true));
+        return h('div', { style: { height: '636px' } }, bar, body);
+    }
+
+    renderVisit(coop, height) {
+        const visitor = coop.visitor || {};
+        const rules = (coop.team && coop.team.rules) || {};
+        const blocked = coop.role === 'client' && rules.visitors === '0';
+        return h('div', { style: { display: 'flex', height: height + 'px' } },
+            h('div', { style: { width: '420px', padding: '0 18px', borderRight: '1px solid rgba(0, 120, 170, 0.18)' } },
+                section('Als Besucher im Park'),
+                h('div', { style: { color: MUTED, fontSize: '16px', marginBottom: '8px' } }, blocked
+                    ? 'Der Host hat den Besucher-Modus für diese Sitzung ausgeschaltet.'
+                    : 'Lauf durch euren Park, fahr mit, bewerte die Fahrgeschäfte. Die anderen sehen dich dort, wo du stehst.'),
+                buttons([
+                    !blocked && !visitor.active && { label: 'Als Besucher losgehen', onSelect: () => request('visitor', '1') },
+                    visitor.active && { label: 'Zurück zum Bauen', onSelect: () => request('visitor', '0') },
+                    !blocked && { label: 'Ich-Sicht (Spiel)', onSelect: () => { request('visitor', '1'); request('guest', '1'); } },
+                ]),
+                section('Steuerung'),
+                h('div', { style: { fontSize: '16px', lineHeight: '24px' } },
+                    'WASD laufen, Shift schneller', h('br'), 'Maus: umsehen', h('br'),
+                    'T halten: Emotes  ·  E: einsteigen', h('br'), 'Tab: zurück zum Bauen'),
+                section('Gemeinsam'),
+                h('div', { style: { color: MUTED, fontSize: '16px' } },
+                    'Testfahrt mit allen: in der Liste rechts "Mitfahren" - jeder kann einsteigen. Führung: Mitspieler oben rechts anklicken, dann folgst du ihm.')),
+            h('div', { style: { width: '900px', padding: '0 18px' } },
+                section('Fahrgeschäfte', h('span', { style: { color: MUTED, fontSize: '15px', textTransform: 'none' } }, 'das nächste zuerst')),
+                box(height - 60, list(visitor.rides).length === 0
+                    ? h('div', { style: { color: MUTED, padding: '8px 0' } }, 'Noch keine Fahrgeschäfte im Park.')
+                    : list(visitor.rides).map((r) => row([
+                        h('div', { style: { width: '470px' } },
+                            h('div', { style: { fontSize: '18px' } }, r.name + '  ', h('span', { style: { color: MUTED, fontSize: '15px' } }, r.kind)),
+                            h('div', { style: { color: MUTED, fontSize: '15px' } }, (typeof r.e === 'number'
+                                ? 'Spaß ' + one(r.e) + '  ·  Angst ' + one(r.f) + '  ·  Übelkeit ' + one(r.n) : 'noch nicht getestet')
+                                + (r.dist !== false ? '  ·  ' + r.dist + ' m' : '')),
+                            h('div', { style: { color: BLUE, fontSize: '15px' } }, r.count ? 'Bewertung ' + one(r.avg) + ' / 5 (' + r.count + ')'
+                                + (list(r.comments).length ? ' - "' + list(r.comments)[list(r.comments).length - 1].text + '"' : '') : 'noch keine Bewertung')),
+                        buttons([{ label: 'Mitfahren', onSelect: () => { request('visitor', '1'); request('ride', r.key); } },
+                            coop.role && { label: 'Alle einladen', onSelect: () => request('invite_ride', r.key + '|' + r.name) }]),
+                    ], 'r' + r.key)))));
+    }
+
+    renderPlan(coop, state, height) {
+        const team = coop.team || {};
+        const items = list(team.board);
+        const players = list(coop.players);
+        // A context action (ping menu) picks the kind once; after that the buttons here do.
+        const kind = team.planSeq && team.planSeq !== state.planSeq ? team.planKind : state.kind;
+        const needsPlace = kind !== 'task';
+        const nextAssignee = () => {
+            const names = ['', ...players.map((p) => p.name)];
+            const i = names.indexOf(state.assignee);
+            this.setState({ assignee: names[(i + 1) % names.length] });
+        };
+        const add = () => {
+            const clip = (t) => String(t || '').split('|').join(' ').trim();
+            request('board_add', [kind, clip(state.title), clip(state.text), clip(state.assignee), kind === 'area' ? state.radius : 0].join('|'));
+            this.setState({ title: '', text: '', kind, planSeq: team.planSeq });
+        };
+        return h('div', { style: { display: 'flex', height: height + 'px' } },
+            h('div', { style: { width: '460px', padding: '0 18px', borderRight: '1px solid rgba(0, 120, 170, 0.18)' } },
+                section('Neu'),
+                h('div', { style: { display: 'flex', flexWrap: 'wrap', marginBottom: '8px' } },
+                    BOARD_KINDS.map(([key, label]) => h('div', { key, onClick: () => this.setState({ kind: key, planSeq: team.planSeq }),
+                        style: { padding: '6px 14px', margin: '0 6px 6px 0', borderRadius: '16px', fontSize: '17px',
+                            background: kind === key ? BLUE : '#ffffff', color: kind === key ? '#ffffff' : INK,
+                            border: '1px solid rgba(0, 121, 173, 0.45)' } }, label))),
+                h('div', { style: { margin: '6px 0' } }, h(InputField, { text: state.title, maxInputLength: 60, beginEditOnSelect: true,
+                    promptText: literal(kind === 'area' ? 'Name des Gebiets ("Wikingerland")' : kind === 'task' ? 'Was ist zu tun?'
+                        : kind === 'proposal' ? 'Idee ("Wildwasserbahn am See?")' : 'Titel'),
+                    onChange: (e) => this.setState({ title: (e && e.text) || '' }), onCommit: (e) => this.setState({ title: (e && e.text) || '' }) })),
+                h('div', { style: { margin: '6px 0' } }, h(InputField, { text: state.text, maxInputLength: 160, beginEditOnSelect: true,
+                    promptText: literal(kind === 'area' ? 'Auftrag: "Familienattraktion, max. 15.000 €, Wikingerstil"' : 'Notiz (optional)'),
+                    onChange: (e) => this.setState({ text: (e && e.text) || '' }), onCommit: (e) => this.setState({ text: (e && e.text) || '' }) })),
+                (kind === 'task' || kind === 'area') && row([h('div', null, 'Zuständig: ' + (state.assignee || 'alle')),
+                    buttons([{ label: 'Wechseln', onSelect: nextAssignee }])], 'assignee'),
+                kind === 'area' && row([h('div', null, 'Größe: ' + state.radius + ' m Radius'), buttons([10, 20, 40].map((n) =>
+                    ({ label: n + ' m', onSelect: () => this.setState({ radius: n }) })))], 'radius'),
+                needsPlace && h('div', { style: { color: MUTED, fontSize: '15px', margin: '6px 0' } },
+                    'Ort: dein letzter Ping (mittlere Maustaste) - sonst die Bildmitte.'),
+                buttons([{ label: 'Hinzufügen', onSelect: add }])),
+            h('div', { style: { width: '860px', padding: '0 18px' } },
+                section('Brett des Parks', h('span', { style: { color: MUTED, fontSize: '15px', textTransform: 'none' } },
+                    'für alle sichtbar, auch als Marker im Park')),
+                box(height - 60, items.length === 0
+                    ? h('div', { style: { color: MUTED, padding: '8px 0' } }, 'Noch nichts geplant. Links ein Baugebiet, eine Aufgabe, einen Kommentar oder einen Treffpunkt anlegen.')
+                    : items.map((item) => row([
+                        h('div', { style: { width: '520px', opacity: item.done ? 0.55 : 1 } },
+                            h('div', { style: { fontSize: '18px' } }, (item.done ? '✓ ' : '') + item.title + '  ',
+                                h('span', { style: { color: MUTED, fontSize: '15px' } }, BOARD_WORD[item.kind] + ' · ' + item.by
+                                    + (item.assignee ? ' → ' + item.assignee : ''))),
+                            item.text && h('div', { style: { color: INK, fontSize: '15px' } }, item.text)),
+                        buttons([
+                            item.kind === 'task' && { label: item.done ? 'Wieder offen' : 'Erledigt', onSelect: () => request('board_done', item.id + '|' + (item.done ? '0' : '1')) },
+                            item.kind === 'proposal' && { label: (item.myVote === '1' ? '✓ ' : '') + 'Dafür (' + item.yes + ')', onSelect: () => request('board_vote', item.id + '|1') },
+                            item.kind === 'proposal' && { label: (item.myVote === '0' ? '✓ ' : '') + 'Dagegen (' + item.no + ')', onSelect: () => request('board_vote', item.id + '|0') },
+                            item.x !== false && { label: 'Hinspringen', onSelect: () => request('goto', item.x + '|' + item.z) },
+                            { label: 'Löschen', onSelect: () => request('board_del', item.id) },
+                        ]),
+                    ], item.id)))));
+    }
+
+    renderHistory(coop, height) {
+        const team = coop.team || {};
+        const isHost = coop.role === 'host';
+        return h('div', { style: { display: 'flex', height: height + 'px' } },
+            h('div', { style: { width: '640px', padding: '0 18px', borderRight: '1px solid rgba(0, 120, 170, 0.18)' } },
+                section('Seit deinem letzten Besuch'),
+                h('div', { style: { fontSize: '17px', color: team.since ? INK : MUTED } }, team.since || 'Dein erster Besuch in diesem Park - oder es gibt noch nichts zu vergleichen.'),
+                section('Meldungen des Parks'),
+                list(team.events).length === 0 ? h('div', { style: { color: MUTED } }, 'Gerade keine Pannen oder Probleme.')
+                    : list(team.events).slice().reverse().map((e, i) => row([h('div', null, e.label),
+                        buttons([{ label: 'Hinspringen', onSelect: () => request('goto', e.x + '|' + e.z) }])], 'e' + i)),
+                section('Sicherungspunkte'),
+                h('div', { style: { color: MUTED, fontSize: '15px', marginBottom: '6px' } },
+                    'Eine Kopie des Parks beim Host. Zurückholen betrifft alle und braucht die Zustimmung aller.'),
+                ...list(team.checkpoints).map((c) => row([h('div', null, c.label),
+                    isHost && buttons([{ label: 'Zurückholen…', onSelect: () => request('restore', String(c.n)) }])], 'c' + c.n)),
+                isHost && buttons([{ label: 'Sicherungspunkt erstellen', onSelect: () => request('checkpoint') }])),
+            h('div', { style: { width: '680px', padding: '0 18px' } },
+                section('Verlauf der Sitzung'),
+                box(height - 60, list(coop.log).length === 0 ? h('div', { style: { color: MUTED } }, 'Noch nichts passiert.')
+                    : list(coop.log).slice().reverse().map((line, i) => h('div', { key: 'l' + i, style: { fontSize: '16px',
+                        padding: '4px 0', borderBottom: '1px solid rgba(0, 120, 170, 0.1)' } }, shown(line))))));
+    }
+
+    renderCompetition(coop) {
+        const team = coop.team || {};
+        const comp = team.competition;
+        const isHost = coop.role === 'host';
+        const state = this.state;
+        const areaOf = (name) => list(team.board).find((i) => i.kind === 'area' && i.assignee === name && i.x !== false);
+        const out = [section('Wettbewerb', h('span', { style: { color: MUTED, fontSize: '15px', textTransform: 'none' } },
+            'ein Park, alle sehen dasselbe - die Spielziele des Parks (Szenario, Herausforderung) gelten für alle gemeinsam'))];
+        if (!comp) {
+            if (!isHost) { out.push(h('div', { style: { color: MUTED } }, 'Gerade kein Wettbewerb. Der Host kann einen starten.')); return out; }
+            out.push(h('div', { style: { margin: '6px 0', width: '640px' } }, h(InputField, { text: state.compTopic || '', maxInputLength: 60,
+                beginEditOnSelect: true, promptText: literal('Thema ("Wikinger", "Familienbahn bis 20.000 €")'),
+                onChange: (e) => this.setState({ compTopic: (e && e.text) || '' }), onCommit: (e) => this.setState({ compTopic: (e && e.text) || '' }) })));
+            const topic = String(state.compTopic || '').split('|').join(' ');
+            out.push(row([h('div', { style: { width: '420px' } }, 'Bauduell: jeder baut in seinem Baugebiet (Planen: Baugebiet mit Zuständigem), danach bewertet ihr Gestaltung und Technik getrennt'),
+                buttons([15, 30, 60].map((m) => ({ label: m + ' Min.', onSelect: () => request('comp_start', 'duel|' + m + '|' + topic) })))], 'duel'));
+            out.push(row([h('div', { style: { width: '420px' } }, 'Koop gegen die Uhr: gemeinsam die Aufgaben vom Brett schaffen'),
+                buttons([15, 30, 60].map((m) => ({ label: m + ' Min.', onSelect: () => request('comp_start', 'timer|' + m + '|' + topic) })))], 'timer'));
+            return out;
+        }
+        const clock = (s) => Math.floor(s / 60) + ':' + (s % 60 < 10 ? '0' : '') + (s % 60);
+        out.push(h('div', { style: { fontSize: '18px', margin: '4px 0 8px' } }, comp.label + (comp.topic ? ' · Thema: ' + comp.topic : '') + ' · '
+            + (comp.phase === 'build' ? 'noch ' + clock(comp.left) : comp.phase === 'rate' ? 'Bewertung läuft' : 'Ergebnis')));
+        if (comp.phase === 'rate') {
+            const pick = state.compPick || {};
+            list(comp.entries).filter((e) => !e.me).forEach((e) => {
+                const chosen = Object.assign({ d: e.d, t: e.t }, pick[e.sid] || {});
+                const set = (field, n) => {
+                    const next = Object.assign({}, chosen, { [field]: n });
+                    this.setState({ compPick: Object.assign({}, pick, { [e.sid]: next }) });
+                    if (next.d && next.t) request('comp_rate', e.sid + '|' + next.d + '|' + next.t);
+                };
+                const area = areaOf(e.name);
+                out.push(row([h('div', { style: { width: '200px' } }, e.name),
+                    area ? buttons([{ label: 'Hinspringen', onSelect: () => request('goto', area.x + '|' + area.z) }]) : h('div', { style: { width: '120px' } }),
+                    h('div', null, 'Gestaltung'), buttons([1, 2, 3, 4, 5].map((n) => ({ label: (chosen.d === n ? '● ' : '') + n, onSelect: () => set('d', n) }))),
+                    h('div', null, 'Technik'), buttons([1, 2, 3, 4, 5].map((n) => ({ label: (chosen.t === n ? '● ' : '') + n, onSelect: () => set('t', n) })))], 'r' + e.sid));
+            });
+        }
+        if (comp.phase === 'done' && comp.mode === 'duel') {
+            list(comp.results).forEach((r, i) => out.push(row([h('div', { style: { width: '260px' } }, (i + 1) + '. ' + r.name),
+                h('div', null, 'Gestaltung ' + r.d.toFixed(1) + ' · Technik ' + r.t.toFixed(1) + ' (' + r.n + (r.n === 1 ? ' Stimme)' : ' Stimmen)'))], 'res' + i)));
+        }
+        if (isHost) out.push(buttons([{ label: comp.phase === 'build' ? (comp.mode === 'duel' ? 'Zeit beenden, bewerten' : 'Beenden')
+            : comp.phase === 'rate' ? 'Bewertung abschließen' : 'Wettbewerb schließen', onSelect: () => request('comp_next') }]));
+        return out;
+    }
+
+    renderSession(coop, height) {
+        const rules = (coop.team && coop.team.rules) || {};
+        const isHost = coop.role === 'host';
+        return h('div', { style: { padding: '0 18px', height: height + 'px', overflowY: 'auto' } },
+            section('Regeln dieser Sitzung', h('span', { style: { color: MUTED, fontSize: '15px', textTransform: 'none' } },
+                isHost ? 'du bestimmst sie als Host' : 'nur der Host kann sie ändern')),
+            isHost && row([h('div', { style: { width: '420px', color: MUTED } }, 'Schnell wählen'),
+                buttons([
+                    { label: 'Locker zusammen bauen', onSelect: () => request('rule_preset', 'relaxed') },
+                    { label: 'Geordnet', onSelect: () => request('rule_preset', 'ordered') },
+                    { label: 'Nur bauen', onSelect: () => request('rule_preset', 'build') },
+                ])], 'presets'),
+            ...RULES.map(([name, label, options]) => row([h('div', { style: { width: '420px' } }, label),
+                isHost ? buttons(options.map(([value, text]) => ({ label: (rules[name] === value ? '● ' : '') + text,
+                    onSelect: () => request('rule', name + '|' + value) })))
+                    : h('div', { style: { color: BLUE } }, (options.find((o) => o[0] === rules[name]) || ['', '-'])[1])], name)),
+            this.renderCompetition(coop),
+            section('Deine Rolle'),
+            h('div', { style: { fontSize: '16px', color: INK, maxWidth: '1100px' } }, isHost
+                ? 'Host: der Park läuft bei dir. Du legst die Regeln fest, erstellst Sicherungspunkte und schlägst vor, zu einem zurückzukehren. '
+                  + 'Beitrittsanfragen bestätigst du im Tab Team.'
+                : 'Mitspieler: du baust frei mit. Was jemand anderes gerade bearbeitet, ist für dich gesperrt - Mittelklick darauf und "Übernahme anfragen". '
+                  + 'Rückgängig betrifft nur deine eigenen Schritte.'),
+            section('Abwesenheit'),
+            h('div', { style: { fontSize: '16px', color: INK, maxWidth: '1100px' } },
+                'Der Park läuft beim Host. Verlässt der Host die Sitzung, endet sie für alle; beim nächsten Mal lädt er den Park und ihr steigt wieder ein. '
+                + 'Pausiert der Host, pausiert der Park für alle (je nach Regel "Spieltempo").'),
+            section('Beitritt'),
+            h('div', { style: { fontSize: '16px', color: INK } },
+                'Nur Steam-Freunde des Hosts sehen die Sitzung. Beitrittsanfragen erscheinen im Reiter "Team".'));
     }
 
     renderPlayers(coop) {
@@ -806,6 +1138,11 @@ class CoopLayer extends preact.Component {
             fontFamily: FONT } },
             h(PlayerBar, null),
             h(VisitorBar, null),
+            h(VoteBanner, null),
+            h(EmoteWheel, null),
+            h(InviteBanner, null),
+            h(ContextMenu, null),
+            h(CompBanner, null),
             h(Toasts, null),
             h(JoinProgress, null),
             h(MiniLobby, null),
@@ -830,6 +1167,54 @@ async function patchPauseMenu() {
         return vnode;
     };
     decorated.prototype.__pc2coop = true;
+}
+
+// The build bar at the bottom: an icon tab "Multiplayer" after the multi-select tab.
+async function patchBuildBar() {
+    const [browserModule, tabModule] = await Promise.all([import('/js/project/modules/browser/components/Browser.js'),
+        import('/js/project/modules/browser/components/BrowserTab.js')]);
+    const decorated = browserModule.Browser;
+    if (!decorated || decorated.prototype.__pc2coop) return;
+    const originalRender = decorated.prototype.render;
+    decorated.prototype.render = function (...args) {
+        const vnode = originalRender.apply(this, args);
+        try { patchBrowserClass(vnode && vnode.nodeName, tabModule.BrowserTab); } catch (error) { log('build bar patch ' + error); }
+        return vnode;
+    };
+    decorated.prototype.__pc2coop = true;
+}
+
+function findTab(node, outcome) {
+    if (!node || typeof node !== 'object') return null;
+    const children = Array.isArray(node) ? node : node.children;
+    if (!Array.isArray(children)) return null;
+    for (let i = 0; i < children.length; i++) {
+        const child = children[i];
+        if (child && child.attributes && child.attributes.outcome === outcome) return { list: children, index: i, node: child };
+        const deeper = findTab(child, outcome);
+        if (deeper) return deeper;
+    }
+    return null;
+}
+
+function patchBrowserClass(browserClass, BrowserTab) {
+    const proto = browserClass && browserClass.prototype;
+    if (!proto || proto.__pc2coop || !BrowserTab) return;
+    const render = proto.render;
+    proto.render = function (...args) {
+        const tree = render.apply(this, args);
+        try {
+            const at = findTab(tree, 'multiselect');
+            if (at && !findTab(tree, 'pc2coop')) {
+                at.list.splice(at.index + 1, 0, preact.h(BrowserTab, { key: 'pc2coopTab', icon: 'img/icons/collaborate.svg',
+                    outcome: 'pc2coop', hidden: at.node.attributes.hidden, modifiers: 'firstItem lastItem marginLeft onlyIcons',
+                    onButtonSelect: () => request('open') }));
+            }
+        } catch (error) { log('build bar tab ' + error); }
+        return tree;
+    };
+    proto.__pc2coop = true;
+    log('build bar patched');
 }
 
 function patchMenuClass(menuClass) {
@@ -909,7 +1294,10 @@ export function start(logger) {
     const app = String(window.location.href);
     if (app.indexOf('HUD.html') < 0 && app.indexOf('FrontEnd.html') < 0) return;
     started = true;
-    if (app.indexOf('HUD.html') >= 0) patchPauseMenu().catch((e) => console.log('PC2Coop: ' + e));
+    if (app.indexOf('HUD.html') >= 0) {
+        patchPauseMenu().catch((e) => console.log('PC2Coop: ' + e));
+        patchBuildBar().catch((e) => log('build bar import ' + e));
+    }
     else {
         patchMainMenu().catch((e) => log('main menu import ' + e));
         Promise.all([import('/js/project/modules/frontEnd/data/FrontEndNavigation.js'), import('/js/project/modules/frontEnd/data/FrontEndNavData.js')])

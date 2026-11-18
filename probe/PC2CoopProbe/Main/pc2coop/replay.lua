@@ -13,6 +13,12 @@
 --   rN=@composite            (new composite object of the change list, e.g. a flat ride)
 --   rN=@demolish             (composite that only removes what is moved into it: deleting rides)
 --   @cl (the change list of the hierarchy, for builders that take it instead of the hierarchy)
+--   {k={k=arg}} nested tables (volume outlines of stamps and pools)
+--   y<x>:<y>:<z>:<dx>:<dy>:<dz> a path/pool volume, found again with volumes:Raycast
+--   k<x>:<y>:<z> a volume chunk, found again with a physics ray down at that point
+--   rN=@table   a Lua table the editor fills through calls (the path brush's handles)
+--   hier.Method(@h, ...) a method of the change-list hierarchy itself (RemoveVolume ...)
+-- Long batches travel in parts: ~<id>.<i>.<n>~<text> (put together before replay).
 local global = _G
 local Replay = {}
 
@@ -27,7 +33,14 @@ local byToken = {}              -- preview token -> record
 local byChangeList = global.setmetatable({}, {__mode = "k"})
 local installed = false
 local demolishing = false       -- inside the game's delete of a selection (SceneryUtils)
-local MAX_BATCH = 3500
+local MAX_BATCH = 60000       -- sent in parts of PART_SIZE (the session caps one line)
+local PART_SIZE = 2800
+local brushHistory = global.setmetatable({}, {__mode = "k"})  -- brush selection -> its calls
+local rays = {}                 -- volume id -> {start, dir} of the editor's last raycast hitting it
+local rayCount = 0
+local partsIn = {}              -- incoming batch parts by id
+local partSerial = 0
+local hierWrapped = global.setmetatable({}, {__mode = "k"})  -- hierarchy method tables we wrapped
 
 local function newRecord() return {calls = {}, refs = {}, objects = {}, n = 0} end
 local record = newRecord()
@@ -70,6 +83,22 @@ local OBJECT_METHODS = {
         AddEntranceExit = {changelist = 1}, MoveEntranceExit = {changelist = 1}, RemoveEntranceExit = {changelist = 1},
     },
     placement = {UpdatePreviewTransform = {}},
+}
+-- Paths and pools beyond the line tool. The brush appends handles to a Lua table every frame
+-- and previews anew; the table's calls are kept and go out with the committed preview.
+-- Stamps and new pools add whole outlines; the composite is placed with its transform.
+OBJECT_METHODS.volumes.AppendBrushHandles = {brush = true, tables = {6}}
+OBJECT_METHODS.volumes.CreateMoveObjectsForControlHandles = {composite = 1, hierarchy = 2, tables = {3}}
+OBJECT_METHODS.volumes.CreateMoveObjectForVolumeOutline = {composite = 1, hierarchy = 2, outline = true}
+OBJECT_METHODS.volumes.CreateMoveObjectHeightStick = {composite = 1, hierarchy = 2}
+-- Not recorded yet: the widget tool's selections. The author is told instead of drifting apart.
+OBJECT_METHODS.volumes.CreateMoveObjectsForSelection = {unsupported = "Wege mit dem Widget bearbeiten"}
+-- Methods of the change-list hierarchy (userdata; wrapped on its shared method table).
+local HIER_METHODS = {
+    -- Path tool, delete under the cursor (VolumeEditHelper.TryDeleteUnderCursor).
+    RemoveVolume = {hierarchy = 1, volumes = {2}, starts = true},
+    -- Delete of a selection with paths or pools (SceneryUtils._StartDeletePools).
+    AddVolumeChunkToCompositeObject = {hierarchy = 1, composite = 2, chunks = {3}},
 }
 -- Path joins of ride gates live in the volumes API next to the path builders.
 OBJECT_METHODS.volumes.CreateMoveObjectPlatformGateJoin = {hierarchy = 1}
@@ -119,22 +148,58 @@ local function encodeScalar(value, ctx)
     global.error("unsupported argument " .. kind)
 end
 
+local function plainTable(value, ctx)
+    return global.type(value) == "table" and not (ctx.refs and ctx.refs[value])
+        and global.rawget(value, "GetX") == nil and global.rawget(value, "GetPos") == nil
+end
+
+-- Tables nest (outlines: points with positions); at most 600 values in all.
+local function encodeTable(value, ctx, budget)
+    local parts = {}
+    for k, v in global.pairs(value) do
+        global.assert(global.type(k) == "number" or global.string.match(k, "^[%w_]+$"), "bad table key")
+        budget.n = budget.n + 1
+        global.assert(budget.n <= 600, "table too large")
+        parts[#parts+1] = global.tostring(k) .. "=" .. (plainTable(v, ctx) and encodeTable(v, ctx, budget) or encodeScalar(v, ctx))
+    end
+    return "{" .. global.table.concat(parts, "/") .. "}"
+end
+
 encode = function(value, ctx, position)
     if ctx.hierarchyAt and position == ctx.hierarchyAt then return "@h" end
     if ctx.changeListAt and position == ctx.changeListAt then return "@cl" end
     if ctx.operation ~= nil and value == ctx.operation then return "@op" end
-    if global.type(value) == "table" and not (ctx.refs and ctx.refs[value])
-        and global.rawget(value, "GetX") == nil and global.rawget(value, "GetPos") == nil then
-        local parts = {}
-        for k, v in global.pairs(value) do
-            global.assert(global.type(k) == "number" or global.string.match(k, "^[%w_]+$"), "bad table key")
-            global.assert(global.type(v) ~= "table", "nested table")
-            parts[#parts+1] = global.tostring(k) .. "=" .. encodeScalar(v, ctx)
-            global.assert(#parts <= 16, "table too large")
-        end
-        return "{" .. global.table.concat(parts, "/") .. "}"
-    end
+    if plainTable(value, ctx) then return encodeTable(value, ctx, {n = 0}) end
     return encodeScalar(value, ctx)
+end
+
+-- A volume (path, pool) by a ray of the editor that hit it; the same ray hits it everywhere.
+local function encodeVolume(volume)
+    local ray = rays[volume]
+    global.assert(ray, "volume without ray")
+    return "y" .. fmt(ray[1]) .. ":" .. fmt(ray[2]) .. ":" .. fmt(ray[3]) .. ":" .. fmt(ray[4]) .. ":" .. fmt(ray[5]) .. ":" .. fmt(ray[6])
+end
+
+local physicsWorld
+local function chunkAt(x, y, z)
+    physicsWorld = physicsWorld or global.api.entity.FindEntityByName("MainPhysicsWorld")
+    local V = global.require("Vector3")
+    local hits = global.api.physics.RayCast(physicsWorld, V:new(x, y + 4, z), V:new(x, y - 4, z), global.api.physics.Flag_Volume, 4) or {}
+    local volumes = global.api.world.GetWorldAPIs().volumes
+    for _, hit in global.ipairs(hits) do
+        local okV, id = global.pcall(function() return volumes:GetVolumeIDFromEntityID(hit.nEntityID, false) end)
+        if okV and id ~= nil then return hit.nEntityID end
+    end
+end
+
+-- A volume chunk by a point where a ray straight down hits exactly this chunk.
+local function encodeChunk(chunk)
+    local p = global.api.transform.CalculateWorldTransform(chunk):GetPos()
+    for _, d in global.ipairs({{0, 0}, {1, 0}, {-1, 0}, {0, 1}, {0, -1}, {2, 2}, {-2, -2}, {2, -2}, {-2, 2}}) do
+        local x, z = p:GetX() + d[1], p:GetZ() + d[2]
+        if chunkAt(x, p:GetY(), z) == chunk then return "k" .. fmt(x) .. ":" .. fmt(p:GetY()) .. ":" .. fmt(z) end
+    end
+    global.error("chunk without probe")
 end
 
 local decode
@@ -168,6 +233,18 @@ local function decodeScalar(text, ctx)
     end
     local numbers = {}
     for field in global.string.gmatch(body, "[^:]+") do numbers[#numbers+1] = global.tonumber(field) end
+    if tag == "y" and #numbers == 6 then
+        local V = global.require("Vector3")
+        local _, volume = global.api.world.GetWorldAPIs().volumes:Raycast(V:new(numbers[1], numbers[2], numbers[3]),
+            V:new(numbers[4], numbers[5], numbers[6]))
+        global.assert(volume ~= nil, "volume not found")
+        return volume
+    end
+    if tag == "k" and #numbers == 3 then
+        local chunk = chunkAt(numbers[1], numbers[2], numbers[3])
+        global.assert(chunk ~= nil, "chunk not found")
+        return chunk
+    end
     if tag == "v" and #numbers == 3 then return global.require("Vector3"):new(numbers[1], numbers[2], numbers[3]) end
     if tag == "t" and #numbers == 7 then
         local q = global.require("Quaternion").Identity:WithX(numbers[4]):WithY(numbers[5]):WithZ(numbers[6]):WithW(numbers[7])
@@ -176,14 +253,28 @@ local function decodeScalar(text, ctx)
     global.error("bad argument " .. text)
 end
 
+-- Splits at "/" outside of nested braces.
+local function splitEntries(text)
+    local out, depth, start = {}, 0, 1
+    for i = 1, #text do
+        local c = global.string.sub(text, i, i)
+        if c == "{" then depth = depth + 1
+        elseif c == "}" then depth = depth - 1; global.assert(depth >= 0, "bad table")
+        elseif c == "/" and depth == 0 then out[#out+1] = global.string.sub(text, start, i - 1); start = i + 1 end
+    end
+    global.assert(depth == 0, "bad table")
+    if start <= #text then out[#out+1] = global.string.sub(text, start) end
+    return out
+end
+
 decode = function(text, ctx)
     if global.string.sub(text, 1, 1) == "{" then
         global.assert(global.string.sub(text, -1) == "}", "bad table")
         local out = {}
-        for entry in global.string.gmatch(global.string.sub(text, 2, -2), "[^/]+") do
+        for _, entry in global.ipairs(splitEntries(global.string.sub(text, 2, -2))) do
             local k, v = global.string.match(entry, "^([%w_]+)=(.+)$")
             global.assert(k, "bad table entry")
-            out[global.tonumber(k) or k] = decodeScalar(v, ctx)
+            out[global.tonumber(k) or k] = decode(v, ctx)
         end
         return out
     end
@@ -193,7 +284,11 @@ end
 local function encodeCall(name, args, ctx, entities)
     local parts = {}
     for i = 1, args.n do
-        if entities and entities[i] then
+        if ctx.volumesAt and ctx.volumesAt[i] then
+            parts[i] = encodeVolume(args[i])
+        elseif ctx.chunksAt and ctx.chunksAt[i] then
+            parts[i] = encodeChunk(args[i])
+        elseif entities and entities[i] then
             local gid = entityToGid(args[i])
             global.assert(gid, "object not shared")
             parts[i] = "e" .. gid
@@ -204,9 +299,40 @@ local function encodeCall(name, args, ctx, entities)
     return name .. "(" .. global.table.concat(parts, ",") .. ")"
 end
 
+-- A table filled by recorded calls (brush handles): created on replay, then its calls.
+local function tableRef(t)
+    if not brushHistory[t] then
+        -- Handles picked in the select/pinpoint/widget tools: not recorded (yet). Say so.
+        emit("sync:unsupported|Wege mit Anfassern bearbeiten")
+        global.error("selection not recorded")
+    end
+    record.n = record.n + 1
+    record.refs[t], record.objects[record.n] = record.n, t
+    record.calls[#record.calls+1] = "r" .. record.n .. "=@table"
+    for _, call in global.ipairs(brushHistory[t] or {}) do
+        record.calls[#record.calls+1] = global.string.format(call, "@r" .. record.n)
+    end
+end
+
 local function onCall(name, s, self, args, results)
     if s.kind == "immediate" then
         send("!" .. encodeCall(name, args, {}, s.entities))
+        return
+    end
+    if s.unsupported then
+        emit("sync:unsupported|" .. s.unsupported)
+        global.error("not recorded")
+    end
+    if s.brush then
+        -- Every frame of a stroke: kept with its table, recorded when a preview uses it.
+        local t = args[s.tables[1]]
+        if global.type(t) ~= "table" then return end
+        local fields = {}
+        for i = 1, args.n do fields[i] = i == s.tables[1] and "%s" or encode(args[i], {}, i) end
+        local text = name .. "(" .. global.table.concat(fields, ",") .. ")"
+        local history = brushHistory[t] or {}
+        brushHistory[t] = history
+        if history[#history] ~= text and #history < 2000 then history[#history+1] = text end
         return
     end
     -- A delete takes all selected rides into one record; otherwise each ride starts its own.
@@ -226,7 +352,16 @@ local function onCall(name, s, self, args, results)
             record.calls[#record.calls+1] = "r" .. record.n .. "=@composite"
         end
     end
-    local ctx = {refs = record.refs, hierarchyAt = s.hierarchy, changeListAt = s.changelist}
+    for _, i in global.ipairs(s.tables or {}) do
+        local t = args[i]
+        if global.type(t) == "table" and not record.refs[t] then tableRef(t) end
+    end
+    if s.outline and composite ~= nil then
+        record.outline = record.outline or {}
+        record.outline[record.refs[composite]] = true
+    end
+    local ctx = {refs = record.refs, hierarchyAt = s.hierarchy, changeListAt = s.changelist,
+        volumesAt = s.volumesAt, chunksAt = s.chunksAt}
     if s.kind == "operation" then ctx.operation = args[1] end
     local text = encodeCall(name, args, ctx, s.entities)
     local resultType = global.type(results[1])
@@ -296,7 +431,8 @@ function Replay.Install()
             local set
             if s.entities then set = {}; for _, i in global.ipairs(s.entities) do set[i] = true end end
             try(key, method, {kind = "object", hierarchy = s.hierarchy, starts = s.starts, composite = s.composite,
-                changelist = s.changelist, keep = s.keep, entities = set})
+                changelist = s.changelist, keep = s.keep, entities = set, tables = s.tables, brush = s.brush,
+                outline = s.outline, unsupported = s.unsupported})
         end
     end
     for key, methods in global.pairs(IMMEDIATE_METHODS) do
@@ -306,6 +442,71 @@ function Replay.Install()
             try(key, method, {kind = "immediate", entities = set})
         end
     end
+    -- The path tool finds the volume under the cursor with volumes:Raycast; keep the ray.
+    global.pcall(function()
+        local volumes = apis.volumes
+        local original = volumes.Raycast
+        if global.type(original) ~= "function" then return end
+        volumes.Raycast = function(self, start, dir, ...)
+            local results = global.table.pack(original(self, start, dir, ...))
+            local volume = results[2]
+            if volume ~= nil and not isOurs() then
+                global.pcall(function()
+                    if not rays[volume] then rayCount = rayCount + 1 end
+                    if rayCount > 4000 then rays, rayCount = {}, 1 end
+                    rays[volume] = {start:GetX(), start:GetY(), start:GetZ(), dir:GetX(), dir:GetY(), dir:GetZ()}
+                end)
+            end
+            return global.table.unpack(results, 1, results.n)
+        end
+        count = count + 1
+    end)
+    -- Hierarchy methods: userdata methods on a table all hierarchies share. The game swaps
+    -- that table after a park finished loading (seen in game: wrappers made at our install
+    -- were gone later), so every new hierarchy is checked and gets the wrappers if needed.
+    local set = function(list)
+        if not list then return nil end
+        local out = {}
+        for _, i in global.ipairs(list) do out[i] = true end
+        return out
+    end
+    for method, s in global.pairs(HIER_METHODS) do
+        local name = "hier." .. method
+        spec[name] = {kind = "object", hierarchy = s.hierarchy, composite = s.composite, starts = s.starts,
+            volumesAt = set(s.volumes), chunksAt = set(s.chunks)}
+        -- Replay calls the method on its own hierarchy (our wrapper skips it there: ours()).
+        raw[name] = function(_, h, ...) return h[method](h, ...) end
+        count = count + 1
+    end
+    local function installHier(index)
+        if global.type(index) ~= "table" or hierWrapped[index] then return end
+        hierWrapped[index] = true
+        for method in global.pairs(HIER_METHODS) do
+            local original = index[method]
+            if global.type(original) == "function" then
+                local name, full = "hier." .. method, spec["hier." .. method]
+                index[method] = function(self, ...)
+                    local results = global.table.pack(original(self, ...))
+                    if not isOurs() then
+                        local ok, failure = global.pcall(onCall, name, full, nil, global.table.pack(self, ...), results)
+                        if not ok then emit("replay:skip|" .. name .. "|" .. global.tostring(failure)) end
+                    end
+                    return global.table.unpack(results, 1, results.n)
+                end
+            end
+        end
+        emit("replay:hierarchy-hooks")
+    end
+    global.pcall(function()
+        local editors = apis.editors
+        local create = editors.CreateUndoOperationsHierarchy
+        editors.CreateUndoOperationsHierarchy = function(self, ...)
+            local results = global.table.pack(create(self, ...))
+            global.pcall(function() installHier(global.getmetatable(results[1]).__index) end)
+            return global.table.unpack(results, 1, results.n)
+        end
+        installHier(global.getmetatable(editors:CreateUndoOperationsHierarchy()).__index)
+    end)
     -- Deleting a selection (select mode, multi-select, Delete key in a placement mode): the
     -- game moves each flat ride into a "demolish only" composite. Mark that time so the
     -- composite is recreated as one on replay.
@@ -338,6 +539,32 @@ function Replay.OnPreview(changeList, token)
     end
 end
 
+-- A batch longer than one session line goes as parts: ~<id>.<i>.<n>~<text>.
+function Replay.Split(batch)
+    if #batch <= PART_SIZE then return {batch} end
+    partSerial = partSerial + 1
+    local id = global.tostring(partSerial) .. "x" .. global.tostring(global.math.random(1, 999999))
+    local out, n = {}, global.math.ceil(#batch / PART_SIZE)
+    for i = 1, n do
+        out[i] = "~" .. id .. "." .. i .. "." .. n .. "~" .. global.string.sub(batch, (i - 1) * PART_SIZE + 1, i * PART_SIZE)
+    end
+    return out
+end
+
+-- Puts parts together; returns the whole batch once the last part is in, else nil.
+local function assemble(batch)
+    local id, i, n, text = global.string.match(batch, "^~([%w]+)%.(%d+)%.(%d+)~(.*)$")
+    if not id then return batch end
+    i, n = global.tonumber(i), global.tonumber(n)
+    global.assert(n and n >= 1 and n <= 40 and i >= 1 and i <= n, "bad part")
+    local entry = partsIn[id] or {n = n, got = 0, parts = {}}
+    partsIn[id] = entry
+    if not entry.parts[i] then entry.parts[i], entry.got = text, entry.got + 1 end
+    if entry.got < entry.n then return nil end
+    partsIn[id] = nil
+    return global.table.concat(entry.parts)
+end
+
 function Replay.Remap(oldToken, newToken)
     if byToken[oldToken] then byToken[newToken], byToken[oldToken] = byToken[oldToken], nil end
 end
@@ -365,6 +592,8 @@ function Replay.OnCommit(token)
         elseif rec.composites and rec.composites[n] then
             -- Composites (rides) are placed with their rotation, after their content is added.
             local ok, transform = global.pcall(function() return object:GetTransform() end)
+            -- Stamps and pools: the editor puts the origin into the middle of the outline first.
+            if rec.outline and rec.outline[n] then placed[#placed+1] = "@r" .. n .. ".SetCompositeOriginToOBBCentre()" end
             if ok and transform ~= nil then placed[#placed+1] = "@r" .. n .. ".SetTransform(" .. encodeScalar(transform, {}) .. ")" end
         else
             local ok, position = global.pcall(function() return object:GetPosition() end)
@@ -408,13 +637,21 @@ function Replay.Apply(batches, commit, begin, finish)
         operation = operation or getHierarchy():GetTerrainEditOperation()
         return operation
     end
+    local whole = {}
     for _, batch in global.ipairs(batches) do
+        local done = assemble(batch)
+        if done then whole[#whole+1] = done end
+    end
+    for _, batch in global.ipairs(whole) do
         local ctx = {refs = {}, hierarchy = getHierarchy, operation = getOperation}
         for text in global.string.gmatch(batch, "[^;]+") do
             local objectRef, objectMethod, objectArgs = global.string.match(text, "^@r(%d+)%.([%w_]+)%((.*)%)$")
             local compositeRef = global.string.match(text, "^r(%d+)=@composite$")
             local demolishRef = global.string.match(text, "^r(%d+)=@demolish$")
-            if compositeRef then
+            local tableRefN = global.string.match(text, "^r(%d+)=@table$")
+            if tableRefN then
+                ctx.refs[global.tonumber(tableRefN)] = {}
+            elseif compositeRef then
                 ctx.refs[global.tonumber(compositeRef)] = getHierarchy():CreateCompositeObject({})
             elseif demolishRef then
                 ctx.refs[global.tonumber(demolishRef)] = getHierarchy():CreateCompositeObject({bDemolishOnly = true})
@@ -423,7 +660,8 @@ function Replay.Apply(batches, commit, begin, finish)
                 if volumeBlock then getHierarchy():EndVolumeModificationsBlock(); volumeBlock = false end
                 livePreview = begin(getHierarchy():GetFullUndoChangeList())
             elseif objectRef then
-                global.assert(objectMethod == "SetPosition" or objectMethod == "SetTransform" or objectMethod == "Destroy", "object method")
+                global.assert(objectMethod == "SetPosition" or objectMethod == "SetTransform" or objectMethod == "Destroy"
+                    or objectMethod == "SetCompositeOriginToOBBCentre", "object method")
                 local object = ctx.refs[global.tonumber(objectRef)]
                 global.assert(object ~= nil, "unknown reference")
                 local values = {}
@@ -442,7 +680,8 @@ function Replay.Apply(batches, commit, begin, finish)
                 global.assert(name and raw[name], "unknown call " .. global.tostring(text))
                 local key = global.string.match(name, "^([%w_]+)%.")
                 local args = splitArgs(argText)
-                if global.string.sub(name, 1, 8) == "volumes." and not volumeBlock and not livePreview then
+                if (global.string.sub(name, 1, 8) == "volumes." or global.string.sub(name, 1, 5) == "hier.")
+                    and not volumeBlock and not livePreview then
                     -- Same frame the path editor builds around its calls (VolumeEditHelper.BeginPreview).
                     local h = getHierarchy()
                     h:BeginVolumeModificationsBlock()

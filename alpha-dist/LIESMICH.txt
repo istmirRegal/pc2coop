@@ -1,4 +1,4 @@
-PC2Coop 1.11.0 - Planet Coaster 2 live zusammen bauen, ueber Steam
+PC2Coop 1.12.0 - Planet Coaster 2 live zusammen bauen, ueber Steam
 
 Installation (jeder Spieler, einmalig)
 1. ZIP in einen eigenen Ordner entpacken.
@@ -71,20 +71,63 @@ Die anderen sehen
   pro Park (Datei pc2coop-authors-<Park>.txt im Spielordner), auch ueber Speichern und Laden.
 Im Entwickler-Menue (F8) lassen sich Namensschilder und diese Anzeige abschalten.
 
-Besucher-Modus (Leiste oben in der Mitte)
-- "Als Besucher losgehen": du laeufst in Ich-Sicht durch den Park (WASD, Shift schneller;
-  die Laufkamera des Spiels). Die anderen sehen oben rechts "geht als Besucher durch den
-  Park" und deine Markierung dort, wo du stehst. "Zurueck zum Bauen" beendet es.
-- "Fahrgeschaefte": alle Fahrgeschaefte, das naechste zuerst, mit Spass/Angst/Uebelkeit (nach
-  dem Testlauf), Laenge der Schlange und Zahl der Zuege. "Mitfahren" setzt dich auf einen
-  Sitz (Kamera-Einstellungen des Spiels; "Zurueck" unten rechts steigt aus, danach laeufst
-  du weiter). Das Fahrgeschaeft muss geoeffnet sein, damit sich der Zug bewegt.
-- Bewerten: 1 bis 5 Sterne, danach ein kurzer Vorschlag ("mehr Schatten am Eingang").
-  Alle sehen Bewertungen, Durchschnitt und Vorschlaege; der Host hat sie im Verlauf.
-- Emotes (Winken, Jubeln, Lachen, Super, Naja, Uebel) erscheinen bei allen als Hinweis und
-  kurz neben deinem Namen.
-- Noch nicht: Dinge kaufen, Toiletten, Hunger/Laune. Bewertungen gelten fuer die laufende
-  Sitzung (nach einem Neustart sind sie weg).
+Multiplayer im Baumenue
+Unten in der Bauleiste gibt es den Reiter "Multiplayer" (oder F7). Das Fenster hat im Park
+fuenf Reiter:
+- Team: Mitspieler, Folgen, Chat, Einladen, Beitrittsanfragen (Host).
+- Besuchen: Besucher-Modus, Fahrgeschaefte mit Werten und Bewertungen, Mitfahren,
+  "Alle einladen" (gemeinsame Testfahrt).
+- Planen: das Brett des Parks - Baugebiete ("Wikingerland", mit Auftrag, Zustaendigem und
+  Groesse), Aufgaben (offen/erledigt), Bauvorschlaege (alle stimmen dafuer oder dagegen),
+  Kommentare und Treffpunkte. Alles mit Ort erscheint fuer alle als Marker im Park. Der Host
+  speichert das Brett pro Park (pc2coop-board-<Park>.txt), es bleibt ueber Spielstarts.
+- Verlauf: "Seit deinem letzten Besuch" (was sich geaendert hat), Meldungen des Parks
+  (Defekte, festsitzende Gaeste, Blitzschlag ... - mit "Hinspringen"), Sicherungspunkte
+  und das Protokoll der Sitzung.
+- Sitzung: Regeln, Wettbewerb, Rollen, Abwesenheit.
+
+Mittelklick: zeigen und handeln
+Ein kurzer Klick mit der mittleren Maustaste setzt einen Ping fuer alle und oeffnet neben
+dem Mauszeiger ein kleines Menue fuer genau diese Stelle (schliesst sich nach 10 Sekunden):
+- Steht dort ein Fahrgeschaeft: "Team zur Testfahrt einladen" (alle bekommen oben eine
+  Einladung mit "Mitfahren") und "Selbst mitfahren".
+- Bearbeitet dort gerade jemand etwas: "Uebernahme anfragen" - er bekommt die Bitte,
+  fertig zu bauen und freizugeben. Wegnehmen kann man es ihm nicht.
+- "Kommentar anheften", "Bauvorschlag machen", "Hier bauen (Baugebiet)", "Treffpunkt":
+  oeffnet "Planen" mit dieser Stelle.
+
+Regeln (Host, Reiter Sitzung)
+- Spieltempo und Pause: alle oder nur der Host.
+- Fremde Bauten abreissen: erlaubt oder erst fragen (dann wird es beim Abreissen
+  zurueckgestellt und der Urheber gefragt).
+- Besucher-Modus: erlaubt oder aus.
+- Schnell waehlen: "Locker zusammen bauen", "Geordnet", "Nur bauen".
+Die Regeln bleiben bestehen, wenn der Host einen anderen Park laedt.
+Zurueck zu einem Sicherungspunkt geht nur, wenn alle zustimmen; Rueckgaengig (Strg+Z)
+betrifft nur deine eigenen Schritte.
+
+Wettbewerb (Host, Reiter Sitzung)
+- Bauduell: Thema eingeben, 15/30/60 Minuten. Jeder baut in seinem Baugebiet (Planen:
+  Baugebiet mit dir als Zustaendigem). Oben laeuft fuer alle die Uhr. Danach bewertet jeder
+  die Bauten der anderen, Gestaltung und Technik getrennt (1-5); das Ergebnis sehen alle.
+- Koop gegen die Uhr: gemeinsam die Aufgaben vom Brett schaffen, mit Zeitlimit.
+Szenarien und Herausforderungen des Spiels laufen wie gewohnt beim Host: ihre Ziele gelten
+fuer alle gemeinsam, denn es ist ein Park mit einem Spielstand.
+
+Besucher-Modus (Reiter Besuchen)
+- "Als Besucher losgehen": du laeufst als Figur durch den Park, die Kamera hinter dir.
+  Maus bewegen: umsehen (der Mauszeiger ist dann weg), WASD laufen, Shift rennen. Du
+  laeufst nicht durch Gebaeude, Deko und Bahnen und gehst Stufen und Wege hoch.
+- T gedrueckt halten: Emote-Rad (Winken, Jubeln, Lachen, Super, Naja, Uebel) - Maus in die
+  Richtung oder 1-6, T loslassen sendet. Die anderen sehen deine Figur und das Emote.
+- E: ins naechste Fahrgeschaeft einsteigen (bis 25 m). "Zurueck" unten rechts steigt aus.
+- Tab: zurueck zum Bauen.
+- "Ich-Sicht (Spiel)": der eingebaute Laufmodus des Spiels an derselben Stelle - mit Boden,
+  Treppen, Springen (Alt), Ducken (Strg), Schwimmen und Lampe (L). "Zurueck" unten rechts
+  fuehrt wieder zur Figur. Die anderen sehen dich dabei weiter als Figur.
+- Bewerten: 1 bis 5 Sterne und ein kurzer Vorschlag; der Host speichert sie pro Park.
+- Noch nicht: anstellen, Dinge kaufen, Toiletten, Hunger/Laune (das steckt im Spiel
+  selbst und laesst sich von aussen nicht steuern).
 
 Verbindung weg?
 - Hakt die Verbindung, siehst du "Keine Verbindung zum Host - warte ...". Kommt sie zurueck
@@ -133,8 +176,10 @@ Live synchronisiert und im Spiel getestet:
   Objekt loescht, das man gerade haelt (allein getestet, mit nachgestelltem Mitspieler).
 - Mitspieler oben rechts anklicken = ihm folgen, nochmal klicken = aufhoeren.
   Mittlere Maustaste kurz klicken = Ping; gedrueckt halten oder ziehen pingt nicht.
-- Besucher-Modus: laufen, mitfahren, bewerten, Emotes (allein getestet, nachgestellter
-  Mitspieler; die Bedienung per Maus/Tastatur ist noch nicht im Spiel geklickt worden).
+- Besucher-Modus in Ich-Sicht: laufen, mitfahren, bewerten, Emotes (allein getestet,
+  nachgestellter Mitspieler).
+- Wege-Pinsel und -Radierer, Wege und Objekte unter dem Mauszeiger loeschen, ebene
+  Fahrgeschaefte abreissen (allein getestet, nachgestellter Mitspieler).
 - Achterbahnen, Schienenfahrgeschaefte und Wasserrutschen (mit ihrer Plattform): neu
   bauen, im Streckeneditor aendern, abreissen, aus Bauplaenen setzen. Eine Bahn geht als
   kleine Bauplan-Datei an alle, sobald du den Streckeneditor verlaesst - solange du noch
@@ -142,13 +187,18 @@ Live synchronisiert und im Spiel getestet:
   sperrt sie fuer die anderen (allein getestet, mit nachgestelltem Mitspieler).
 Eingebaut, aber noch nicht im Spiel bestaetigt:
 - Das Zusammenspiel der Sperren zwischen zwei echten Spielern.
+- Neu in 1.12.0: Multiplayer-Reiter in der Bauleiste, Brett (Planen), Bauvorschlaege,
+  Mittelklick-Menue, Testfahrt-Einladung, Uebernahme anfragen, Verlauf mit Meldungen und
+  "Seit deinem letzten Besuch", Sicherungspunkte mit Abstimmung, Regeln, Wettbewerb,
+  Besucher-Modus mit Figur, Maus-Steuerung, Emote-Rad und Kollision.
+- Stempel und Pools aus Formen, gezeichnete Flaechen, Loeschen per Mehrfachauswahl,
+  ebene Fahrgeschaefte aus Bauplaenen.
 - Wasser (Seen), weitere Parkverwaltung (Preise, Oeffnen/Schliessen, Kredite,
   Forschung), Fahrgeschaefte verschieben, Ein- und Ausgaenge von Fahrgeschaeften.
 - Achterbahnen als Ganzes verschieben, Rueckgaengig bei Achterbahnen, alles mit zwei
   echten Spielern.
 Noch NICHT synchronisiert (folgt):
-- Wege-Pinsel und -Stempel, Wege loeschen, Pools-Editor, ebene Fahrgeschaefte aus
-  Bauplaenen (nur deren Deko kommt an).
+- Wege mit Anfassern nachtraeglich bearbeiten (du bekommst einen Hinweis).
 - Farben oder Zuege einer Achterbahn ohne Aenderung an der Strecke: kommen erst mit der
   naechsten Streckenaenderung mit.
   Diese Dinge sind beim Beitritt im uebertragenen Park enthalten, spaetere

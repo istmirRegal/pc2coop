@@ -117,6 +117,73 @@ end
 
 -- Visitor mode: walking, riding along, the park's rides with stats and ratings.
 local visitorList = false   -- the rides list of the visitor bar is unfolded
+local panelTab = "team"     -- tab of the multiplayer window in a park: team|visit|plan|history|session
+local TABS = {team = true, visit = true, plan = true, history = true, session = true}
+
+local planAt = nil          -- {x, y, z}: the spot a context action picked for the next board entry
+local planKind, planSeq = "comment", 0
+
+-- Where a new marker goes: the spot of a context action, the own fresh ping, else the view's middle.
+local function anchor()
+    if planAt then return planAt[1], planAt[2], planAt[3] end
+    for _, ping in global.ipairs(session.Pings and session.Pings() or {}) do
+        if ping.sid == session.View().me and ping.age < 0.9 then return ping.x, ping.y, ping.z end
+    end
+    local ok, x, y, z = global.pcall(function()
+        local p = global.require("pc2coop.world").FocusPoint()
+        return p:GetX(), p:GetY(), p:GetZ()
+    end)
+    if ok and x then return x, y, z end
+end
+
+-- The context menu (own fresh ping): the nearest ride and who edits close by, worked out once.
+local contextCache = nil
+local function contextState()
+    local c = session.Context and session.Context()
+    if not c then contextCache = nil; return false end
+    if contextCache and contextCache.frame == c.frame then return contextCache.state end
+    local state = {x = c.x, z = c.z, ride = false, editors = {}}
+    global.pcall(function()
+        local list = global.require("pc2coop.visitor").Rides(global.require("pc2coop.sync").RideKey, false, {c.x, c.z})
+        local near = list[1]
+        if near and near.dist and near.dist <= 30 then state.ride = {key = near.key, name = near.name} end
+    end)
+    local view = session.View()
+    for _, p in global.ipairs(view.players or {}) do
+        if p.sid ~= view.me and p.hold and p.fx and p.fz then
+            local dx, dz = p.fx - c.x, p.fz - c.z
+            if dx * dx + dz * dz < 1600 then state.editors[#state.editors+1] = {sid = p.sid, name = p.name, label = p.hold.label} end
+        end
+    end
+    contextCache = {frame = c.frame, state = state}
+    return state
+end
+
+local function teamState()
+    local view = session.View()
+    local board = {}
+    local okB, Board = global.pcall(global.require, "pc2coop.board")
+    local myName
+    for _, p in global.ipairs(view.players or {}) do if p.sid == view.me then myName = p.name end end
+    for _, item in global.ipairs(view.board or {}) do
+        local yes, no = 0, 0
+        if okB then yes, no = Board.Tally(item) end
+        local mine = item.votes and myName and item.votes[myName]
+        board[#board+1] = {id = item.id, kind = item.kind, title = item.title, text = item.text, by = item.by,
+            assignee = item.assignee, done = item.done, x = item.x or false, z = item.z or false, radius = item.radius,
+            yes = yes, no = no, myVote = mine == nil and false or (mine and "1" or "0")}
+    end
+    local events = {}
+    for _, e in global.ipairs(view.events or {}) do events[#events+1] = {label = e.label, x = e.x, y = e.y, z = e.z} end
+    local checkpoints = {}
+    for _, c in global.ipairs(view.checkpoints or {}) do checkpoints[#checkpoints+1] = {n = c.n, label = c.label} end
+    local invite = session.Invitation and session.Invitation()
+    return {tab = panelTab, board = board, events = events, rules = view.rules or false, since = view.since or false,
+        invitation = invite and {by = invite.by, key = invite.key, name = invite.name} or false,
+        context = contextState(), planKind = planKind, planSeq = planSeq,
+        competition = session.Competition and session.Competition() or false,
+        checkpoints = checkpoints, vote = view.vote or false}
+end
 
 local function visitorState()
     local Visitor = global.require("pc2coop.visitor")
@@ -131,7 +198,10 @@ local function visitorState()
             avg = rated.avg or false, count = rated.count or 0, mine = rated.mine or false, comments = rated.comments or {}}
     end
     local riding = Visitor.Riding()
-    return {active = Visitor.Active(), riding = riding and riding.name or false, rides = rides, list = visitorList,
+    local wheel = Visitor.Wheel and Visitor.Wheel()
+    return {active = Visitor.Active(), riding = riding and riding.name or false, guest = Visitor.GuestView and Visitor.GuestView() or false,
+        wheel = wheel and {selected = wheel.selected or false} or false, view = Visitor.View and Visitor.View() or "first",
+        rides = rides, list = visitorList,
         emotes = session.Emotes and session.Emotes() or {}}
 end
 
@@ -167,6 +237,7 @@ local function buildState()
         choice = view.choice or false, canChoose = choosing(), parks = choosing() and parkList or {},
         chosen = chosen and (chosen.kind .. ":" .. global.tostring(chosen.id or chosen.biome or "")) or false,
         visitor = visitorState(),
+        team = (frontendMenu == nil and session.View().context ~= "menu") and teamState() or false,
     }
 end
 
@@ -208,6 +279,11 @@ local actions = {
     -- Visitor mode: "1" walk as a guest, "0" back to building.
     visitor = function(arg)
         local Visitor = global.require("pc2coop.visitor")
+        local rules = session.Rules and session.Rules() or {}
+        if arg == "1" and session.View().role == "client" and rules.visitors == "0" then
+            session.Notice("Der Host hat den Besucher-Modus fuer diese Sitzung ausgeschaltet.", "ff922b")
+            return
+        end
         if arg == "1" then Visitor.Start(); Ui.SetOpen(false) else Visitor.Stop() end
     end,
     ride = function(arg)
@@ -216,7 +292,108 @@ local actions = {
         if not ok then session.Notice("Mitfahren geht gerade nicht (" .. global.tostring(failure) .. ").", "ff922b") end
     end,
     emote = function(arg) session.Emote(arg) end,
+    guest = function() global.require("pc2coop.visitor").WatchGuest() end,
     visitorlist = function(arg) visitorList = arg == "1" end,
+    paneltab = function(arg) if TABS[arg] then panelTab = arg end end,
+    -- "<kind>|<title>|<text>|<assignee>|<radius>": tasks need no place, the rest goes to anchor().
+    board_add = function(arg)
+        local kind, title, text, assignee, radius = global.string.match(arg or "", "^(%a+)|([^|]*)|([^|]*)|([^|]*)|?([%d%.]*)$")
+        if not kind then return end
+        local x, y, z
+        if kind ~= "task" then
+            x, y, z = anchor()
+            if not x then session.Notice("Keine Stelle gefunden - setz erst einen Ping (mittlere Maustaste).", "ff922b"); return end
+        end
+        session.BoardAdd(kind, x, y, z, global.tonumber(radius) or 0, title, text, assignee)
+        planAt = nil
+    end,
+    board_vote = function(arg)
+        local id, value = global.string.match(arg or "", "^(b%d+)|([01])$")
+        if id then session.BoardSet(id, "vote", value) end
+    end,
+    -- Context menu at the own ping: close | comment | area | meet | proposal | invite | ride | take|<sid>
+    ctx = function(arg)
+        local c = session.Context and session.Context()
+        if not c then return end
+        session.CloseContext()
+        local found = contextCache and contextCache.frame == c.frame and contextCache.state or {}
+        if arg == "comment" or arg == "area" or arg == "meet" or arg == "proposal" then
+            planAt, planKind, planSeq, panelTab = {c.x, c.y, c.z}, arg, planSeq + 1, "plan"
+            Ui.SetOpen(true)
+        elseif arg == "invite" and found.ride then
+            session.InviteRide(found.ride.key, found.ride.name)
+        elseif arg == "ride" and found.ride then
+            local Visitor = global.require("pc2coop.visitor")
+            if not Visitor.Active() then Visitor.Start() end
+            Visitor.Ride(found.ride.key, global.require("pc2coop.sync").GidToEntity)
+        else
+            local sid = global.string.match(arg or "", "^take|(.+)$")
+            if sid then session.AskTakeover(sid) end
+        end
+    end,
+    board_done = function(arg)
+        local id, value = global.string.match(arg or "", "^(b%d+)|([01])$")
+        if id then session.BoardSet(id, "done", value) end
+    end,
+    board_assign = function(arg)
+        local id, who = global.string.match(arg or "", "^(b%d+)|(.*)$")
+        if id then session.BoardSet(id, "assignee", who) end
+    end,
+    board_del = function(arg) if global.string.match(arg or "", "^b%d+$") then session.BoardRemove(arg) end end,
+    -- Fly to a place of the board or an event: "<x>|<z>".
+    ["goto"] = function(arg)
+        local x, z = global.string.match(arg or "", "^(%-?[%d%.]+)|(%-?[%d%.]+)$")
+        if not x then return end
+        global.pcall(function()
+            local Vector3 = global.require("Vector3")
+            global.api.world.GetWorldAPIs().CameraModeManager:RequestMode("Focus", {vFocusPos = Vector3:new(global.tonumber(x), 0, global.tonumber(z))})
+        end)
+        Ui.SetOpen(false)
+    end,
+    rule = function(arg)
+        local name, value = global.string.match(arg or "", "^(%a+)|(%w+)$")
+        if name then session.SetRule(name, value) end
+    end,
+    -- "<mode>|<minutes>|<topic>"
+    comp_start = function(arg)
+        local mode, minutes, topic = global.string.match(arg or "", "^(%a+)|(%d+)|(.*)$")
+        if mode and not session.StartCompetition(mode, minutes, topic) then
+            session.Notice("Wettbewerb laeuft schon oder Angaben fehlen.", "ff922b")
+        end
+    end,
+    comp_next = function() session.CompetitionNext() end,
+    comp_rate = function(arg)
+        local sid, d, t = global.string.match(arg or "", "^([^|]+)|([1-5])|([1-5])$")
+        if sid then session.RateEntry(sid, d, t) end
+    end,
+    -- Ready-made rule sets for the host.
+    rule_preset = function(arg)
+        local presets = {
+            relaxed = {{speed = "all", foreign = "free", visitors = "1"}, "Locker zusammen bauen"},
+            ordered = {{speed = "host", foreign = "ask", visitors = "1"}, "Geordnet"},
+            build = {{speed = "host", foreign = "ask", visitors = "0"}, "Nur bauen"},
+        }
+        local preset = presets[arg or ""]
+        if preset then session.SetRules(preset[1], preset[2]) end
+    end,
+    checkpoint = function() session.Checkpoint() end,
+    -- "<ride key>|<name>": everyone is invited to ride along.
+    invite_ride = function(arg)
+        local key, name = global.string.match(arg or "", "^([^|]+)|(.*)$")
+        if key then session.InviteRide(key, name) end
+    end,
+    invitation = function(arg)
+        local invite = session.Invitation and session.Invitation()
+        session.DismissInvitation()
+        if arg == "1" and invite then
+            local Visitor = global.require("pc2coop.visitor")
+            if not Visitor.Active() then Visitor.Start() end
+            Visitor.Ride(invite.key, global.require("pc2coop.sync").GidToEntity)
+            Ui.SetOpen(false)
+        end
+    end,
+    restore = function(arg) session.Propose("restore", arg) end,
+    vote = function(arg) session.Vote(arg == "1") end,
     -- "<ride key>|<stars>|<suggestion>"
     rate = function(arg)
         local key, stars, text = global.string.match(arg or "", "^([^|]+)|(%d)|?(.*)$")
