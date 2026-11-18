@@ -15,7 +15,7 @@ local World = global.require("pc2coop.world")
 local shared = global.require("pc2coop.shared")
 
 -- Mod version; must match the database's probeVersion (checked by the tests).
-Session.VERSION = "1.12.1"
+Session.VERSION = "1.12.2"
 local COLORS = {"ff6b6b", "4dabf7", "51cf66", "fcc419", "cc5de8", "ff922b", "22b8cf", "f06595"}
 local net, sync
 local emit = function() end

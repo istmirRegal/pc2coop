@@ -205,6 +205,10 @@ local function visitorState()
         emotes = session.Emotes and session.Emotes() or {}}
 end
 
+-- QA (dev flag scripts only): the UI presses the build bar tab like a mouse would.
+local qaClick = 0
+function Ui._QaClickTab() qaClick = qaClick + 1; lastState = nil end
+
 local function buildState()
     local view = session.View()
     local players = {}
@@ -224,7 +228,7 @@ local function buildState()
         franchise = ok and info ~= nil
     end
     return {
-        available = session.Available() == true, role = view.role or false, me = view.me, open = open,
+        available = session.Available() == true, role = view.role or false, me = view.me, open = open, qaClickTab = qaClick,
         canHost = canHost, franchise = franchise, players = players, friends = friends,
         join = session.JoinState and session.JoinState() or false,
         desync = session.Desync and session.Desync() or false,

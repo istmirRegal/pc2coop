@@ -1184,6 +1184,20 @@ async function patchBuildBar() {
     decorated.prototype.__pc2coop = true;
 }
 
+// The first vnode below node for which test is true, with the list it sits in.
+function findNode(node, test) {
+    if (!node || typeof node !== 'object') return null;
+    const children = Array.isArray(node) ? node : node.children;
+    if (!Array.isArray(children)) return null;
+    for (let i = 0; i < children.length; i++) {
+        const child = children[i];
+        if (child && typeof child === 'object' && !Array.isArray(child) && test(child)) return { list: children, index: i, node: child };
+        const deeper = findNode(child, test);
+        if (deeper) return deeper;
+    }
+    return null;
+}
+
 function findTab(node, outcome) {
     if (!node || typeof node !== 'object') return null;
     const children = Array.isArray(node) ? node : node.children;
@@ -1204,12 +1218,18 @@ function patchBrowserClass(browserClass, BrowserTab) {
     proto.render = function (...args) {
         const tree = render.apply(this, args);
         try {
-            const at = findTab(tree, 'multiselect');
-            if (at && !findTab(tree, 'pc2coop')) {
-                // With a text like the game's own tabs: an icon alone at the far right was overlooked.
-                at.list.splice(at.index + 1, 0, preact.h(BrowserTab, { key: 'pc2coopTab', label: literal('Multiplayer'),
-                    icon: 'img/icons/collaborate.svg', outcome: 'pc2coop', hidden: at.node.attributes.hidden,
-                    modifiers: 'firstItem lastItem marginLeft', onButtonSelect: () => request('open') }));
+            // NOT inside the game's TabBar: it pairs every tab with the browser section at the same
+            // index, and a tab without one locked the whole UI on click (1.12.1). Next to it instead,
+            // like the game's own "back to the browser" tab.
+            const bar = findNode(tree, (n) => n.attributes && n.attributes.rootClassName === 'Browser_tabBar' && n.attributes.onChange);
+            const multi = findTab(tree, 'multiselect');
+            if (bar && multi && !findNode(tree, (n) => n.key === 'pc2coopTabBar')) {
+                // Out of the flow at the right end of the bar's row: the game's bar keeps its place.
+                bar.list.splice(bar.index + 1, 0, preact.h('div', { key: 'pc2coopTabBar', className: 'Browser_tabBar pc2coopTabBar',
+                    style: { position: 'absolute', right: '12px', bottom: '0px', width: 'auto' } },
+                    preact.h(BrowserTab, { label: literal('Multiplayer'), icon: 'img/icons/collaborate.svg',
+                        hidden: multi.node.attributes.hidden, modifiers: 'firstItem lastItem marginLeft',
+                        onToggle: () => request('open') })));
                 if (!buildBarShown) { buildBarShown = true; report('build bar tab shown'); }
             }
         } catch (error) { report('build bar tab ' + error); }
@@ -1307,6 +1327,15 @@ export function start(logger) {
     if (app.indexOf('HUD.html') >= 0) {
         patchPauseMenu().catch((e) => console.log('PC2Coop: ' + e));
         patchBuildBar().catch((e) => report('build bar import ' + e));
+        // QA: a counter from Lua presses the tab with a mouse-down event (no real mouse).
+        let qaClicks = 0;
+        listeners.add((s) => {
+            if (!s.qaClickTab || s.qaClickTab === qaClicks) return;
+            qaClicks = s.qaClickTab;
+            const tab = document.querySelector('.pc2coopTabBar .Tab_root');
+            report('qa tab press ' + (tab ? 'found' : 'missing'));
+            if (tab) tab.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 }));
+        });
     }
     else {
         patchMainMenu().catch((e) => log('main menu import ' + e));
