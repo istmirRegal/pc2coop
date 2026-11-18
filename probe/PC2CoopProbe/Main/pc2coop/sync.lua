@@ -15,6 +15,7 @@
 local global = _G
 local Sync = {}
 local Replay = global.require("pc2coop.replay")
+local Rides = global.require("pc2coop.rides")
 local Recorder = global.require("pc2coop.recorder")
 local World = global.require("pc2coop.world")
 local shared = global.require("pc2coop.shared")
@@ -402,6 +403,12 @@ local function findByPlace(gid)
     end
 end
 
+-- Shared id of a ride (coaster) for rides.lua: F<x>_<y>_<z> of the ride entity.
+function Sync.RideKey(entity)
+    local ok, key = global.pcall(placeKey, "F", entity)
+    return ok and key or nil
+end
+
 function Sync.EntityToGid(entity)
     if global.type(entity) ~= "number" then return nil end
     local w = apis()
@@ -487,8 +494,8 @@ end
 
 -- Remote apply ---------------------------------------------------------------------
 
-local function waitFor(predicate, label)
-    for _ = 1, 1800 do
+local function waitFor(predicate, label, limit)
+    for _ = 1, limit or 1800 do
         if predicate() then return end
         global.coroutine.yield()
     end
@@ -702,6 +709,12 @@ local function runOp(f)
             globalToLocal[f[3]], localToGlobal[part], revision[f[3]] = part, f[3], global.tonumber(f[5])
             known[part] = fingerprint(readPart(part), part)
         end
+    elseif kind == "Y" then
+        -- A ride (coaster) as a blueprint file: swap ours for it (rides.lua).
+        local w = apis()
+        Rides.Apply(f[3], f[4], f[5], {
+            waitFor = function(predicate, label) waitFor(predicate, label, 7200) end,
+            commit = function(changeList) commitList(w, changeList) end})
     elseif kind == "R" then
         emit("sync:rejected|" .. global.tostring(f[3]) .. "|" .. global.tostring(f[4]))
     end
@@ -717,6 +730,7 @@ function Sync.Receive(message)
             if not active then
                 active = true
                 global.pcall(baseline)
+                global.pcall(Rides.Baseline)
             end
             emit("sync:started|" .. playerName)
         elseif f[1] == "X" then
@@ -785,6 +799,18 @@ local function hold()
         end
         local label = global.string.gsub(global.tostring(held.resource or global.string.match(items[1], "^!?([^,]*)") or "?"), "[|,;]", "")
         line = label .. "|" .. global.table.concat(gids, ",") .. "|" .. global.table.concat(items, ";")
+    else
+        -- In the track editor: the ride is locked for the others while it is open here.
+        local keys = Rides.Editing()
+        for _, key in global.ipairs(keys) do
+            if remoteLocked[key] then
+                emit("sync:hold-denied|" .. global.tostring(remoteLocked[key]))
+                Rides.Abandon()
+                World.LeaveTool()
+                return
+            end
+        end
+        if #keys > 0 then line = "Achterbahn|" .. global.table.concat(keys, ",") .. "|" end
     end
     heldParts = parts
     if line ~= lastHold or (line ~= "" and frames - lastHoldFrame >= 60) then
@@ -829,6 +855,8 @@ function Sync.Tick()
                 if active then cmdSent = cmdSent + 1; emit("sync:cmd|" .. call) end
             end, Sync.EntityToGid, Sync.GidToEntity)
             Replay.Install()
+            Rides.Init(emit, ours, Sync.RideKey, Sync.GidToEntity)
+            Rides.Install()
         end)
         wrapped = true
         emit(ok and "sync:hooks-installed" or ("sync:hook-error|" .. global.tostring(failure)))
@@ -837,6 +865,11 @@ function Sync.Tick()
         emit("sync:ready|" .. global.tostring(playerName))
     end
     finalizeCommits()
+    if active then
+        -- Not while any preview runs: ghosts of rides being placed or moved are entities too.
+        local okR, failureR = global.pcall(Rides.Tick, task ~= nil or paused or previewing())
+        if not okR then emit("rides:tick-error|" .. global.tostring(failureR)) end
+    end
     if task then
         local ok, failure = global.coroutine.resume(task)
         if not ok then
@@ -932,6 +965,7 @@ function Sync.Stop()
     heldParts, remoteLocked, lastHold, activityText = {}, {}, "", nil
     shared.undoGuard = nil
     Replay.Stop()
+    Rides.Stop()
     emit("sync:not-ready")
 end
 

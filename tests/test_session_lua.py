@@ -43,7 +43,7 @@ class Peer:
         self.sid, self.name = sid, name
         self.lua = LuaRuntime(unpack_returned_tuples=True)
         self.lua.execute(FAKES)
-        for module in ('shared', 'world'):
+        for module in ('shared', 'world', 'rides'):
             source = (SOURCE.parent / f'{module}.lua').read_text(encoding='utf8')
             self.lua.eval('function(n, s) package.preload["pc2coop." .. n] = function() return assert(load(s, n, "t", _G))() end end')(module, source)
         loader = self.lua.eval('function(s) return assert(load(s, "session", "t", _G))() end')
@@ -612,3 +612,55 @@ class LobbyTests(unittest.TestCase):
         self.pump(40)
         self.assertIsNone(host.lua.eval('session.View().choice'))
         self.assertIsNone(self.peers['300'].lua.eval('session.View().choice'))
+
+
+@unittest.skipIf(LuaRuntime is None, 'Optional lupa.lua53 runtime is not installed')
+class RideSnapshotTests(SessionTests.__bases__[0]):
+    """Coasters travel as blueprint files: author -> host -> everyone else, file before line."""
+    setUp = SessionTests.setUp
+    lobby_enter = SessionTests.lobby_enter
+    pump = SessionTests.pump
+
+    def ride_ops(self, peer):
+        return [op for op in peer.ops() if op.startswith('Y|')]
+
+    def test_a_friends_coaster_goes_through_the_host_with_its_file(self):
+        alex, host, sam = self.peers['200'], self.peers['100'], self.peers['300']
+        alex.local_change('sync:ride|-|F10_0_20|pc2coop-ride-200-1.blueprint')
+        self.pump()
+        self.assertIn(('100', 'pc2coop-ride-200-1.blueprint'), alex.sent_files)
+        self.assertIn(('300', 'pc2coop-ride-200-1.blueprint'), host.sent_files)
+        self.assertNotIn(('200', 'pc2coop-ride-200-1.blueprint'), host.sent_files)
+        for peer in (host, sam):
+            self.assertEqual([op.split('|', 2)[2] for op in self.ride_ops(peer)], ['-|F10_0_20|pc2coop-ride-200-1.blueprint'])
+        self.assertEqual(self.ride_ops(alex), [], 'not back to the author')
+
+    def test_the_host_waits_for_the_file_before_passing_the_ride_on(self):
+        host, sam = self.peers['100'], self.peers['300']
+        host.event('msg|200|ride|F10_0_20|F12_0_20|pc2coop-ride-200-2.blueprint')
+        host.tick(); host.tick()
+        self.assertEqual(self.ride_ops(host), [])
+        self.assertFalse(any(c.startswith('file|300|') for c in host.commands()))
+        host.event('file:done|200|pc2coop-ride-200-2.blueprint|5115')
+        self.pump()
+        self.assertEqual(len(self.ride_ops(host)), 1)
+        self.assertEqual(len(self.ride_ops(sam)), 1)
+        self.assertIn(('300', 'pc2coop-ride-200-2.blueprint'), host.sent_files)
+
+    def test_host_coaster_and_removal(self):
+        host, alex, sam = self.peers['100'], self.peers['200'], self.peers['300']
+        host.local_change('sync:ride|F1_0_2|-|-')
+        self.pump()
+        for peer in (alex, sam):
+            self.assertEqual([op.split('|', 2)[2] for op in self.ride_ops(peer)], ['F1_0_2|-|-'])
+        self.assertEqual(self.ride_ops(host), [])
+        self.assertEqual([f for f in host.sent_files if 'ride' in f[1]], [])
+
+    def test_bad_ride_lines_are_dropped(self):
+        host = self.peers['100']
+        for line in ('ride|S1_2_3|-|-', 'ride|-|-|-', 'ride|-|F1_2_3|-', 'ride|-|F1_2_3|pc2coop-join.bin',
+                     'ride|-|F1_2_3|../pc2coop-ride-1-1.blueprint'):
+            host.event('msg|200|' + line)
+            host.event('file:done|200|pc2coop-ride-1-1.blueprint|10')
+        self.pump()
+        self.assertEqual(self.ride_ops(host), [])

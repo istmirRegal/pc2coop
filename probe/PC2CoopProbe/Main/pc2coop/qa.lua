@@ -44,6 +44,7 @@ local function inspect()
 end
 
 local testRide=nil  -- entity of the ride flatride-test placed
+local testCoaster=nil  -- entity of the coaster coaster-probe placed
 
 local function testWorld()
     local apis=global.api.world.GetWorldAPIs()
@@ -498,6 +499,127 @@ local function execute(command, manager)
         testRide=nil
         emit("qa:ride-quickdelete-test:stations=" .. before .. "->" .. #(apis.ridestation:GetAllStations() or {}) .. ";cmd=" .. global.tostring(global.require("pc2coop.sync").Stats().lastCmd))
         emit("qa:ride-quickdelete-test:done")
+    elseif command=="coaster-probe" then
+        -- Research: places a prebuilt coaster blueprint of the game in the own test park.
+        local apis=testWorld(); if not apis then return end
+        local db,undo=global.api.database,global.api.undo
+        local V,Q,T=global.require("Vector3"),global.require("Quaternion"),global.require("TransformQ")
+        local manager=global.api.game.GetEnvironment():RequireInterface("Interfaces.IParkLoadSaveManager")
+        local ps=db.GetPreparedStatementInstance("Blueprints","GetPrebuiltBlueprints",true)
+        db.BindComplete(ps); db.Step(ps)
+        waitFor(function() return db.GetAsyncDispatchStatus(ps)==db.AsyncInitialStep_Completed end,"bp-db")
+        local rows=db.GetAllResults(ps) or {}
+        emit("qa:coaster-probe:rows=" .. #rows)
+        local pick
+        for i,r in global.ipairs(rows) do
+            local cols={}
+            for j=1,#r do cols[#cols+1]=global.tostring(r[j]) end
+            local line=global.table.concat(cols,";")
+            if i<=4 then emit("qa:coaster-probe:row=" .. line) end
+            if not pick and global.string.find(global.string.lower(line),"coaster") then pick=r[1]; emit("qa:coaster-probe:pick=" .. line) end
+        end
+        if not pick then emit("qa:coaster-probe:no-coaster"); return end
+        local pf=db.GetPreparedStatementInstance("Blueprints","GetBlueprintFile")
+        db.BindParameter(pf,1,pick); db.BindComplete(pf); db.Step(pf)
+        local path=db.IsReadyForResult(pf) and ("/run/" .. db.GetResultColumn(pf,1)) or nil
+        emit("qa:coaster-probe:path=" .. global.tostring(path))
+        if not path then return end
+        local before={}
+        for _,s in global.ipairs(apis.ridestation:GetAllStations() or {}) do before[s]=true end
+        local okL,errL=manager:LoadBlueprintFromFile(path)
+        local h=apis.editors:CreateUndoOperationsHierarchy()
+        waitFor(function() return h:IsLoadedBlueprintReadyForEditing() end,"bp-ready")
+        local mo=h:CreateCompositeObject({})
+        h:AddBlueprintToCompositeObject(mo)
+        local t0=mo:GetTransform(); local p0=t0 and t0:GetPos()
+        emit(global.string.format("qa:coaster-probe:load=%s/%s;empty=%s;default=%.2f,%.2f,%.2f",global.tostring(okL),global.tostring(errL),
+            global.tostring(mo:IsEmpty()),p0 and p0:GetX() or -1,p0 and p0:GetY() or -1,p0 and p0:GetZ() or -1))
+        mo:SetCompositeOriginToOBBCentre()
+        mo:AlignCompositeRotation()
+        local valid,reasons
+        for _,spot in global.ipairs({{20,380},{150,330},{-40,300},{110,200}}) do
+            mo:SetTransform(T.FromOrPos(Q.Identity,V:new(spot[1],0,spot[2])))
+            local wait,preview=undo.PreviewChangeList(h:GetFullUndoChangeList())
+            waitFor(function() return undo.IsOperationComplete(wait) end,"bp-preview")
+            waitFor(function() valid=undo.CanCommitPreview(preview);return valid~=nil end,"bp-validate")
+            if valid then
+                wait=undo.CommitPreview(preview)
+                waitFor(function() return undo.IsOperationComplete(wait) end,"bp-commit")
+                undo.Checkpoint({})
+                emit("qa:coaster-probe:placed at " .. spot[1] .. "," .. spot[2])
+                break
+            end
+            reasons={}
+            for k,v in global.pairs(undo.GetCommitFailReasons(preview) or {}) do if v==true then reasons[#reasons+1]=k end end
+            emit("qa:coaster-probe:refused " .. spot[1] .. "," .. spot[2] .. ":" .. global.table.concat(reasons,","))
+            wait=undo.CancelPreview(preview)
+            waitFor(function() return undo.IsOperationComplete(wait) end,"bp-cancel")
+        end
+        global.pcall(function() apis.trackedrides:CompleteBlueprintSerialisationLoad() end)
+        for i=1,30 do global.coroutine.yield() end
+        for _,s in global.ipairs(apis.ridestation:GetAllStations() or {}) do
+            if not before[s] then
+                local ride=apis.ridestation:GetRideEntityIDFromStationEntityID(s)
+                local p=global.api.transform.CalculateWorldTransform(ride):GetPos()
+                local okH,holder=global.pcall(global.api.track.GetTrackHolder,ride)
+                emit(global.string.format("qa:coaster-probe:new station=%s ride=%s tracked=%s pos=%.2f,%.2f,%.2f holder=%s",global.tostring(s),
+                    global.tostring(ride),global.tostring(apis.rides:IsTrackedRide(ride)),p:GetX(),p:GetY(),p:GetZ(),global.tostring(okH and holder~=nil)))
+                if apis.rides:IsTrackedRide(ride) then testCoaster=ride end
+            end
+        end
+        emit("qa:coaster-probe:done")
+    elseif command=="coaster-swap" then
+        -- Research: saves the test coaster as a blueprint file, then replaces it with that
+        -- file in one change list (old track removed, blueprint added, no transform set).
+        local apis=testWorld(); if not apis then return end
+        if not testCoaster then emit("qa:coaster-swap:no-coaster"); return end
+        local undo=global.api.undo
+        local manager=global.api.game.GetEnvironment():RequireInterface("Interfaces.IParkLoadSaveManager")
+        local ws=apis.worldserialisation
+        local function where(ride)
+            local t=global.api.transform.CalculateWorldTransform(ride); local p,o=t:GetPos(),t:GetOr()
+            return global.string.format("%.3f,%.3f,%.3f/%.3f,%.3f,%.3f,%.3f",p:GetX(),p:GetY(),p:GetZ(),o:GetX(),o:GetY(),o:GetZ(),o:GetW())
+        end
+        local was=where(testCoaster)
+        local sel=ws:CreateSaveSelection()
+        sel:AddEntityID(testCoaster)
+        local okS,file=manager:SaveBlueprintToFile("/run/pc2coop-ride-test.blueprint",sel,true)
+        emit("qa:coaster-swap:save=" .. global.tostring(okS) .. "/" .. global.tostring(file) .. ";was=" .. was)
+        if not okS then return end
+        local okL,errL=manager:LoadBlueprintFromFile("/run/pc2coop-ride-test.blueprint")
+        local h=apis.editors:CreateUndoOperationsHierarchy()
+        waitFor(function() return h:IsLoadedBlueprintReadyForEditing() end,"swap-ready")
+        local holder=global.api.track.GetTrackHolder(testCoaster)
+        global.api.track.RemoveHolder(h,holder,false)
+        local mo=h:CreateCompositeObject({})
+        h:AddBlueprintToCompositeObject(mo)
+        local t0=mo:GetTransform(); local p0=t0 and t0:GetPos()
+        emit(global.string.format("qa:coaster-swap:load=%s;default=%.3f,%.3f,%.3f",global.tostring(okL),p0 and p0:GetX() or -1,p0 and p0:GetY() or -1,p0 and p0:GetZ() or -1))
+        local before={}
+        for _,s in global.ipairs(apis.ridestation:GetAllStations() or {}) do before[s]=true end
+        local wait,preview=undo.PreviewChangeList(h:GetFullUndoChangeList())
+        waitFor(function() return undo.IsOperationComplete(wait) end,"swap-preview")
+        local valid
+        waitFor(function() valid=undo.CanCommitPreview(preview);return valid~=nil end,"swap-validate")
+        local reasons={}
+        if valid then
+            wait=undo.CommitPreview(preview)
+            waitFor(function() return undo.IsOperationComplete(wait) end,"swap-commit")
+            undo.Checkpoint({})
+        else
+            for k,v in global.pairs(undo.GetCommitFailReasons(preview) or {}) do if v==true then reasons[#reasons+1]=k end end
+            wait=undo.CancelPreview(preview)
+            waitFor(function() return undo.IsOperationComplete(wait) end,"swap-cancel")
+        end
+        global.pcall(function() apis.trackedrides:CompleteBlueprintSerialisationLoad() end)
+        for i=1,30 do global.coroutine.yield() end
+        local now={}
+        for _,s in global.ipairs(apis.ridestation:GetAllStations() or {}) do
+            local ride=apis.ridestation:GetRideEntityIDFromStationEntityID(s)
+            if apis.rides:IsTrackedRide(ride) then now[#now+1]=global.tostring(ride) .. "@" .. where(ride); testCoaster=ride end
+        end
+        emit("qa:coaster-swap:valid=" .. global.tostring(valid) .. ";reasons=" .. global.table.concat(reasons,",") .. ";tracked=" .. global.table.concat(now," "))
+        emit("qa:coaster-swap:done")
     elseif command=="ride-count" then
         local apis=global.api.world.GetWorldAPIs()
         local ok,n=global.pcall(function() return #(apis.ridestation:GetAllStations() or {}) end)
@@ -1140,6 +1262,8 @@ local function execute(command, manager)
     end
 end
 
+local scriptEnv = nil
+
 function QA.Tick(manager)
     if task then
         local ok, failure = global.coroutine.resume(task)
@@ -1156,6 +1280,21 @@ function QA.Tick(manager)
     end
     if global.string.match(message,"^%d+|live|") then
         global.require("pc2coop.live").Enqueue(message);return
+    end
+    -- Dev research: a small Lua script (dev flag only, like every inbox message).
+    local scriptID, code = global.string.match(message, "^(%d+)|lua\n(.*)$")
+    if scriptID then
+        if scriptID == lastID then return end
+        lastID = scriptID
+        local loader = global.load
+        if global.type(loader) ~= "function" then emit("qa:lua:error:no-load"); return end
+        scriptEnv = scriptEnv or global.setmetatable({emit = emit, waitFor = waitFor, testWorld = testWorld,
+            state = {}, yield = global.coroutine.yield}, {__index = global})
+        local fn, failure = loader(code, "=qa-lua", "t", scriptEnv)
+        if not fn then emit("qa:lua:error:" .. global.tostring(failure)); return end
+        emit("qa:lua:start:" .. scriptID)
+        task = global.coroutine.create(function() fn(); emit("qa:lua:done:" .. scriptID) end)
+        return
     end
     local id, command = global.string.match(message, "^(%d+)|([a-z-]+)$")
     if not id or id==lastID then return end

@@ -1,4 +1,4 @@
-PC2Coop 1.9.1 - Planet Coaster 2 live zusammen bauen, ueber Steam
+PC2Coop 1.10.0 - Planet Coaster 2 live zusammen bauen, ueber Steam
 
 Installation (jeder Spieler, einmalig)
 1. ZIP in einen eigenen Ordner entpacken.
@@ -118,14 +118,22 @@ Live synchronisiert und im Spiel getestet:
   Objekt loescht, das man gerade haelt (allein getestet, mit nachgestelltem Mitspieler).
 - Mitspieler oben rechts anklicken = ihm folgen, nochmal klicken = aufhoeren.
   Mittlere Maustaste kurz klicken = Ping; gedrueckt halten oder ziehen pingt nicht.
+- Achterbahnen, Schienenfahrgeschaefte und Wasserrutschen (mit ihrer Plattform): neu
+  bauen, im Streckeneditor aendern, abreissen, aus Bauplaenen setzen. Eine Bahn geht als
+  kleine Bauplan-Datei an alle, sobald du den Streckeneditor verlaesst - solange du noch
+  baust, sehen die anderen die vorige Fassung. Wer eine Bahn im Streckeneditor offen hat,
+  sperrt sie fuer die anderen (allein getestet, mit nachgestelltem Mitspieler).
 Eingebaut, aber noch nicht im Spiel bestaetigt:
 - Das Zusammenspiel der Sperren zwischen zwei echten Spielern.
 - Wasser (Seen), weitere Parkverwaltung (Preise, Oeffnen/Schliessen, Kredite,
   Forschung), Fahrgeschaefte verschieben, Ein- und Ausgaenge von Fahrgeschaeften.
+- Achterbahnen als Ganzes verschieben, Rueckgaengig bei Achterbahnen, alles mit zwei
+  echten Spielern.
 Noch NICHT synchronisiert (folgt):
-- Achterbahnen und Schienenfahrgeschaefte (Streckeneditor, auch ihr Abriss), Wasserrutschen,
-  Fahrgeschaefte aus Bauplaenen (nur deren Deko kommt an),
-  Pools-Editor, Wege-Pinsel und -Stempel.
+- Wege-Pinsel und -Stempel, Wege loeschen, Pools-Editor, ebene Fahrgeschaefte aus
+  Bauplaenen (nur deren Deko kommt an).
+- Farben oder Zuege einer Achterbahn ohne Aenderung an der Strecke: kommen erst mit der
+  naechsten Streckenaenderung mit.
   Diese Dinge sind beim Beitritt im uebertragenen Park enthalten, spaetere
   Aenderungen daran aber nur beim jeweiligen Spieler.
 - Die Besucher selbst werden nicht uebertragen (siehe "Ein Park, ein Spielstand").

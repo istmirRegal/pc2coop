@@ -346,6 +346,18 @@ bool safe_name(const std::string& name) {
     return name.rfind("pc2coop-", 0) == 0;
 }
 
+// pc2coop-ride-<number>-<number>.blueprint: a ride snapshot (see rides.lua).
+bool ride_name(const std::string& name) {
+    const std::string head = "pc2coop-ride-", tail = ".blueprint";
+    if (name.size() <= head.size() + tail.size() || name.rfind(head, 0) != 0) return false;
+    if (name.compare(name.size() - tail.size(), tail.size(), tail) != 0) return false;
+    std::string middle = name.substr(head.size(), name.size() - head.size() - tail.size());
+    size_t dash = middle.find('-');
+    if (dash == std::string::npos || dash == 0 || dash + 1 >= middle.size() || dash > 20 || middle.size() - dash - 1 > 10) return false;
+    for (size_t i = 0; i < middle.size(); ++i) if (i != dash && !isdigit(static_cast<unsigned char>(middle[i]))) return false;
+    return true;
+}
+
 std::wstring game_path(const std::string& name) {
     wchar_t exe[MAX_PATH];
     DWORD length = GetModuleFileNameW(nullptr, exe, MAX_PATH);
@@ -467,12 +479,19 @@ void receive_chunk(u64 from, const char* data, size_t size) {
     long long total = strtoll(head.substr(a + 1, b - a - 1).c_str(), nullptr, 10);
     long long offset = strtoll(head.substr(b + 1, c - b - 1).c_str(), nullptr, 10);
     if (!safe_name(name) || total <= 0 || total > 256LL * 1024 * 1024 || offset < 0 || offset >= total) return;
-    // Only the host of the lobby this game joined sends files, and only the park it shares.
-    // Anything else from a lobby member is dropped: no other file is ever written here.
+    // Only the host of the lobby this game joined sends files: the park it shares, and
+    // snapshots of rides (coasters) as blueprint files. The host also takes ride snapshots
+    // from its members, to check and pass on. Anything else is dropped.
     u64 owner = lobby ? api.GetLobbyOwner(api.Matchmaking(), lobby) : 0;
-    if (!owner || owner == self_id || from != owner) return;
-    if (name != "pc2coop-join.bin" && name != "pc2coop-join.trn") return;
-    if (files_locked()) return;
+    if (!owner) return;
+    if (ride_name(name)) {
+        if (total > 16LL * 1024 * 1024 || !is_member(from) || from == self_id) return;
+        if (owner != self_id && from != owner) return;
+    } else {
+        if (owner == self_id || from != owner) return;
+        if (name != "pc2coop-join.bin" && name != "pc2coop-join.trn") return;
+        if (files_locked()) return;
+    }
     const char* body = data + 1 + c + 1;
     size_t length = size - (1 + c + 1);
     if (static_cast<long long>(length) > total - offset) return;

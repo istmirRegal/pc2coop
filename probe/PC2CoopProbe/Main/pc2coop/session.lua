@@ -15,7 +15,7 @@ local World = global.require("pc2coop.world")
 local shared = global.require("pc2coop.shared")
 
 -- Mod version; must match the database's probeVersion (checked by the tests).
-Session.VERSION = "1.9.1"
+Session.VERSION = "1.10.0"
 local COLORS = {"ff6b6b", "4dabf7", "51cf66", "fcc419", "cc5de8", "ff922b", "22b8cf", "f06595"}
 local net, sync
 local emit = function() end
@@ -447,6 +447,17 @@ local function sendPark(sid)
 end
 
 -- After the joiner loaded our park: map every object to the part id it already has.
+-- Ride snapshots (rides.lua): the file goes ahead of its line; a joiner gets the
+-- files of the lines it missed while loading.
+local rideWaiting = {}   -- host: file -> {sid, old, new} until the file is complete here
+
+local function sendRideFiles(sid, lines)
+    for _, line in global.ipairs(lines) do
+        local file = global.string.match(line, "^Y|[^|]*|[^|]*|(pc2coop%-ride%-%d+%-%d+%.blueprint)$")
+        if file then net.NetCommand("file|" .. sid .. "|" .. file .. "|" .. file) end
+    end
+end
+
 local function catchUp(sid)
     local p = players[sid]
     local lines = {}
@@ -465,6 +476,7 @@ local function catchUp(sid)
     end
     for _, line in global.ipairs(p.pending or {}) do lines[#lines+1] = line end
     p.pending, p.manifest, p.missing = nil, nil, nil
+    sendRideFiles(sid, lines)
     sendOps(sid, lines)
 end
 
@@ -599,6 +611,22 @@ local function numbers(fields, from, to)
     return out
 end
 
+local function forwardRide(sid, old, new, file)
+    local out = others(sid, "Y|" .. old .. "|" .. new .. "|" .. file)
+    if file ~= "-" then
+        for _, d in global.ipairs(out) do
+            local p = players[d[1]]
+            if d[1] ~= me and p and not p.lobby and not p.pending then
+                net.NetCommand("file|" .. d[1] .. "|" .. file .. "|" .. file)
+            end
+        end
+    end
+    deliver(out)
+    if new == "-" then addFeed(nameOf(sid) .. " hat ein Fahrgeschaeft abgerissen")
+    elseif old == "-" then addFeed(nameOf(sid) .. " hat eine Achterbahn gebaut")
+    else addFeed(nameOf(sid) .. " hat eine Achterbahn geaendert") end
+end
+
 -- A change report, either from our own game or from a client.
 local function hostChange(sid, f)
     if f[1] == "up" and #f >= 13 then
@@ -648,6 +676,18 @@ local function hostChange(sid, f)
             if other ~= me and other ~= sid and players[other] and not players[other].pending then send(other, line) end
         end
         addFeed(timeText(nameOf(sid), paused, index))
+    elseif f[1] == "ride" and players[sid] then
+        -- A ride (coaster) as a blueprint file: passed on once the file is complete here.
+        local Rides = global.require("pc2coop.rides")
+        local old, new, file = f[2] or "", f[3] or "", f[4] or ""
+        if not (Rides.ValidKey(old) and Rides.ValidKey(new) and Rides.ValidFile(file)) then return end
+        if (new == "-") ~= (file == "-") or (old == "-" and new == "-") then return end
+        -- Someone else has this ride open in the track editor: theirs counts.
+        if old ~= "-" and locks[old] and locks[old] ~= sid then
+            emit("session:ride-refused|" .. old .. "|" .. nameOf(sid)); return
+        end
+        if sid == me or Rides.IsReady(file) then forwardRide(sid, old, new, file)
+        else rideWaiting[file] = {sid, old, new} end
     elseif f[1] == "cmd" and f[2] then
         -- Replayed edit (terrain, lakes, ...): host orders it and forwards it to everyone else.
         -- A setter (park name, prices, open/close) goes back to its author too: applied once
@@ -755,7 +795,16 @@ function Session.OnSyncLine(line)
         elseif reason == "veraltet" then toast("Zurueckgenommen: ein Mitspieler war bei diesem Objekt schneller.", "ff922b") end
         return
     end
-    if kind ~= "up" and kind ~= "del" and kind ~= "pres" and kind ~= "baseline" and kind ~= "cmd" and kind ~= "hold" then return end
+    if kind == "ridedel" then
+        if global.string.match(rest, "^pc2coop%-ride%-%d+%-%d+%.blueprint$") then net.NetCommand("del|" .. rest) end
+        return
+    end
+    if kind == "ride" and role == "client" and hostId then
+        local file = global.string.match(rest, "|([^|]+)$")
+        if file and file ~= "-" then net.NetCommand("file|" .. hostId .. "|" .. file .. "|" .. file) end
+    end
+    if kind ~= "up" and kind ~= "del" and kind ~= "pres" and kind ~= "baseline" and kind ~= "cmd" and kind ~= "hold"
+        and kind ~= "ride" then return end
     local wire = (kind == "baseline" and "base" or kind) .. "|" .. rest
     if kind == "up" then
         local part, gid = global.string.match(rest, "^(%d+)|([^|]*)|")
@@ -970,6 +1019,7 @@ local function onNet(event)
     local kind = f[1]
     if kind == "net:ready" then
         me, myName = f[2], clean(f[3])
+        global.require("pc2coop.rides").SetTag(me)
         emit("session:net-ready|" .. me .. "|" .. myName)
     elseif kind == "lobby:entered" then
         -- Steam can report one entry twice; this module instance answers it once.
@@ -1115,6 +1165,13 @@ local function onNet(event)
         memory[f[2]] = f[3]
     elseif kind == "file:progress" then
         progress[f[2]] = {global.tonumber(f[3]) or 0, global.tonumber(f[4]) or 1}
+    elseif kind == "file:done" and global.string.match(f[3] or "", "^pc2coop%-ride%-%d+%-%d+%.blueprint$") then
+        global.require("pc2coop.rides").FileReady(f[3])
+        local waiting = rideWaiting[f[3]]
+        if waiting and role == "host" then
+            rideWaiting[f[3]] = nil
+            forwardRide(waiting[1], waiting[2], waiting[3], f[3])
+        end
     elseif kind == "file:done" then
         local total = global.tonumber(f[4]) or 1
         progress[f[3]] = {total, total}
