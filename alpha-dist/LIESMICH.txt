@@ -1,4 +1,4 @@
-PC2Coop 1.12.0 - Planet Coaster 2 live zusammen bauen, ueber Steam
+PC2Coop 1.12.1 - Planet Coaster 2 live zusammen bauen, ueber Steam
 
 Installation (jeder Spieler, einmalig)
 1. ZIP in einen eigenen Ordner entpacken.
@@ -72,7 +72,7 @@ Die anderen sehen
 Im Entwickler-Menue (F8) lassen sich Namensschilder und diese Anzeige abschalten.
 
 Multiplayer im Baumenue
-Unten in der Bauleiste gibt es den Reiter "Multiplayer" (oder F7). Das Fenster hat im Park
+Unten rechts in der Bauleiste gibt es den Reiter "Multiplayer" (oder F7). Das Fenster hat im Park
 fuenf Reiter:
 - Team: Mitspieler, Folgen, Chat, Einladen, Beitrittsanfragen (Host).
 - Besuchen: Besucher-Modus, Fahrgeschaefte mit Werten und Bewertungen, Mitfahren,

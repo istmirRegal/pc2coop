@@ -1178,7 +1178,7 @@ async function patchBuildBar() {
     const originalRender = decorated.prototype.render;
     decorated.prototype.render = function (...args) {
         const vnode = originalRender.apply(this, args);
-        try { patchBrowserClass(vnode && vnode.nodeName, tabModule.BrowserTab); } catch (error) { log('build bar patch ' + error); }
+        try { patchBrowserClass(vnode && vnode.nodeName, tabModule.BrowserTab); } catch (error) { report('build bar patch ' + error); }
         return vnode;
     };
     decorated.prototype.__pc2coop = true;
@@ -1206,15 +1206,25 @@ function patchBrowserClass(browserClass, BrowserTab) {
         try {
             const at = findTab(tree, 'multiselect');
             if (at && !findTab(tree, 'pc2coop')) {
-                at.list.splice(at.index + 1, 0, preact.h(BrowserTab, { key: 'pc2coopTab', icon: 'img/icons/collaborate.svg',
-                    outcome: 'pc2coop', hidden: at.node.attributes.hidden, modifiers: 'firstItem lastItem marginLeft onlyIcons',
-                    onButtonSelect: () => request('open') }));
+                // With a text like the game's own tabs: an icon alone at the far right was overlooked.
+                at.list.splice(at.index + 1, 0, preact.h(BrowserTab, { key: 'pc2coopTab', label: literal('Multiplayer'),
+                    icon: 'img/icons/collaborate.svg', outcome: 'pc2coop', hidden: at.node.attributes.hidden,
+                    modifiers: 'firstItem lastItem marginLeft', onButtonSelect: () => request('open') }));
+                if (!buildBarShown) { buildBarShown = true; report('build bar tab shown'); }
             }
-        } catch (error) { log('build bar tab ' + error); }
+        } catch (error) { report('build bar tab ' + error); }
         return tree;
     };
     proto.__pc2coop = true;
-    log('build bar patched');
+    report('build bar patched');
+}
+
+// Into the mod's log file (pc2coop-diagnostic-*.log), so a missing tab can be looked into.
+// Lua hears the HUD view's events only a moment after the HUD starts (an earlier line is
+// lost, tested 1.12.1), so these lines go out a few seconds later.
+let buildBarShown = false;
+function report(message) {
+    try { setTimeout(() => log(message), 4000); } catch (error) { log(message); }
 }
 
 function patchMenuClass(menuClass) {
@@ -1296,7 +1306,7 @@ export function start(logger) {
     started = true;
     if (app.indexOf('HUD.html') >= 0) {
         patchPauseMenu().catch((e) => console.log('PC2Coop: ' + e));
-        patchBuildBar().catch((e) => log('build bar import ' + e));
+        patchBuildBar().catch((e) => report('build bar import ' + e));
     }
     else {
         patchMainMenu().catch((e) => log('main menu import ' + e));
