@@ -3,6 +3,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import re
 import subprocess
 
 parser = argparse.ArgumentParser(description=__doc__)
@@ -13,6 +14,19 @@ args = parser.parse_args()
 project = Path(__file__).resolve().parents[1]
 output = project / 'build' / 'native'
 output.mkdir(parents=True, exist_ok=True)
+# Version information (native/version.rc): the mod version, so the DLL names itself.
+session = (project / 'probe' / 'PC2CoopProbe' / 'Main' / 'pc2coop' / 'session.lua').read_text(encoding='utf8')
+version = re.search(r'Session\.VERSION = "(\d+)\.(\d+)\.(\d+)"', session)
+(output / 'pc2coop_version.h').write_text(
+    '#define PC2COOP_MAJOR {}\n#define PC2COOP_MINOR {}\n#define PC2COOP_PATCH {}\n'
+    '#define PC2COOP_VERSION_TEXT "{}.{}.{}"\n'.format(*version.groups(), *version.groups()), encoding='ascii')
+rc = args.sdk / 'bin' / args.sdk_version / 'x64' / 'rc.exe'
+resource = subprocess.run([str(rc), '/nologo', '/I', str(output), '/I', str(args.sdk / 'Include' / args.sdk_version / 'um'),
+                           '/I', str(args.sdk / 'Include' / args.sdk_version / 'shared'),
+                           '/fo', str(output / 'version.res'), str(project / 'native' / 'version.rc')],
+                          cwd=output, text=True, capture_output=True)
+if resource.returncode:
+    raise SystemExit(resource.stdout + resource.stderr)
 compiler = args.msvc / 'bin' / 'Hostx64' / 'x64' / 'cl.exe'
 include = args.sdk / 'Include' / args.sdk_version
 library = args.sdk / 'Lib' / args.sdk_version
@@ -21,7 +35,7 @@ command = [str(compiler), '/nologo', '/LD', '/MT', '/O2', '/W4', '/WX',
            '/I' + str(args.msvc / 'include')]
 command += ['/I' + str(include / p) for p in ('ucrt', 'shared', 'um')]
 command += [str(project / 'native' / 'diagnostic.cpp'), str(project / 'native' / 'string_probe.cpp'),
-            str(project / 'native' / 'steam_net.cpp'),
+            str(project / 'native' / 'steam_net.cpp'), str(output / 'version.res'),
             '/Fo' + str(output) + '\\', '/link', '/DYNAMICBASE',
             '/NXCOMPAT', '/MACHINE:X64', '/OUT:' + str(output / 'PC2CoopDiagnostic.dll'),
             '/LIBPATH:' + str(args.msvc / 'lib' / 'x64')]
@@ -34,7 +48,8 @@ if result.returncode:
 dll = output / 'PC2CoopDiagnostic.dll'
 report = {'schema': 1, 'architecture': 'x64', 'lua_abi_access': 'guarded-read-only; game-string-api',
           'bytes': dll.stat().st_size, 'sha256': hashlib.sha256(dll.read_bytes()).hexdigest(),
-          'source_sha256': {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted((project/'native').glob('*.cpp'))},
+          'source_sha256': {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted((project/'native').glob('*.cpp')) + sorted((project/'native').glob('*.rc'))},
+          'version': '{}.{}.{}'.format(*version.groups()),
           'runtime_tested': False}
 (output / 'build-report.json').write_text(json.dumps(report, indent=2)+'\n', encoding='utf8')
 print(json.dumps(report, indent=2))

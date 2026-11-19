@@ -1,0 +1,33 @@
+// Version information of PC2CoopDiagnostic.dll (Explorer > Properties > Details).
+// pc2coop_version.h is written by tools/build_native.py from Session.VERSION.
+#include <winver.h>
+#include "pc2coop_version.h"
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION PC2COOP_MAJOR,PC2COOP_MINOR,PC2COOP_PATCH,0
+ PRODUCTVERSION PC2COOP_MAJOR,PC2COOP_MINOR,PC2COOP_PATCH,0
+ FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
+ FILEFLAGS 0x0L
+ FILEOS VOS_NT_WINDOWS32
+ FILETYPE VFT_DLL
+ FILESUBTYPE VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "CompanyName", "PC2Coop open source project"
+            VALUE "FileDescription", "PC2Coop - Steam lobby and messages for the Planet Coaster 2 co-op mod"
+            VALUE "FileVersion", PC2COOP_VERSION_TEXT
+            VALUE "InternalName", "PC2CoopDiagnostic"
+            VALUE "LegalCopyright", "MIT License - source: github.com/istmirRegal/pc2coop"
+            VALUE "OriginalFilename", "PC2CoopDiagnostic.dll"
+            VALUE "ProductName", "PC2Coop"
+            VALUE "ProductVersion", PC2COOP_VERSION_TEXT
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
