@@ -1,6 +1,7 @@
 -- Original MIT code. Visitor mode: a player walks through the park as a guest.
 --
--- Third person (default): a figure (a guest statue of the park scenery) moved by
+-- Third person (default): a figure (a guest built from the game's guest models and
+-- animations, figure.lua; a guest statue where that is not possible) moved by
 -- our own controller - WASD relative to the camera, Shift to run, a physics ray against
 -- buildings/props/rides so the figure does not walk through things, the ground below from
 -- terrain, paths and platforms. The game's "Avatar" camera follows it: it takes a change
@@ -16,8 +17,8 @@
 local global = _G
 local Visitor = {}
 
--- A guest statue of the park scenery. NOT peep_avatar_startscreen: that one crashes the game
--- when it is created in a park (tested 1.12.0).
+-- Fallback figure when no guest figure can be built (figure.lua): a guest statue of the park
+-- scenery. NOT peep_avatar_startscreen: that one crashes the game in a park (tested 1.12.0).
 Visitor.FIGURE = "my_stoneguests_01_game"
 Visitor.FIGURE_YAW = global.math.pi / 2   -- the statue looks along -x; turn it to the walking direction
 Visitor.EMOTES = {"wave", "cheer", "laugh", "up", "down", "sick"}
@@ -38,7 +39,11 @@ local net = function() end     -- DLL command
 local onEmote = function() end
 local pos = nil                -- feet of the figure (third person): {x, y, z}
 local facing = 0               -- radians around Y
-local figure = nil             -- {entity, token, ready}
+local figure = nil             -- {fig = figure.lua instance} or the statue {entity, token, ready}
+local ownLook, ownHex = nil, nil   -- look (figure.lua) and colour of this player
+local gait = "idle"            -- idle, walk or run
+local emote = nil              -- {kind, frame}: the figure plays it while standing
+local EMOTE_FRAMES = 240
 local pendingYaw = 0
 local wheel = nil              -- {x, y, selected} while T is held
 local lastNet = -1000
@@ -61,6 +66,16 @@ end
 function Visitor.Init(netCommand, emote)
     net = netCommand or net
     onEmote = emote or onEmote
+end
+
+-- This player's look (figure.lua) and colour, for the own figure.
+function Visitor.SetLook(look, hex) ownLook, ownHex = look, hex end
+
+local function Figure() return global.require("pc2coop.figure") end
+local function ownsEntity(entity)
+    if not figure then return false end
+    if figure.fig then return figure.fig:Owns(entity) end
+    return entity == figure.entity
 end
 
 function Visitor.Active() return active end
@@ -90,7 +105,7 @@ local function groundAt(x, y, z)
         local hits = ph.RayCast(physicsWorld, V(x, y + 2, z), V(x, y - 30, z), ph.Flag_Building | ph.Flag_Prop, 4) or {}
         for _, hit in global.ipairs(hits) do
             local p = hit.vPos or hit.vPosition or hit.vHitPos
-            if p and not (figure and hit.nEntityID == figure.entity) then take(p:GetY()) end
+            if p and not ownsEntity(hit.nEntityID) then take(p:GetY()) end
         end
     end)
     return best
@@ -108,7 +123,7 @@ local function blocked(ax, ay, az, bx, bz)
         local hits = ph.RayCast(physicsWorld, V(ax, ay + 0.9, az), V(bx + dx * reach, ay + 0.9, bz + dz * reach),
             ph.Flag_Building | ph.Flag_Prop | ph.Flag_Ride | ph.Flag_Track, 4) or {}
         for _, hit in global.ipairs(hits) do
-            if not (figure and hit.nEntityID == figure.entity) then return true end   -- not the own figure
+            if not ownsEntity(hit.nEntityID) then return true end   -- not the own figure
         end
         return false
     end)
@@ -122,6 +137,12 @@ end
 
 local function placeFigure()
     if not figure or not pos then return end
+    if figure.fig then
+        local state = gait
+        if gait == "idle" and emote and frames - emote.frame < EMOTE_FRAMES then state = emote.kind end
+        global.pcall(function() figure.fig:Place(pos.x, pos.y, pos.z, facing, state) end)
+        return
+    end
     global.pcall(function()
         local E, X = global.api.entity, global.api.transform
         if not figure.ready then
@@ -133,11 +154,20 @@ local function placeFigure()
 end
 
 local function dropFigure()
-    if figure then global.pcall(global.api.entity.DestroyEntity, figure.entity) end
+    if figure and figure.fig then global.pcall(function() figure.fig:Destroy() end)
+    elseif figure then global.pcall(global.api.entity.DestroyEntity, figure.entity) end
     figure = nil
 end
 
 local function spawnFigure()
+    local okF, made = global.pcall(function()
+        local F = Figure()
+        if not F.Available() then return nil end
+        local fig = F.New(ownLook or F.OwnLook(), ownHex)
+        fig:Warm()
+        return fig
+    end)
+    if okF and made then figure = {fig = made}; return true end
     local ok, entity, token = global.pcall(function()
         local E = global.api.entity
         if not E.FindPrefab(Visitor.FIGURE) then return nil end
@@ -306,7 +336,10 @@ function Visitor.OnKey(name, down)
             local chosen = wheel.selected
             wheel = nil
             lastNet = -1000; keepInput()
-            if chosen then onEmote(Visitor.EMOTES[chosen]) end
+            if chosen then
+                emote = {kind = Visitor.EMOTES[chosen], frame = frames}
+                onEmote(Visitor.EMOTES[chosen])
+            end
         end
         return nil
     end
@@ -356,12 +389,16 @@ local function advanceFigure()
     fx, fz = fx / len, fz / len
     local rx, rz = fz, -fx
     local ix, iz = 0, 0
+    gait = "idle"
     if down(keys.Forward) then iz = iz + 1 end
     if down(keys.Backward) then iz = iz - 1 end
     if down(keys.Right) then ix = ix + 1 end
     if down(keys.Left) then ix = ix - 1 end
     if ix ~= 0 or iz ~= 0 then
-        local speed = (down(keys.SpeedMod) and RUN or WALK) / 60
+        local running = down(keys.SpeedMod)
+        gait = running and "run" or "walk"
+        emote = nil
+        local speed = (running and RUN or WALK) / 60
         local mx, mz = fx * iz + rx * ix, fz * iz + rz * ix
         local m = global.math.sqrt(mx * mx + mz * mz)
         mx, mz = mx / m * speed, mz / m * speed
@@ -430,6 +467,7 @@ function Visitor._TestKeys(keys) testKeys = keys end
 function Visitor._Reset()
     active, riding, guestView, frames, lastList, listFrame = false, nil, false, 0, {}, -1000
     pos, figure, wheel, mode, preferred, pendingYaw = nil, nil, nil, "third", "third", 0
+    gait, emote = "idle", nil
 end
 
 return Visitor

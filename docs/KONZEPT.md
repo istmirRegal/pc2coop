@@ -75,6 +75,9 @@ Fünf Bereiche als Reiter. Host und Mitspieler sehen dieselben Reiter; was nur d
 
 - **Ansicht:** Dritte Person mit sichtbarer Figur; die anderen sehen die Figur im Park.
   Umsetzung: eigene Figur (Prefab) + Kamera dahinter; die Ich-Sicht bleibt als Option.
+  Seit 1.13.0 (figure.lua): das Gast-Prefab des Spiels ohne Gast-Logik, mit festen Modellen
+  und einer Gast-Animation je Zustand (stehen, gehen, rennen, Emotes) per ACSE
+  CompilePrefab; Aussehen aus dem Frontier-Avatar (Gruppe, Farben), an alle verteilt.
 - **Steuerung** wie in Actionspielen: Maus dreht direkt (Zeiger unsichtbar), WASD laufen,
   Shift schneller, **T halten** = Emote-Rad, **E** = interagieren (an der Station: mitfahren;
   später anstellen), **Tab** = zurück zum Bauen. Erster Start zeigt die Belegung kurz an.

@@ -20,9 +20,9 @@ local failed = false
 
 local CHANNEL = 3
 local DISC = "pc_primitive_circle_game"
--- Figure of a player in visitor mode: the avatar of the start screen (display only).
--- A guest statue of the park scenery. NOT peep_avatar_startscreen: that one crashes the game
--- when it is created in a park (tested 1.12.0).
+-- Figure of a player in visitor mode: a guest with the player's look that walks, runs and
+-- does the player's emotes (figure.lua). Where no guest figure can be built: a guest statue
+-- of the park scenery. NOT peep_avatar_startscreen: that one crashes the game in a park.
 local FIGURE = "my_stoneguests_01_game"
 local figureChecked, figureFound = false, false
 local function figureOK()
@@ -154,7 +154,8 @@ end
 
 local function drop(state)
     destroy(state.marker and state.marker.entity)
-    destroy(state.figure and state.figure.entity)
+    if state.figure and state.figure.fig then global.pcall(function() state.figure.fig:Destroy() end)
+    else destroy(state.figure and state.figure.entity) end
     for _, dot in global.ipairs(state.dots or {}) do destroy(dot.entity) end
     for _, ghost in global.ipairs(state.ghosts or {}) do destroy(ghost.entity) end
     destroy(state.big and state.big.entity)
@@ -165,7 +166,53 @@ local function quaternion(item)
     return Quaternion.Identity:WithX(item.qx):WithY(item.qy):WithZ(item.qz):WithW(item.qw)
 end
 
--- One remote player: p = {sid, x, y, z (camera), fx, fy, fz (focus), hold = {label, items}}
+-- A guest figure with the player's look (figure.lua), or nil where none can be built.
+local function guestFigure(p)
+    local ok, made = global.pcall(function()
+        local Figure = global.require("pc2coop.figure")
+        if not Figure.Available() then return nil end
+        local fig = Figure.New(Figure.ParseLook(p.look) or Figure.DefaultLook(), p.color,
+            {track = track, untrack = function(entity)
+                for i, other in global.ipairs(shared.vizEntities or {}) do
+                    if other == entity then global.table.remove(shared.vizEntities, i); break end
+                end
+            end})
+        fig:Warm()
+        return {fig = fig, look = p.look}
+    end)
+    return ok and made or nil
+end
+
+-- The visitor's feet, eased; walk or run from the speed, the player's emote while standing,
+-- facing where it goes (or away from the player's camera while it stands).
+local function placeGuest(state, p, x, y, z, dt)
+    local Figure = global.require("pc2coop.figure")
+    dt = dt or 1 / 60
+    local g = state.figure
+    if g.look ~= p.look then
+        global.pcall(function() g.fig:Destroy() end)
+        local fresh = guestFigure(p)
+        if not fresh then return end
+        state.figure, g = fresh, fresh
+    end
+    local at = g.at
+    if not at then at = {x, y, z}; g.at = at end
+    local dx, dz = x - at[1], z - at[3]
+    if dx * dx + dz * dz > 150 * 150 then at[1], at[2], at[3], dx, dz = x, y, z, 0, 0 end
+    local k = 1 - global.math.exp(-dt * 9)
+    local mx, mz = dx * k, dz * k
+    at[1], at[2], at[3] = at[1] + mx, at[2] + (y - at[2]) * k, at[3] + mz
+    local speed = global.math.sqrt(mx * mx + mz * mz) / global.math.max(dt, 1e-3)
+    g.speed = (g.speed or 0) * 0.85 + speed * 0.15
+    if g.speed > 0.4 and (mx ~= 0 or mz ~= 0) then g.yaw = global.math.atan(mx, mz)
+    elseif not g.yaw and p.x and p.fx then g.yaw = global.math.atan(p.fx - p.x, p.fz - p.z) end
+    local gaitNow = Figure.Gait(g.speed)
+    if gaitNow == "idle" and p.emote then gaitNow = p.emote end
+    global.pcall(function() g.fig:Place(at[1], at[2], at[3], g.yaw or 0, gaitNow) end)
+end
+
+-- One remote player: p = {sid, x, y, z (camera), fx, fy, fz (focus), hold = {label, items},
+-- look (figure.lua wire text), emote (kind of the last few seconds)}
 local function update(p, dt)
     local state = players[p.sid]
     if not state then
@@ -198,8 +245,14 @@ local function update(p, dt)
     -- marker then: the ground disc and the view dots would cover everything close up.
     local visiting = global.string.find(global.tostring(p.act or ""), "Besucher", 1, true) ~= nil
     place(state.marker, m[1], visiting and -500 or m[2], m[3], dt)
-    if visiting and not state.figure and figureOK() then state.figure = spawn(FIGURE, 1) end
-    if state.figure then
+    if visiting and not state.figure then state.figure = guestFigure(p) or (figureOK() and spawn(FIGURE, 1)) or nil end
+    if state.figure and state.figure.fig then
+        if visiting then
+            placeGuest(state, p, fx, fy or 0, fz, dt)
+        else
+            global.pcall(function() state.figure.fig:Destroy() end); state.figure = nil
+        end
+    elseif state.figure then
         if visiting then
             local yaw = ((p.x and p.fx) and global.math.atan((p.fx or 0) - p.x, (p.fz or 0) - p.z) or 0) + global.math.pi / 2  -- statue looks along -x
             local Quaternion = global.require("Quaternion")

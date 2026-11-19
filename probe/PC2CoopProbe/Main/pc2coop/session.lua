@@ -62,6 +62,10 @@ local lastPing = {}       -- host: sid -> frame of their last ping (one per seco
 local EMOTES = {wave = "winkt", cheer = "jubelt", laugh = "lacht", sick = "ist schlecht", up = "findet das super",
     down = "findet das nicht gut"}
 local emotes = {}         -- sid -> {kind, frame}
+local okFigure, Figure = global.pcall(global.require, "pc2coop.figure")
+if not okFigure then Figure = {ParseLook = function() return nil end, OwnLook = function() return nil end} end
+local myLook = nil        -- figure.lua wire text of this player's look (Frontier avatar)
+local lookFrame = -100000
 local lastEmote = {}      -- host: sid -> frame of the last emote (one per second at most)
 local ratings = {}        -- ride key -> {name, by = {sid -> {stars, text, who}}}
 local lastUnsupported = -100000
@@ -876,7 +880,7 @@ local function rosterLine()
             parts[#parts+1] = global.table.concat({sid, p.name, p.color, act, num(pr.x or 0), num(pr.y or 0),
                 num(pr.z or 0), num(pr.yaw or 0), global.tostring(p.base or -1),
                 num(pr.fx or pr.x or 0), num(pr.fy or pr.y or 0), num(pr.fz or pr.z or 0),
-                global.tostring(p.dlc or ""), global.table.concat(p.mods or {}, "/")}, ",")
+                global.tostring(p.dlc or ""), global.table.concat(p.mods or {}, "/"), p.look or ""}, ",")
         end
     end
     local st = {}
@@ -898,7 +902,7 @@ local function parseRoster(payload)
         list[#list+1] = {sid = p[1], name = p[2], color = p[3], act = p[4], x = global.tonumber(p[5]),
             y = global.tonumber(p[6]), z = global.tonumber(p[7]), yaw = global.tonumber(p[8]), base = global.tonumber(p[9]),
             fx = global.tonumber(p[10]), fy = global.tonumber(p[11]), fz = global.tonumber(p[12]),
-            dlc = global.tonumber(p[13]), mods = modList(p[14])}
+            dlc = global.tonumber(p[13]), mods = modList(p[14]), look = Figure.ParseLook(p[15]) and p[15] or nil}
     end
     local st = {}
     for _, entry in global.ipairs(split(f[3] or "", ";")) do
@@ -1028,6 +1032,10 @@ local function onMessage(from, payload)
         elseif kind == "info" and players[from] then
             local f = split(payload, "|")
             setContent(from, f[2], f[3] or "")
+        elseif kind == "look" and players[from] then
+            -- The player's visitor figure (figure.lua); in the lobby too, so it is there in the park.
+            local f = split(payload, "|")
+            if Figure.ParseLook(f[2]) then players[from].look = f[2] end
         elseif players[from] and stage == "park" and not players[from].lobby then
             hostChange(from, split(payload, "|"))
         end
@@ -2177,6 +2185,39 @@ end
 function Session._RatingsFile(name) ratingsFile = name end
 function Session._BoardFile(name) boardFile = name end
 
+-- Kind of the player's emote of the last four seconds (wave, cheer ...), or nil.
+function Session._EmoteKind(sid)
+    local e = emotes[sid]
+    if e and frames - e.frame < 240 then return e.kind end
+    return nil
+end
+
+-- This player's look for the visitor figure: everyone in the session sees it (roster), and
+-- the own figure uses it. Sent to the host until the roster carries it.
+local function shareLook()
+    if frames - lookFrame < 300 then return end
+    lookFrame = frames
+    if not myLook then
+        local look = Figure.OwnLook()
+        myLook = look and Figure.LookText(look) or nil
+        if not myLook then return end
+    end
+    local colour = nil
+    if role == "host" and players[me] then
+        players[me].look = myLook
+        colour = players[me].color
+    elseif role == "client" and hostId and not confirm and not waiting then   -- only once the player agreed to join
+        local mine = nil
+        for _, pl in global.ipairs(roster.players or {}) do if pl.sid == me then mine = pl end end
+        if mine then colour = mine.color end
+        if not mine or mine.look ~= myLook then send(hostId, "look|" .. myLook) end
+    end
+    global.pcall(function() global.require("pc2coop.visitor").SetLook(Figure.ParseLook(myLook), colour) end)
+end
+
+-- The avatar is read again (QA, tests: after the profile changed).
+function Session._ResetLook() myLook, lookFrame = nil, -100000 end
+
 -- sid -> what the player does right now (emotes of the last four seconds).
 function Session.Emotes()
     local out = {}
@@ -2367,7 +2408,7 @@ function Session.View()
                 elseif p.pending then act = "laedt" end
                 list[#list+1] = {sid = sid, name = p.name, color = p.color, act = act, x = pr.x, y = pr.y, z = pr.z,
                     yaw = pr.yaw, pitch = pr.pitch, base = p.base, fx = pr.fx, fy = pr.fy, fz = pr.fz, hold = holds[sid],
-                    dlc = p.dlc, mods = p.mods}
+                    dlc = p.dlc, mods = p.mods, look = p.look, emote = Session._EmoteKind(sid)}
             end
         end
         return {role = role, me = me, host = me, lobby = lobbyId, players = list, stats = stats, conflicts = conflicts, feed = feed,
@@ -2375,7 +2416,7 @@ function Session.View()
             context = context, dlc = myDlc, choice = choice, board = Board.List(), events = Session.Events(),
         rules = rules, since = sinceText or false, checkpoints = checkpoints, vote = Session.VoteView()}
     end
-    for _, pl in global.ipairs(roster.players or {}) do pl.hold = holds[pl.sid] end
+    for _, pl in global.ipairs(roster.players or {}) do pl.hold, pl.emote = holds[pl.sid], Session._EmoteKind(pl.sid) end
     return {role = role, me = me, host = hostId, lobby = lobbyId, players = roster.players or {}, stats = roster.stats or {},
         conflicts = roster.conflicts or 0, feed = feed, park = park, stage = stage, parkTitle = parkTitle, guard = contentGuard,
         context = context, dlc = myDlc, choice = choice, board = Board.List(), events = Session.Events(),
@@ -2412,6 +2453,7 @@ function Session.Tick()
         flushActions(false)
         if frames % 300 == 0 then flushAuthors() end
     end
+    if role then global.pcall(shareLook) end
     if role == "client" and memory.phase == "live" and not hostSilent and lastHostFrame > 0 and frames - lastHostFrame > 600 then
         hostSilent = true
         toast("Keine Verbindung zum Host - warte ...", "ff922b")

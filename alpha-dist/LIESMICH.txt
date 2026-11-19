@@ -119,10 +119,15 @@ fuer alle gemeinsam, denn es ist ein Park mit einem Spielstand.
 
 Besucher-Modus (Reiter Besuchen)
 - "Als Besucher losgehen": du laeufst als Figur durch den Park, die Kamera hinter dir.
+  Die Figur ist ein Parkgast des Spiels mit dessen Lauf-, Renn- und Stehbewegungen. Sie
+  sieht aus wie dein Avatar aus dem Startbildschirm, so gut es geht: Alter und Geschlecht
+  sowie die Farben von Oberteil, Hose und Haaren stimmen; Kopf, Frisur und Kleidungsstueck
+  waehlt PC2Coop aus den Gast-Modellen des Grundspiels.
   Maus bewegen: umsehen (der Mauszeiger ist dann weg), WASD laufen, Shift rennen. Du
   laeufst nicht durch Gebaeude, Deko und Bahnen und gehst Stufen und Wege hoch.
 - T gedrueckt halten: Emote-Rad (Winken, Jubeln, Lachen, Super, Naja, Uebel) - Maus in die
-  Richtung oder 1-6, T loslassen sendet. Die anderen sehen deine Figur und das Emote.
+  Richtung oder 1-6, T loslassen sendet. Die anderen sehen deine Figur das Emote spielen
+  (winken, jubeln, lachen ...).
 - E: ins naechste Fahrgeschaeft einsteigen (bis 25 m). "Zurueck" unten rechts steigt aus.
 - Tab: zurueck zum Bauen.
 - "Ich-Sicht (Spiel)": der eingebaute Laufmodus des Spiels an derselben Stelle - mit Boden,

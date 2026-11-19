@@ -43,7 +43,7 @@ class Peer:
         self.sid, self.name = sid, name
         self.lua = LuaRuntime(unpack_returned_tuples=True)
         self.lua.execute(FAKES)
-        for module in ('shared', 'world', 'rides', 'visitor', 'board'):
+        for module in ('shared', 'world', 'rides', 'visitor', 'board', 'figure'):
             source = (SOURCE.parent / f'{module}.lua').read_text(encoding='utf8')
             self.lua.eval('function(n, s) package.preload["pc2coop." .. n] = function() return assert(load(s, n, "t", _G))() end end')(module, source)
         loader = self.lua.eval('function(s) return assert(load(s, "session", "t", _G))() end')
@@ -732,6 +732,36 @@ class TeamTests(SessionTests.__bases__[0]):
 
     def board(self, peer):
         return [dict(i.items()) for i in peer.lua.eval('session.View().board').values()]
+
+    def player(self, peer, sid):
+        for p in peer.lua.eval('session.View().players').values():
+            if p['sid'] == sid:
+                return p
+        return None
+
+    def test_the_look_of_a_visitor_reaches_everyone_and_strange_looks_are_ignored(self):
+        host, alex, sam = self.peers['100'], self.peers['200'], self.peers['300']
+        alex.lua.execute('''package.loaded["Database.GameDatabase"] = {tPlayers = {{GetData = function(self, a, b)
+            return {tData = {group = "AFA", parts = {Bodies = {model = 7, custom = {colours = {{0.1, 0.2, 0.3}, {1, 1, 1},
+                {0, 0, 0}, {1, 1, 1}}}}, Legs = {model = 3, custom = {colours = {{0.2, 0.2, 0.2}, {0, 0, 0}}}},
+                Heads = {model = 2}, Hair = {model = 5, custom = {colours = {{0.5, 0.3, 0.1}}}}}}}
+        end}}}
+        session._ResetLook()''')
+        self.pump(40)   # the roster goes out every 30 frames
+        look = 'af.2.4.3.2.1a334d-ffffff-000000-ffffff.333333-000000.804d1a'
+        self.assertEqual(self.player(host, '200')['look'], look)
+        self.assertEqual(self.player(sam, '200')['look'], look)
+        self.assertEqual(self.player(sam, '100')['look'], 'am.1.1.1.1.x.x.x')
+        # Nothing but a valid look is taken; the old one stays.
+        host.event('msg|200|look|am.1.1.1.1.x.x.x;drop|')
+        host.event('msg|200|look|zz.1.1.1.1.x.x.x|')
+        self.pump(40)
+        self.assertEqual(self.player(sam, '200')['look'], look)
+        # An emote shows on the figure for a few seconds.
+        alex.lua.execute('session.Emote("cheer")')
+        self.pump(4)
+        self.assertEqual(self.player(sam, '200')['emote'], 'cheer')
+        self.assertEqual(self.player(host, '200')['emote'], 'cheer')
 
     def test_board_items_reach_everyone_and_are_written_to_the_park_file(self):
         host, alex, sam = self.peers['100'], self.peers['200'], self.peers['300']
