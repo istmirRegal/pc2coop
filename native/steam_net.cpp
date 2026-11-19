@@ -838,7 +838,7 @@ void poll_middle_button() {
 }
 
 // Visitor mode (switched on by Lua with "visitor|<keys>|<mouse look>", renewed every second):
-// Tab, T, E, G and 1-6 go to Lua as "key:v|<name>|<1 down, 0 up>". With mouse look the cursor
+// Tab, T, E, V and 1-6 go to Lua as "key:v|<name>|<1 down, 0 up>". With mouse look the cursor
 // is kept in the middle of the game window and its travel goes to Lua as "mouse|dx|dy".
 // Without a renewal for two seconds everything switches off, so the cursor is never caught.
 
@@ -850,8 +850,8 @@ void poll_visitor() {
     GetWindowThreadProcessId(window, &pid);
     if (pid != GetCurrentProcessId()) return;
     static bool down[10] = {};
-    static const int keys[10] = {VK_TAB, 'T', 'E', 'G', '1', '2', '3', '4', '5', '6'};
-    static const char* names[10] = {"tab", "t", "e", "g", "1", "2", "3", "4", "5", "6"};
+    static const int keys[10] = {VK_TAB, 'T', 'E', 'V', '1', '2', '3', '4', '5', '6'};
+    static const char* names[10] = {"tab", "t", "e", "v", "1", "2", "3", "4", "5", "6"};
     for (int i = 0; visitor_keys && i < 10; ++i) {
         bool pressed = (GetAsyncKeyState(keys[i]) & 0x8000) != 0;
         if (pressed != down[i]) {

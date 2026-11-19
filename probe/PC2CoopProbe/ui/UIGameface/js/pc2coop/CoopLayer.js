@@ -365,15 +365,26 @@ class VisitorBar extends StateComponent {
         const bar = h('div', { style: pill },
             visitor.active && h('div', { style: { margin: '0 0 4px', color: '#9fd8f0' } },
                 visitor.riding ? 'Du fährst ' + visitor.riding + ' - "Zurück" unten rechts steigt aus'
-                    : visitor.following ? 'Du begleitest einen Gast - oben rechts Ansicht oder Gast wechseln, "Zurück" unten rechts beendet das'
-                    : visitor.guest ? 'Ich-Sicht des Spiels: WASD laufen, Alt springen, Strg ducken, L Lampe - "Zurück" beendet das'
-                    : 'Besucher: Maus umsehen · WASD laufen · Shift rennen · T Emotes · E einsteigen · G Gast begleiten · Tab zurück'),
+                    : visitor.guest ? 'Ich-Sicht: WASD laufen, Alt springen, Strg ducken, L Lampe, Eingänge wie im Spiel · E Shop · T Emotes · V Ansicht von hinten · Tab zurück'
+                    : 'Besucher: Maus umsehen · WASD laufen · Shift rennen · E Eingang oder Shop · T Emotes · V Ich-Sicht · Tab zurück'),
+            // A shop's buy list: 1-6 buy, E or Tab close (names are the game's loc keys).
+            visitor.shop && h('div', { style: { display: 'flex', flexDirection: 'column', margin: '0 0 6px', padding: '6px 10px',
+                    borderRadius: '10px', background: 'rgba(255, 255, 255, 0.08)' } },
+                h('div', { style: { color: '#ffd43b', margin: '0 0 4px' } }, 'Kaufen: Taste 1-6 oder anklicken · E schließt'),
+                ...list(visitor.shop.items).map((it) => h('div', { key: 'buy' + it.n, onClick: () => request('buy', String(it.n)),
+                        style: { display: 'flex', justifyContent: 'space-between', padding: '2px 0', cursor: 'pointer' } },
+                    h('span', { style: { margin: '0 8px 0 0', color: '#9fd8f0' } }, it.n + ''),
+                    h('span', { style: { flexGrow: 1 } }, (it.name && shown(it.name)) || it.fallback),
+                    h('span', { style: { margin: '0 0 0 12px' } }, it.price)))),
+            // What E does at the entrance in front, in the game's own words (loc keys).
+            visitor.active && !visitor.guest && visitor.hint && h('div', { style: { display: 'flex', margin: '0 0 4px', color: '#ffd43b' } },
+                h('span', { style: { margin: '0 6px 0 0' } }, 'E:'), h('span', null, shown(visitor.hint.action)),
+                visitor.hint.blocker && h('span', { style: { margin: '0 0 0 6px', color: '#ff922b' } }, shown(visitor.hint.blocker))),
             buttons([
                 !visitor.active && { label: 'Als Besucher losgehen', onSelect: () => request('visitor', '1') },
                 ...(visitor.active && coop.role ? EMOTE_BUTTONS.map(([kind, label]) => ({ label, onSelect: () => request('emote', kind) })) : []),
                 { label: visitor.list ? 'Liste schließen' : 'Fahrgeschäfte', onSelect: () => request('visitorlist', visitor.list ? '0' : '1') },
-                visitor.active && !visitor.riding && !visitor.guest && !visitor.following && { label: 'Ich-Sicht', onSelect: () => request('guest', '1') },
-                visitor.active && !visitor.riding && !visitor.guest && !visitor.following && { label: 'Gast begleiten', onSelect: () => request('follow', '1') },
+                visitor.active && !visitor.riding && { label: visitor.guest ? 'Ansicht von hinten' : 'Ich-Sicht', onSelect: () => request('view', '1') },
                 visitor.active && { label: 'Zurück zum Bauen', onSelect: () => request('visitor', '0') },
             ]));
         const rides = list(visitor.rides);

@@ -9,7 +9,7 @@
 -- First person (fallback, or when the figure prefab is missing): the game's "Walking" camera.
 --
 -- Keys come from the DLL while visitor mode is on (Tab back to building, T held: emote wheel,
--- E: ride the nearest ride, G: go along with the nearest guest, 1-6 in the wheel); with mouse look the DLL keeps the cursor in the
+-- E: use the entrance in front, V: first/third person, 1-6 in the wheel); with mouse look the DLL keeps the cursor in the
 -- middle and sends its travel, which turns the camera.
 -- Riding along uses the game's ride camera (GamefaceCameraSettings -> FirstPersonRide); the
 -- guest view the game's VisitorCamera mode. The others see the visitor through presence:
@@ -29,8 +29,7 @@ local STEP = 0.6               -- highest step the figure climbs
 local active = false
 local mode = "third"           -- "third" or "first"
 local preferred = "third"
-local riding = nil             -- {key, name} while on a ride; {guest, name} with a guest
-local GUEST_RANGE = 30         -- metres around the figure for "Gast begleiten"
+local riding = nil             -- {key, name, first} while on a ride (first: boarded in the game's walk)
 local guestView = false        -- the game's visitor camera: looking over a guest's shoulder
 local rideStarted = 0
 local startedAt = 0
@@ -45,6 +44,9 @@ local ownLook, ownHex = nil, nil   -- look (figure.lua) and colour of this playe
 local gait = "idle"            -- idle, walk or run
 local emote = nil              -- {kind, frame}: the figure plays it while standing
 local EMOTE_FRAMES = 240
+local shopMenu = nil           -- {entity, items} while the buy list of a shop is open (shop.lua)
+local meal = nil               -- {kind = "eat"/"drink", frame}: the figure eats while walking
+local MEAL_FRAMES = 1200
 local pendingYaw = 0
 local wheel = nil              -- {x, y, selected} while T is held
 local lastNet = -1000
@@ -140,7 +142,8 @@ local function placeFigure()
     if not figure or not pos then return end
     if figure.fig then
         local state = gait
-        if gait == "idle" and emote and frames - emote.frame < EMOTE_FRAMES then state = emote.kind end
+        if gait == "walk" and meal and frames - meal.frame < MEAL_FRAMES then state = "walk" .. meal.kind
+        elseif gait == "idle" and emote and frames - emote.frame < EMOTE_FRAMES then state = emote.kind end
         global.pcall(function() figure.fig:Place(pos.x, pos.y, pos.z, facing, state) end)
         return
     end
@@ -222,10 +225,14 @@ function Visitor.Start(view)
     if view == "first" or view == "third" then preferred = view end
     global.pcall(function() global.require("Editors.Shared.BaseUIMode").SetNewMode("Select") end)
     mode = "first"
-    if preferred == "third" and startThird() then mode = "third" else walk() end
+    local native = false   -- first person is the game's own walk (VisitorCamera)
+    if preferred == "third" and startThird() then mode = "third"
+    elseif preferred == "first" then native = true
+    else walk() end
     active, riding, guestView, wheel, startedAt = true, nil, false, nil, frames
     lastNet = -1000
     keepInput()
+    if native then Visitor.WatchGuest() end
     return true
 end
 
@@ -233,7 +240,7 @@ function Visitor.Stop()
     if riding or guestView then global.pcall(function() global.require("Editors.Shared.BaseUIMode").SetNewMode("Select") end) end
     global.pcall(function() camera():RequestDefaultMode() end)
     dropFigure()
-    pos, active, riding, guestView, wheel = nil, false, nil, false, nil
+    pos, active, riding, guestView, wheel, shopMenu = nil, false, nil, false, nil, nil
     net("visitor|0|0")
 end
 
@@ -318,69 +325,166 @@ function Visitor.Ride(key, findRide)
     return true
 end
 
--- The nearest real park guest within range of the figure (or of where the player looks).
--- Guests have no physics flag of their own; the select mode's ray with all flags hits them,
--- and the guest is the parent it would pick (SelectAndEditComponent), confirmed by the guest
--- API. Tested in the test copy (build 26255360): 72 rays find guests up to 30 m away.
-local function nearestGuest(range)
-    local from
-    if pos then from = V(pos.x, pos.y + 1, pos.z)
-    else
-        local f = global.require("pc2coop.world").FocusPoint()
-        from = V(f:GetX(), f:GetY() + 1, f:GetZ())
-    end
-    physicsWorld = physicsWorld or global.api.entity.FindEntityByName("MainPhysicsWorld")
-    local ph, sec, guests = global.api.physics, apis().SelectAndEditComponent, apis().guests
-    local best, bestD = nil, nil
-    for i = 0, 71 do
-        local a = i * global.math.pi / 36
-        local to = V(from:GetX() + global.math.sin(a) * range, from:GetY(), from:GetZ() + global.math.cos(a) * range)
-        for _, hit in global.ipairs(ph.RayCast(physicsWorld, from, to, ~0, 3) or {}) do
-            local okP, guest = global.pcall(function() return sec:FindParentWithComponent(hit.nEntityID) end)
-            local okG, group = global.pcall(function() return guests:TryGetGuestGroupID(guest) end)
-            if okP and guest and okG and group ~= nil and not ownsEntity(hit.nEntityID) then
-                local okT, p = global.pcall(function() return global.api.transform.CalculateWorldTransform(guest):GetPos() end)
-                if okT and p then
-                    local dx, dz = p:GetX() - from:GetX(), p:GetZ() - from:GetZ()
-                    local d = global.math.sqrt(dx * dx + dz * dz)
-                    if d <= range and (not bestD or d < bestD) then best, bestD = guest, d end
+-- The game's walk mode interactions (Helpers.VisitorCameraTargetUtils): ride entrances
+-- (board a train, a flat ride, a racing ride), flume stairs, shows - found up to 5 m ahead
+-- within 30 degrees. In third person we ask from the figure's eyes along its facing, so the
+-- figure uses an entrance the way the game's own walker does, with the game's checks
+-- (waiting for the train, broken down, paused) and wording.
+local function nativeTarget()
+    if not pos then return nil end
+    local T = global.require("Helpers.VisitorCameraTargetUtils")
+    local target = T.FindInteractionTarget(V(pos.x, pos.y + EYE, pos.z),
+        V(global.math.sin(facing), 0, global.math.cos(facing)), apis())
+    if not target then return nil end
+    return target, T.TestInteraction(target, apis()), T
+end
+
+-- Where the player looks from: the figure's eyes in third person, the camera otherwise.
+local function viewer()
+    if mode == "third" and pos and not guestView then return pos.x, pos.y + EYE, pos.z, facing end
+    local p, ypr = camera():GetPosYPRZoom()
+    return p:GetX(), p:GetY(), p:GetZ(), ypr and ypr:GetX() or facing
+end
+
+local function shopInFront()
+    local x, y, z, yaw = viewer()
+    return global.require("pc2coop.shop").InFront(x, y - 0.5, z, yaw, ownsEntity)
+end
+
+-- The game's walker target in front of the camera (first person: the game's key uses it).
+local function cameraTarget()
+    local T = global.require("Helpers.VisitorCameraTargetUtils")
+    local x, y, z, yaw = viewer()
+    return T.FindInteractionTarget(V(x, y, z), V(global.math.sin(yaw), 0, global.math.cos(yaw)), apis())
+end
+
+function Visitor.Shop() return shopMenu end
+function Visitor.CloseShop() shopMenu = nil end
+
+local function openShop(entity)
+    local items = global.require("pc2coop.shop").Items(entity)
+    if #items == 0 then return false, "der Shop verkauft gerade nichts" end
+    shopMenu, wheel = {entity = entity, items = items}, nil
+    return true
+end
+
+-- 1-6 in the buy list: the shop and the item; the list closes.
+function Visitor.Pick(n)
+    local menu = shopMenu
+    local item = menu and menu.items[global.tonumber(n) or 0]
+    if not item then return nil end
+    shopMenu = nil
+    return menu.entity, item
+end
+
+-- The host sold it: the figure eats or drinks while walking for a while.
+function Visitor.Ate(kind)
+    if kind == "eat" or kind == "drink" then meal = {kind = kind, frame = frames} end
+end
+
+local hint, hintFrame = nil, -1000
+-- What E does right now in third person, in the game's own words (loc keys), or nil.
+function Visitor.Hint()
+    if not active or riding or guestView or mode ~= "third" then return nil end
+    if frames - hintFrame >= 15 then
+        hintFrame = frames
+        hint = nil
+        local ok, target, test, T = global.pcall(nativeTarget)
+        if not (ok and target) then
+            local okS, shop = global.pcall(shopInFront)
+            if okS and shop then hint = {action = "Einkaufen"} end
+        end
+        if ok and target and test then
+            local okI, text = global.pcall(function() return T.GetInteractionString(target, test, apis()) end)
+            if okI and text then
+                hint = {action = text}
+                if test.sBlocker then
+                    local okB, blocker = global.pcall(function() return T.GetBlockerString(target, test, apis()) end)
+                    hint.blocker = okB and blocker or nil
                 end
             end
         end
     end
-    return best
+    return hint
 end
 
--- G: go along with the nearest guest - the game's own guest camera (radial menu of a guest:
--- "Gast-Kamera"), with its view choice and "Zurueck". The figure waits where it stands.
-function Visitor.FollowGuest()
-    if not active or riding or guestView then return false, "gerade nicht" end
-    local ok, guest = global.pcall(nearestGuest, GUEST_RANGE)
-    if not ok or not guest then return false, "kein Gast in der Naehe" end
-    local okM = global.pcall(function()
-        global.require("Editors.Shared.BaseUIMode").SetNewMode("GamefaceCameraSettings", guest, "Guest")
-    end)
-    if not okM then return false, "die Gast-Kamera geht gerade nicht" end
-    active, riding, rideStarted, wheel = true, {guest = guest, name = "Gast"}, frames, nil
+-- E: the entrance in front of the figure, like the game's walker; a shop in front opens its
+-- buy list. In first person the game's own key uses entrances; E only opens shops there.
+function Visitor.Interact(keyOf, findRide)
+    if shopMenu then shopMenu = nil; return true end
+    if not active or riding then return false, "gerade nicht" end
+    if guestView or mode ~= "third" or not pos then
+        local okT, target = global.pcall(cameraTarget)
+        if okT and target then return true end       -- the game's key boards
+        local okS, shop = global.pcall(shopInFront)
+        if okS and shop then return openShop(shop) end
+        return false, "kein Shop vor dir"
+    end
+    local ok, target, test, T = global.pcall(nativeTarget)
+    if not ok or not target or not test then
+        local okS, shop = global.pcall(shopInFront)
+        if okS and shop then return openShop(shop) end
+        return false, "geh an einen Eingang oder Shop (oder Liste \"Fahrgeschaefte\")"
+    end
+    if test.sBlocker then
+        local okB, text = global.pcall(function() return T.GetBlockerString(target, test, apis()) end)
+        return false, okB and text or "gerade nicht"
+    end
+    local okT, result = global.pcall(function() return T.TriggerInteraction(target, test, apis()) end)
+    if not okT then return false, "das Spiel laesst das gerade nicht zu" end
+    if result and result.bModeChanged then
+        local ride = target.nRideEntityID
+        local name, key = "?", nil
+        global.pcall(function() name = global.tostring(apis().rides:GetRideName(ride) or "?") end)
+        global.pcall(function() key = keyOf(ride) end)
+        riding, rideStarted = {key = key, name = name}, frames
+    elseif result and result.newCameraTransformQ then
+        -- Flume stairs: the game moves its walker; our figure goes the same way.
+        global.pcall(function()
+            local t = result.newCameraTransformQ
+            local p, f = t:GetPos(), t:GetF()
+            pos = {x = p:GetX(), y = groundAt(p:GetX(), p:GetY() + 1, p:GetZ()) or p:GetY(), z = p:GetZ()}
+            facing = global.math.atan(f:GetX(), f:GetZ())
+        end)
+        placeFigure()
+    end
     return true
 end
 
--- E: the nearest ride within 25 m.
-function Visitor.Interact(keyOf, findRide)
-    local list = Visitor.Rides(keyOf)
-    local near = list[1]
-    if not near or not near.dist or near.dist > 25 then return false, "kein Fahrgeschaeft in der Naehe" end
-    return Visitor.Ride(near.key, findRide)
+-- V: third person (the figure) <-> first person (the game's own walk, VisitorCamera).
+function Visitor.ToggleView()
+    if not active or riding then return false end
+    if not guestView then
+        preferred = "first"
+        return Visitor.WatchGuest()
+    end
+    -- Back to the figure where the walker stands, looking the same way.
+    global.pcall(function()
+        local p, ypr = camera():GetPosYPRZoom()
+        local feet = p:GetY() - EYE
+        pos = {x = p:GetX(), y = groundAt(p:GetX(), feet + 1, p:GetZ()) or feet, z = p:GetZ()}
+        if ypr then facing = ypr:GetX() end
+    end)
+    preferred, guestView, startedAt = "third", false, frames
+    global.pcall(function() global.require("Editors.Shared.BaseUIMode").SetNewMode("Select") end)
+    if pos and (figure or spawnFigure()) and global.pcall(avatarCamera) then mode = "third"
+    else mode = "first"; global.pcall(walk) end
+    return true
 end
 
 -- Keys from the DLL (only while visitor mode is on). Returns "stop", "interact" or nil.
 function Visitor.OnKey(name, down)
     if not active then return nil end
-    if name == "tab" and down then return "stop" end
-    if name == "e" and down and not riding and not guestView then return "interact" end
-    if name == "g" and down and not riding and not guestView then return "follow" end
+    if name == "tab" and down then
+        if shopMenu then shopMenu = nil; return nil end
+        return "stop"
+    end
+    if name == "e" and down and not riding then return "interact" end
+    local number = global.tonumber(name)
+    if shopMenu and number and down then return "buy", number end
+    if name == "v" and down and not riding and not wheel then return "view" end
     if name == "t" then
-        if down and not riding and not wheel then wheel = {x = 0, y = 0, selected = nil}; lastNet = -1000; keepInput()
+        if down and not riding and not wheel and not shopMenu then wheel = {x = 0, y = 0, selected = nil}; lastNet = -1000; keepInput()
         elseif not down and wheel then
             local chosen = wheel.selected
             wheel = nil
@@ -477,15 +581,36 @@ function Visitor.Tick()
     local ok, current = global.pcall(cameraMode)
     if not ok then return end
     if guestView then
-        if frames - rideStarted > 60 and uiMode() ~= "VisitorCamera" then
+        if uiMode() == "GamefaceCameraSettings" then
+            -- The game's walker used an entrance: ride along; the game brings it back afterwards.
+            local name = "?"
+            global.pcall(function()
+                local p = camera():GetPosYPRZoom()
+                local near = Visitor.Rides(function(e) return e end, false, {p:GetX(), p:GetZ()})[1]
+                name = near and near.name or "?"
+            end)
+            guestView, riding, rideStarted = false, {name = name, first = true}, frames
+        elseif frames - rideStarted > 60 and uiMode() ~= "VisitorCamera" then
             guestView, startedAt = false, frames
             if mode == "third" and pos and (figure or spawnFigure()) then global.pcall(avatarCamera) else global.pcall(walk) end
         end
     elseif riding then
         if frames - rideStarted > 60 and uiMode() ~= "GamefaceCameraSettings"
             and current ~= "FirstPersonRide" and current ~= "ThirdPersonRide" then
+            local back, first = uiMode(), riding.first
             riding, startedAt = nil, frames
-            if mode == "third" and pos then global.pcall(avatarCamera) else global.pcall(walk) end
+            if back == "VisitorCamera" and (first or preferred == "first") then
+                guestView, rideStarted = true, frames          -- back in the game's walk
+            elseif back == "VisitorCamera" then
+                -- The game put its walker at the ride's exit: the figure continues from there.
+                global.pcall(function()
+                    local p = camera():GetPosYPRZoom()
+                    local feet = p:GetY() - EYE
+                    pos = {x = p:GetX(), y = groundAt(p:GetX(), feet + 1, p:GetZ()) or feet, z = p:GetZ()}
+                end)
+                global.pcall(function() global.require("Editors.Shared.BaseUIMode").SetNewMode("Select") end)
+                if mode == "third" and pos and (figure or spawnFigure()) then global.pcall(avatarCamera) else global.pcall(walk) end
+            elseif mode == "third" and pos then global.pcall(avatarCamera) else global.pcall(walk) end
         end
     elseif frames - startedAt > 60 and current ~= (mode == "third" and "Avatar" or "Walking") then
         -- The game's keys left the walk (e.g. the camera reset key): stay a builder.
@@ -497,7 +622,6 @@ end
 function Visitor.Activity()
     if not active then return nil end
     if guestView then return "geht als Besucher in Ich-Sicht durch den Park" end
-    if riding and riding.guest then return "begleitet einen Gast" end
     if riding then return "faehrt " .. global.string.gsub(riding.name, "[|,;\n]", "") end
     return "geht als Besucher durch den Park"
 end
@@ -517,7 +641,7 @@ function Visitor._TestKeys(keys) testKeys = keys end
 function Visitor._Reset()
     active, riding, guestView, frames, lastList, listFrame = false, nil, false, 0, {}, -1000
     pos, figure, wheel, mode, preferred, pendingYaw = nil, nil, nil, "third", "third", 0
-    gait, emote = "idle", nil
+    gait, emote, shopMenu, meal = "idle", nil, nil, nil
 end
 
 return Visitor

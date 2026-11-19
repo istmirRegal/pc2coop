@@ -128,15 +128,19 @@ Besucher-Modus (Reiter Besuchen)
 - T gedrueckt halten: Emote-Rad (Winken, Jubeln, Lachen, Super, Naja, Uebel) - Maus in die
   Richtung oder 1-6, T loslassen sendet. Die anderen sehen deine Figur das Emote spielen
   (winken, jubeln, lachen ...).
-- E: ins naechste Fahrgeschaeft einsteigen (bis 25 m). "Zurueck" unten rechts steigt aus.
-- G (oder "Gast begleiten"): mit der Gast-Kamera des Spiels beim naechsten Parkgast (bis
-  30 m) mitgehen - wie "Gast-Kamera" im Radialmenue eines Gastes. Oben rechts Ansicht oder
-  Gast wechseln, "Zurueck" unten rechts fuehrt wieder zur Figur (das Spiel zeigt dann das
-  Infofenster des Gastes). Die anderen sehen bei dir "begleitet einen Gast".
+- V: zwischen Ansicht von hinten (deine Figur) und Ich-Sicht wechseln. Die Ich-Sicht ist
+  der eingebaute Laufmodus des Spiels - mit Boden, Treppen, Springen (Alt), Ducken (Strg),
+  Schwimmen, Lampe (L) und Einsteigen an Eingaengen mit der Taste des Spiels. Die anderen
+  sehen dich in beiden Ansichten als Figur.
+- E: das, was vor deiner Figur ist, wie im Spiel: am Eingang eines Fahrgeschaefts
+  einsteigen (oben steht, was geht, z. B. "Einsteigen: Boardslide" oder warum nicht),
+  Rutschen-Treppen, Shows. Nach der Fahrt geht es am Ausgang weiter. Die Liste
+  "Fahrgeschaefte" bringt dich auch ohne Laufen in eine Bahn.
+- E vor einem Shop oder Automaten: die Liste seiner Artikel mit Preisen. 1-6 (oder
+  anklicken) kauft, E oder Tab schliesst. Der Preis geht in die Parkkasse wie bei einem
+  Gast, alle sehen "<Name> kauft ...", und deine Figur isst oder trinkt eine Weile beim
+  Gehen. Geschlossene Shops verkaufen nichts.
 - Tab: zurueck zum Bauen.
-- "Ich-Sicht (Spiel)": der eingebaute Laufmodus des Spiels an derselben Stelle - mit Boden,
-  Treppen, Springen (Alt), Ducken (Strg), Schwimmen und Lampe (L). "Zurueck" unten rechts
-  fuehrt wieder zur Figur. Die anderen sehen dich dabei weiter als Figur.
 - Bewerten: 1 bis 5 Sterne und ein kurzer Vorschlag; der Host speichert sie pro Park.
 - Noch nicht: anstellen, Dinge kaufen, Toiletten, Hunger/Laune (das steckt im Spiel
   selbst und laesst sich von aussen nicht steuern).

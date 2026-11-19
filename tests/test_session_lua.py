@@ -43,7 +43,7 @@ class Peer:
         self.sid, self.name = sid, name
         self.lua = LuaRuntime(unpack_returned_tuples=True)
         self.lua.execute(FAKES)
-        for module in ('shared', 'world', 'rides', 'visitor', 'board', 'figure'):
+        for module in ('shared', 'world', 'rides', 'visitor', 'board', 'figure', 'shop'):
             source = (SOURCE.parent / f'{module}.lua').read_text(encoding='utf8')
             self.lua.eval('function(n, s) package.preload["pc2coop." .. n] = function() return assert(load(s, n, "t", _G))() end end')(module, source)
         loader = self.lua.eval('function(s) return assert(load(s, "session", "t", _G))() end')
@@ -738,6 +738,47 @@ class TeamTests(SessionTests.__bases__[0]):
             if p['sid'] == sid:
                 return p
         return None
+
+    SHOP = r'''
+        shopOpen, credited = true, {}
+        local apisT = {park = {GetParkName = function() return "Testpark" end, ExpenditureCategory_FoodSales = 58,
+                ExpenditureCategory_DrinkSales = 57, ExpenditureCategory_FacilitySales = 40},
+            facilities = {GetShopInventoryEntityID = function(_, e) return e end,
+                GetShopInventory = function(_, e) if e == 4242 then return {1, 2} end return {} end,
+                GetShopInventoryItem = function(_, e, i) return ({[0] = {sItem = "Food_CheesePizza", nCost = 860, bSold = true},
+                    [1] = {sItem = "Drink_Cola", nCost = 300, bSold = true}})[i] end,
+                IsOpen = function() return shopOpen end},
+            editors = {CreateUndoOperationsHierarchy = function() return {
+                AddCashDelta = function(_, c, cat) credited[#credited+1] = c .. "@" .. cat end,
+                GetFullUndoChangeList = function() return {} end} end}}
+        api.world.GetWorldAPIs = function() return apisT end
+        api.undo = {IsBusy = function() return false end, IsPreviewingChangeList = function() return false end,
+            PreviewChangeList = function() return 1, 2 end, IsOperationComplete = function() return true end,
+            CanCommitPreview = function() return true end, CommitPreview = function() return 3 end}
+        function sync.GidToEntity(gid) if gid == "S1_0_1" then return 4242 end end'''
+
+    def test_buying_at_a_shop_goes_through_the_host(self):
+        host, alex, sam = self.peers['100'], self.peers['200'], self.peers['300']
+        host.lua.execute(self.SHOP)
+        host.event('msg|200|buy|S1_0_1|0|')
+        host.event('msg|200|buy|S1_0_1|1|')          # too soon after the first: ignored
+        self.pump(4)
+        self.assertEqual(list(host.lua.eval('credited').values()), ['860@58'])
+        self.assertIn('Alex kauft Cheese Pizza (8,60)', self.toasts(sam))
+        self.assertNotIn('Alex isst', self.toasts(sam))   # the purchase says it already
+        self.assertEqual(self.player(sam, '200')['emote'], 'eat')
+        self.assertEqual(self.player(alex, '200')['emote'], 'eat')
+        # Closed shop, unknown shop: Alex is told, nothing is booked.
+        self.pump(130)
+        host.lua.execute('shopOpen = false')
+        host.event('msg|200|buy|S1_0_1|1|')
+        self.pump(4)
+        self.assertIn('Der Shop ist geschlossen', self.toasts(alex))
+        self.pump(130)
+        host.event('msg|200|buy|S9_9_9|0|')
+        self.pump(4)
+        self.assertIn('Diesen Shop gibt es beim Host nicht', self.toasts(alex))
+        self.assertEqual(len(host.lua.eval('credited')), 1)
 
     def test_the_look_of_a_visitor_reaches_everyone_and_strange_looks_are_ignored(self):
         host, alex, sam = self.peers['100'], self.peers['200'], self.peers['300']

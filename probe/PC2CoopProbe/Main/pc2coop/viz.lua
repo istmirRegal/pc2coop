@@ -207,7 +207,8 @@ local function placeGuest(state, p, x, y, z, dt)
     if g.speed > 0.4 and (mx ~= 0 or mz ~= 0) then g.yaw = global.math.atan(mx, mz)
     elseif not g.yaw and p.x and p.fx then g.yaw = global.math.atan(p.fx - p.x, p.fz - p.z) end
     local gaitNow = Figure.Gait(g.speed)
-    if gaitNow == "idle" and p.emote then gaitNow = p.emote end
+    if gaitNow == "walk" and (p.emote == "eat" or p.emote == "drink") then gaitNow = "walk" .. p.emote
+    elseif gaitNow == "idle" and p.emote then gaitNow = p.emote end
     global.pcall(function() g.fig:Place(at[1], at[2], at[3], g.yaw or 0, gaitNow) end)
 end
 

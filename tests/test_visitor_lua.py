@@ -221,56 +221,107 @@ class ThirdPersonTests(unittest.TestCase):
         self.assertEqual(list(self.lua.eval('emotes').values()), ['up'])
         self.assertIsNone(self.v.Wheel())
 
-    def test_tab_and_e(self):
+    NATIVE = r'''
+        -- The game's walker helper: a flat ride entrance in front of the figure (+z).
+        gate = {blocker = nil, triggered = 0}
+        package.loaded["Helpers.VisitorCameraTargetUtils"] = {
+            FindInteractionTarget = function(at, fwd, apis)
+                if fwd:GetZ() > 0.5 then return {nEntityID = 900, nRideEntityID = 2, sType = "FlatRideGate"} end
+            end,
+            TestInteraction = function(t) return {sInteraction = "BoardFlatRide", sBlocker = gate.blocker} end,
+            GetInteractionString = function() return "[VisitorCameraInteraction_BoardRide:NAME='Teetassen']" end,
+            GetBlockerString = function() return "[VisitorCameraBlocker_BrokenDown]" end,
+            TriggerInteraction = function(t, r, apis)
+                gate.triggered = gate.triggered + 1
+                require("Editors.Shared.BaseUIMode").SetNewMode("GamefaceCameraSettings")
+                return {bModeChanged = true}
+            end}'''
+
+    def test_tab_and_e_use_the_entrance_in_front_like_the_game(self):
+        self.lua.execute(self.NATIVE)
         self.v.Start()
         self.assertEqual(self.v.OnKey('tab', True), 'stop')
         self.assertEqual(self.v.OnKey('e', True), 'interact')
-        self.lua.execute('rides[2].x, rides[2].z = 10, 5')   # 11 m from the figure
-        self.assertTrue(self.v.Interact(self.lua.globals().keyOf, self.lua.globals().findRide))
-        self.assertEqual(self.lua.eval('ui.mode'), 'GamefaceCameraSettings')
+        self.assertEqual(self.v.Hint()['action'], "[VisitorCameraInteraction_BoardRide:NAME='Teetassen']")
+        keyOf, findRide = self.lua.globals().keyOf, self.lua.globals().findRide
+        self.lua.execute('gate.blocker = "BrokenDown"')
+        self.assertEqual(tuple(self.v.Interact(keyOf, findRide)), (False, '[VisitorCameraBlocker_BrokenDown]'))
+        self.lua.execute('gate.blocker = nil')
+        self.assertTrue(self.v.Interact(keyOf, findRide))
+        self.assertEqual((self.lua.eval('gate.triggered'), self.lua.eval('ui.mode')), (1, 'GamefaceCameraSettings'))
+        self.assertEqual(self.v.Activity(), 'faehrt Teetassen')
+        self.assertIsNone(self.v.Hint())
+        # After the ride the game puts its walker at the exit; the figure goes on from there.
+        self.lua.execute('ui.mode = "VisitorCamera"; cam.mode = "Visitor"; cam.pos = require("Vector3"):new(12, 1.65, 9)')
+        self.tick(90)
+        self.assertEqual((self.lua.eval('ui.mode'), self.lua.eval('cam.mode')), ('Select', 'Avatar'))
+        self.assertEqual(self.v.Activity(), 'geht als Besucher durch den Park')
+        self.assertEqual(self.at(), [12, 0, 9])
+        # Nothing in front: E says where to go.
+        self.lua.execute('package.loaded["Helpers.VisitorCameraTargetUtils"].FindInteractionTarget = function() return nil end')
+        self.assertFalse(self.v.Interact(keyOf, findRide)[0])
         self.v.Stop()
         self.assertEqual(self.lua.eval('figure.destroyed'), 77)
         self.assertEqual(list(self.lua.eval('commands').values())[-1], 'visitor|0|0')
 
-    def test_g_goes_along_with_the_nearest_guest_and_back(self):
-        self.lua.execute('''
-            local V3 = require("Vector3")
-            guestsAt = {[501] = {6, 0, 8}, [502] = {2, 0, 3}}   -- guest -> where it stands; 502 is nearer
-            apis.SelectAndEditComponent = {FindParentWithComponent = function(_, e)
-                if e == 601 then return 501 elseif e == 602 then return 502 end
-                return e
-            end}
-            apis.guests = {TryGetGuestGroupID = function(_, e) if guestsAt[e] then return 7 end return nil end}
-            local calc = api.transform.CalculateWorldTransform
-            api.transform.CalculateWorldTransform = function(e)
-                local g = guestsAt[e]
-                if g then return {GetPos = function() return V3:new(g[1], g[2], g[3]) end} end
-                return calc(e)
-            end
-            -- only the select mode's "everything" ray sees guests
-            api.physics.RayCast = function(world, a, b, flags, n)
-                if flags == -1 then return {{nEntityID = 9}, {nEntityID = 601}, {nEntityID = 602}} end
-                return {}
-            end''')
+    def test_e_at_a_shop_opens_its_list_and_a_number_buys(self):
+        self.lua.execute('''shopHere = true
+            package.loaded["pc2coop.shop"] = {
+                InFront = function(x, y, z, yaw) if shopHere then return 4242 end end,
+                Items = function(e) return {{index = 0, loc = "[ShopItem_Food_CheesePizza]", item = "Food_CheesePizza",
+                    cost = 860, kind = "eat"}} end}''')
+        keyOf, findRide = self.lua.globals().keyOf, self.lua.globals().findRide
         self.v.Start()
-        self.lua.execute('''local B = require("Editors.Shared.BaseUIMode")
-            B.SetNewMode = function(name, a, b) ui.mode, ui.target, ui.kind = name, a, b end''')
-        self.assertEqual(self.v.OnKey('g', True), 'follow')
-        self.assertTrue(self.v.FollowGuest())
-        self.assertEqual((self.lua.eval('ui.mode'), self.lua.eval('ui.target'), self.lua.eval('ui.kind')),
-                         ('GamefaceCameraSettings', 502, 'Guest'))
-        self.assertEqual(self.v.Activity(), 'begleitet einen Gast')
-        self.assertIsNone(self.v.Feet())                     # the others draw no figure meanwhile
-        self.assertIsNone(self.v.OnKey('g', True))
-        self.tick(30)
+        self.assertEqual(self.v.Hint()['action'], 'Einkaufen')
+        self.assertTrue(self.v.Interact(keyOf, findRide))
+        self.assertEqual(self.v.Shop()['entity'], 4242)
+        self.assertIsNone(self.v.OnKey('t', True))            # no emote wheel over the list
+        self.assertIsNone(self.v.Wheel())
+        self.assertEqual(tuple(self.v.OnKey('1', True)), ('buy', 1))
+        entity, item = self.v.Pick(1)
+        self.assertEqual((entity, item['item'], item['cost']), (4242, 'Food_CheesePizza', 860))
+        self.assertIsNone(self.v.Shop())
+        # Tab closes the list instead of ending the visit; E closes it too.
+        self.v.Interact(keyOf, findRide)
+        self.assertIsNone(self.v.OnKey('tab', True))
+        self.assertIsNone(self.v.Shop())
         self.assertTrue(self.v.Active())
-        # "Zurueck" in the game's guest camera: back to the figure.
-        self.lua.execute('ui.mode = "Select"; cam.mode = "StandardOrbit"')
+        self.v.Interact(keyOf, findRide)
+        self.assertTrue(self.v.Interact(keyOf, findRide))
+        self.assertIsNone(self.v.Shop())
+        self.lua.execute('shopHere = false')
+        self.assertFalse(self.v.Interact(keyOf, findRide)[0])
+
+    def test_v_switches_between_the_figure_and_the_games_walk(self):
+        self.v.Start()
+        self.assertEqual(self.v.OnKey('v', True), 'view')
+        self.assertTrue(self.v.ToggleView())
+        self.assertEqual(self.lua.eval('ui.mode'), 'VisitorCamera')
+        self.assertTrue(self.v.GuestView())
+        self.assertEqual(self.lua.eval('figure.destroyed'), 77)   # no own figure in first person
+        self.assertEqual(self.v.Activity(), 'geht als Besucher in Ich-Sicht durch den Park')
+        # The walker went somewhere; V: the figure stands there.
+        self.lua.execute('cam.pos = require("Vector3"):new(30, 1.65, 40)')
+        self.assertTrue(self.v.ToggleView())
+        self.assertFalse(self.v.GuestView())
+        self.assertEqual((self.lua.eval('ui.mode'), self.lua.eval('cam.mode')), ('Select', 'Avatar'))
+        self.tick(2)
+        self.assertEqual(self.at(), [30, 0, 40])
+
+    def test_riding_from_the_games_walk_comes_back_into_it(self):
+        self.v.Start('first')
+        self.assertTrue(self.v.GuestView())
+        self.assertEqual(self.lua.eval('ui.mode'), 'VisitorCamera')
+        # The game's walker used an entrance (its own key).
+        self.lua.execute('ui.mode = "GamefaceCameraSettings"; cam.mode = "FirstPersonRide"')
+        self.tick(30)
+        self.assertTrue(self.v.Riding())
+        self.assertTrue(self.v.Active())
+        self.lua.execute('ui.mode = "VisitorCamera"; cam.mode = "Visitor"')
         self.tick(90)
-        self.assertEqual(self.v.Activity(), 'geht als Besucher durch den Park')
-        self.assertEqual(self.lua.eval('cam.mode'), 'Avatar')
-        self.lua.execute('guestsAt = {}')
-        self.assertEqual(tuple(self.v.FollowGuest()), (False, 'kein Gast in der Naehe'))
+        self.assertIsNone(self.v.Riding())
+        self.assertTrue(self.v.GuestView())
+        self.assertTrue(self.v.Active())
 
     def test_first_person_when_the_figure_is_missing(self):
         self.lua.execute('prefabOK = false')

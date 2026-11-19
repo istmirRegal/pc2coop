@@ -199,8 +199,19 @@ local function visitorState()
     end
     local riding = Visitor.Riding()
     local wheel = Visitor.Wheel and Visitor.Wheel()
-    return {active = Visitor.Active(), riding = riding and not riding.guest and riding.name or false,
-        following = riding and riding.guest ~= nil or false, guest = Visitor.GuestView and Visitor.GuestView() or false,
+    local hint = Visitor.Hint and Visitor.Hint() or nil
+    local menu = Visitor.Shop and Visitor.Shop() or nil
+    local shop = false
+    if menu then
+        local Shop = global.require("pc2coop.shop")
+        shop = {items = {}}
+        for i, it in global.ipairs(menu.items) do
+            shop.items[i] = {n = i, name = it.loc, fallback = Shop.Readable(it.item), price = Shop.Price(it.cost)}
+        end
+    end
+    return {active = Visitor.Active(), riding = riding and riding.name or false,
+        hint = hint and {action = hint.action, blocker = hint.blocker or false} or false, shop = shop,
+        guest = Visitor.GuestView and Visitor.GuestView() or false,
         wheel = wheel and {selected = wheel.selected or false} or false, view = Visitor.View and Visitor.View() or "first",
         rides = rides, list = visitorList,
         emotes = session.Emotes and session.Emotes() or {}}
@@ -298,10 +309,9 @@ local actions = {
     end,
     emote = function(arg) session.Emote(arg) end,
     guest = function() global.require("pc2coop.visitor").WatchGuest() end,
-    follow = function()
-        local ok, failure = global.require("pc2coop.visitor").FollowGuest()
-        if not ok then session.Notice("Gast begleiten: " .. global.tostring(failure) .. ".", "ff922b") end
-    end,
+    view = function() global.require("pc2coop.visitor").ToggleView() end,
+    buy = function(arg) session.BuyPick(global.tonumber(arg)) end,
+    shopclose = function() global.require("pc2coop.visitor").CloseShop() end,
     visitorlist = function(arg) visitorList = arg == "1" end,
     paneltab = function(arg) if TABS[arg] then panelTab = arg end end,
     -- "<kind>|<title>|<text>|<assignee>|<radius>": tasks need no place, the rest goes to anchor().

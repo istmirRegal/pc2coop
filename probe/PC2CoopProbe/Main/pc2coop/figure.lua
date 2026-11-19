@@ -31,7 +31,9 @@ Figure.PARTS = {
 -- State -> baked animation (<group>$<name>.bani). The emotes are those of visitor.lua.
 Figure.ANIMS = {idle = "standbaseidle01", walk = "walkbase", run = "runbase", wave = "standwaveflag_loop",
     cheer = "standreactcheer", laugh = "standreactlaugh", sick = "standreactsick", up = "standreactpoint",
-    down = "standreactbored"}
+    down = "standreactbored", walkeat = "walkinteractusefoodr", walkdrink = "walkinteractusecupl"}
+-- Eating and drinking show while walking: the standing variants are partial animations the
+-- crowd system lays over a base pose; alone they move nothing (tested in the test copy).
 local MISSING = {cm = {wave = "cheer"}}
 local BASE = {idle = true, walk = true, run = true}
 local HIDDEN = -500

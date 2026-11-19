@@ -60,7 +60,8 @@ local PING_FRAMES = 480
 local lastPing = {}       -- host: sid -> frame of their last ping (one per second at most)
 -- Visitor mode (visitor.lua): emotes and ratings of rides, for everyone in the session.
 local EMOTES = {wave = "winkt", cheer = "jubelt", laugh = "lacht", sick = "ist schlecht", up = "findet das super",
-    down = "findet das nicht gut"}
+    down = "findet das nicht gut", eat = "isst", drink = "trinkt"}
+local lastBuy = {}        -- host: sid -> frame of the last purchase (one per two seconds)
 local emotes = {}         -- sid -> {kind, frame}
 local okFigure, Figure = global.pcall(global.require, "pc2coop.figure")
 if not okFigure then Figure = {ParseLook = function() return nil end, OwnLook = function() return nil end} end
@@ -811,6 +812,8 @@ local function hostChange(sid, f)
     elseif f[1] == "vote-answer" and players[sid] and vote and f[2] == vote.id then
         vote.answers[sid] = f[3] == "1"
         Session._VoteCheck()
+    elseif f[1] == "buy" and players[sid] then
+        Session._HostBuy(sid, f[2], global.tonumber(f[3]))
     elseif f[1] == "emote" and players[sid] and EMOTES[f[2] or ""] then
         if not lastEmote[sid] or frames - lastEmote[sid] >= 60 then
             lastEmote[sid] = frames
@@ -1093,8 +1096,16 @@ local function onMessage(from, payload)
             if EMOTES[f[3] or ""] then
                 emotes[f[2]] = {kind = f[3], frame = frames}
                 for _, pl in global.ipairs(roster.players or {}) do
-                    if pl.sid == f[2] then toast(pl.name .. " " .. EMOTES[f[3]], pl.color) end
+                    if pl.sid == f[2] and f[4] ~= "q" then toast(pl.name .. " " .. EMOTES[f[3]], pl.color) end
                 end
+            end
+        elseif kind == "sold" then
+            local f = split(payload, "|")
+            if f[2] == "ok" then
+                emotes[me] = (f[3] == "eat" or f[3] == "drink") and {kind = f[3], frame = frames} or emotes[me]
+                global.pcall(function() global.require("pc2coop.visitor").Ate(f[3]) end)
+            else
+                toast(cleanText(f[3] or "Kaufen geht gerade nicht"), "ff922b")
             end
         elseif kind == "bd" or kind == "bd-" then
             Board.Apply(payload)
@@ -1467,16 +1478,17 @@ local function onNet(event)
     elseif kind == "key:mup" then
         Session._MiddleUp(global.tonumber(f[2]) or 9999, global.tonumber(f[3]) or 9999)
     elseif kind == "key:v" then
-        -- Visitor mode keys (DLL, only while it is on): Tab, T, E, G, 1-6.
+        -- Visitor mode keys (DLL, only while it is on): Tab, T, E, V, 1-6.
         local Visitor = global.require("pc2coop.visitor")
-        local todo = Visitor.OnKey(f[2], f[3] == "1")
+        local todo, number = Visitor.OnKey(f[2], f[3] == "1")
         if todo == "stop" then Visitor.Stop()
         elseif todo == "interact" then
             local ok, failure = Visitor.Interact(sync.RideKey, sync.GidToEntity)
             if not ok then toast("E: " .. global.tostring(failure) .. ".", "ff922b") end
-        elseif todo == "follow" then
-            local ok, failure = Visitor.FollowGuest()
-            if not ok then toast("G: " .. global.tostring(failure) .. ".", "ff922b") end
+        elseif todo == "view" then
+            Visitor.ToggleView()
+        elseif todo == "buy" then
+            Session.BuyPick(number)
         end
     elseif kind == "mouse" then
         global.require("pc2coop.visitor").OnMouse(global.tonumber(f[2]) or 0, global.tonumber(f[3]) or 0)
@@ -1780,6 +1792,59 @@ function Session.Emote(kind)
     local wire = "emote|" .. kind
     if role == "host" then hostChange(me, split(wire, "|")) else send(hostId, wire) end
     if role ~= "host" then emotes[me] = {kind = kind, frame = frames} end
+    return true
+end
+
+-- Visitor mode: buying at a shop (shop.lua). The host checks the shop and the item, books
+-- the price into the park's cash like a shop sale, tells everyone and the figure eats or
+-- drinks. Without a session the player is the park: the same, locally.
+function Session._HostBuy(sid, gid, index, entity)
+    local Shop = global.require("pc2coop.shop")
+    local function refuse(text)
+        if sid == me then toast(text, "ff922b") else send(sid, "sold|no|" .. text) end
+    end
+    if lastBuy[sid] and frames - lastBuy[sid] < 120 then return end
+    entity = entity or (gid and sync.GidToEntity(gid))
+    if not entity then refuse("Diesen Shop gibt es beim Host nicht"); return end
+    local item
+    for _, it in global.ipairs(Shop.Items(entity)) do if it.index == index then item = it end end
+    if not item then refuse("Das gibt es dort nicht mehr"); return end
+    if not Shop.IsOpen(entity) then refuse("Der Shop ist geschlossen"); return end
+    lastBuy[sid] = frames
+    tasks[#tasks+1] = global.coroutine.create(function() Shop.Credit(item.cost, item.item) end)
+    local who = role and nameOf(sid) or myName or "Du"
+    if role then addFeed(who .. " kauft " .. Shop.Readable(item.item) .. " (" .. Shop.Price(item.cost) .. ")")
+    else toast("Gekauft: " .. Shop.Readable(item.item) .. " (" .. Shop.Price(item.cost) .. ")") end
+    if item.kind then
+        emotes[sid] = {kind = item.kind, frame = frames}
+        for _, other in global.ipairs(order) do
+            if other ~= me and other ~= sid and players[other] and not players[other].pending then
+                send(other, "em|" .. sid .. "|" .. item.kind .. "|q")
+            end
+        end
+    end
+    if sid == me then global.pcall(function() global.require("pc2coop.visitor").Ate(item.kind) end)
+    else send(sid, "sold|ok|" .. (item.kind or "-") .. "|" .. clean(Shop.Readable(item.item)) .. "|" .. Shop.Price(item.cost)) end
+end
+
+-- 1-6 in a shop's buy list (visitor.lua).
+function Session.BuyPick(n)
+    local Visitor = global.require("pc2coop.visitor")
+    local entity, item = Visitor.Pick(n)
+    if not entity then return false end
+    if role == "client" then
+        local gid = sync.EntityToGid(entity)
+        if not gid then toast("Dieser Shop ist noch nicht mit dem Host abgeglichen", "ff922b"); return false end
+        send(hostId, "buy|" .. gid .. "|" .. item.index)
+        return true
+    end
+    if role == "host" then Session._HostBuy(me, nil, item.index, entity); return true end
+    -- Alone: the own park.
+    local Shop = global.require("pc2coop.shop")
+    if not Shop.IsOpen(entity) then toast("Der Shop ist geschlossen", "ff922b"); return false end
+    tasks[#tasks+1] = global.coroutine.create(function() Shop.Credit(item.cost, item.item) end)
+    toast("Gekauft: " .. Shop.Readable(item.item) .. " (" .. Shop.Price(item.cost) .. ")")
+    Visitor.Ate(item.kind)
     return true
 end
 
@@ -2189,9 +2254,11 @@ function Session._RatingsFile(name) ratingsFile = name end
 function Session._BoardFile(name) boardFile = name end
 
 -- Kind of the player's emote of the last four seconds (wave, cheer ...), or nil.
+local function emoteFrames(kind) return (kind == "eat" or kind == "drink") and 1200 or 240 end
+
 function Session._EmoteKind(sid)
     local e = emotes[sid]
-    if e and frames - e.frame < 240 then return e.kind end
+    if e and frames - e.frame < emoteFrames(e.kind) then return e.kind end
     return nil
 end
 
@@ -2225,7 +2292,7 @@ function Session._ResetLook() myLook, lookFrame = nil, -100000 end
 function Session.Emotes()
     local out = {}
     for sid, e in global.pairs(emotes) do
-        if frames - e.frame < 240 then out[sid] = EMOTES[e.kind] else emotes[sid] = nil end
+        if frames - e.frame < emoteFrames(e.kind) then out[sid] = EMOTES[e.kind] else emotes[sid] = nil end
     end
     return out
 end
