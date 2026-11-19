@@ -47,6 +47,7 @@ local EMOTE_FRAMES = 240
 local shopMenu = nil           -- {entity, items} while the buy list of a shop is open (shop.lua)
 local meal = nil               -- {kind = "eat"/"drink", frame}: the figure eats while walking
 local MEAL_FRAMES = 1200
+local toFigure = nil           -- frame we left the game's walk for the figure (camera follows)
 local pendingYaw = 0
 local wheel = nil              -- {x, y, selected} while T is held
 local lastNet = -1000
@@ -240,7 +241,7 @@ function Visitor.Stop()
     if riding or guestView then global.pcall(function() global.require("Editors.Shared.BaseUIMode").SetNewMode("Select") end) end
     global.pcall(function() camera():RequestDefaultMode() end)
     dropFigure()
-    pos, active, riding, guestView, wheel, shopMenu = nil, false, nil, false, nil, nil
+    pos, active, riding, guestView, wheel, shopMenu, toFigure = nil, false, nil, false, nil, nil, nil
     net("visitor|0|0")
 end
 
@@ -467,8 +468,8 @@ function Visitor.ToggleView()
     end)
     preferred, guestView, startedAt = "third", false, frames
     global.pcall(function() global.require("Editors.Shared.BaseUIMode").SetNewMode("Select") end)
-    if pos and (figure or spawnFigure()) and global.pcall(avatarCamera) then mode = "third"
-    else mode = "first"; global.pcall(walk) end
+    if pos and (figure or spawnFigure()) then mode = "third" else mode = "first" end
+    toFigure = frames
     return true
 end
 
@@ -580,6 +581,17 @@ function Visitor.Tick()
     if frames % 15 ~= 0 then return end
     local ok, current = global.pcall(cameraMode)
     if not ok then return end
+    if toFigure then
+        -- Leaving the game's walk: its mode change resets the camera after our request, so the
+        -- figure's camera is asked for once the walk is gone, and again until it holds.
+        if uiMode() ~= "VisitorCamera" and frames - toFigure >= 10 then
+            if current ~= (mode == "third" and "Avatar" or "Walking") then
+                if mode == "third" and pos and (figure or spawnFigure()) then global.pcall(avatarCamera) else global.pcall(walk) end
+            end
+            if frames - toFigure >= 60 then toFigure, startedAt = nil, frames end
+        end
+        return
+    end
     if guestView then
         if uiMode() == "GamefaceCameraSettings" then
             -- The game's walker used an entrance: ride along; the game brings it back afterwards.
@@ -591,8 +603,7 @@ function Visitor.Tick()
             end)
             guestView, riding, rideStarted = false, {name = name, first = true}, frames
         elseif frames - rideStarted > 60 and uiMode() ~= "VisitorCamera" then
-            guestView, startedAt = false, frames
-            if mode == "third" and pos and (figure or spawnFigure()) then global.pcall(avatarCamera) else global.pcall(walk) end
+            guestView, startedAt, toFigure = false, frames, frames
         end
     elseif riding then
         if frames - rideStarted > 60 and uiMode() ~= "GamefaceCameraSettings"
@@ -609,7 +620,7 @@ function Visitor.Tick()
                     pos = {x = p:GetX(), y = groundAt(p:GetX(), feet + 1, p:GetZ()) or feet, z = p:GetZ()}
                 end)
                 global.pcall(function() global.require("Editors.Shared.BaseUIMode").SetNewMode("Select") end)
-                if mode == "third" and pos and (figure or spawnFigure()) then global.pcall(avatarCamera) else global.pcall(walk) end
+                toFigure = frames
             elseif mode == "third" and pos then global.pcall(avatarCamera) else global.pcall(walk) end
         end
     elseif frames - startedAt > 60 and current ~= (mode == "third" and "Avatar" or "Walking") then
@@ -641,7 +652,7 @@ function Visitor._TestKeys(keys) testKeys = keys end
 function Visitor._Reset()
     active, riding, guestView, frames, lastList, listFrame = false, nil, false, 0, {}, -1000
     pos, figure, wheel, mode, preferred, pendingYaw = nil, nil, nil, "third", "third", 0
-    gait, emote, shopMenu, meal = "idle", nil, nil, nil
+    gait, emote, shopMenu, meal, toFigure = "idle", nil, nil, nil, nil
 end
 
 return Visitor

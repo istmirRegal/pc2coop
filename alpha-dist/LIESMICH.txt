@@ -1,4 +1,4 @@
-PC2Coop 1.12.3 - Planet Coaster 2 live zusammen bauen, ueber Steam
+PC2Coop 1.13.0 - Planet Coaster 2 live zusammen bauen, ueber Steam
 
 Installation (jeder Spieler, einmalig)
 0. ACSE (Mod-Loader fuer Planet Coaster 2) von Nexus Mods installieren, falls noch nicht
@@ -207,6 +207,9 @@ Live synchronisiert und im Spiel getestet:
   sperrt sie fuer die anderen (allein getestet, mit nachgestelltem Mitspieler).
 Eingebaut, aber noch nicht im Spiel bestaetigt:
 - Das Zusammenspiel der Sperren zwischen zwei echten Spielern.
+- Neu in 1.13.0: Besucher-Figur als animierter Parkgast im Look deines Avatars, Ansicht
+  wechseln (V) mit der Ich-Sicht des Spiels, Eingaenge wie im Spiel (E), Kaufen an Shops und
+  Automaten mit Essen/Trinken beim Gehen (allein getestet, nachgestellter Mitspieler).
 - Neu in 1.12.0: Multiplayer-Reiter in der Bauleiste, Brett (Planen), Bauvorschlaege,
   Mittelklick-Menue, Testfahrt-Einladung, Uebernahme anfragen, Verlauf mit Meldungen und
   "Seit deinem letzten Besuch", Sicherungspunkte mit Abstimmung, Regeln, Wettbewerb,

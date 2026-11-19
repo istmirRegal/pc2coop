@@ -301,11 +301,16 @@ class ThirdPersonTests(unittest.TestCase):
         self.assertEqual(self.lua.eval('figure.destroyed'), 77)   # no own figure in first person
         self.assertEqual(self.v.Activity(), 'geht als Besucher in Ich-Sicht durch den Park')
         # The walker went somewhere; V: the figure stands there.
-        self.lua.execute('cam.pos = require("Vector3"):new(30, 1.65, 40)')
+        self.lua.execute('cam.pos = require("Vector3"):new(30, 1.65, 40); cam.mode = "Visitor"')
         self.assertTrue(self.v.ToggleView())
         self.assertFalse(self.v.GuestView())
-        self.assertEqual((self.lua.eval('ui.mode'), self.lua.eval('cam.mode')), ('Select', 'Avatar'))
-        self.tick(2)
+        self.assertEqual(self.lua.eval('ui.mode'), 'Select')
+        # The game resets the camera after its mode change; the figure's camera comes back.
+        self.lua.execute('cam.mode = "StandardOrbit"')
+        self.tick(30)
+        self.assertEqual(self.lua.eval('cam.mode'), 'Avatar')
+        self.tick(120)
+        self.assertTrue(self.v.Active())
         self.assertEqual(self.at(), [30, 0, 40])
 
     def test_riding_from_the_games_walk_comes_back_into_it(self):
