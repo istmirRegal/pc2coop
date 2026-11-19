@@ -39,7 +39,7 @@ function H.GetFullUndoChangeList(self) return {hierarchy = self} end
 local function newHierarchy() return setmetatable({ops = {}}, meta) end
 -- Paths and pools: volumes by id (ids differ between games), chunks by entity.
 fakeVolumes = {}          -- id -> x of the path
-chunkPos, chunkVolume = {}, {}
+chunkPos, chunkVolume, parentOf = {}, {}, {}
 volumeLog = {}
 function H.RemoveVolume(self, volume, flag) self.removedVolumes = self.removedVolumes or {}; table.insert(self.removedVolumes, volume) end
 function H.AddVolumeChunkToCompositeObject(self, composite, chunk, flag)
@@ -233,7 +233,7 @@ api = {undo = undo, world = {GetWorldAPIs = function() return apis end},
         end
         local p = parts[entities[entity]]
         return {GetPos=function() return p.p end, GetOr=function() return p.q end}
-    end},
+    end, GetParent=function(entity) return parentOf[entity] end},
     player = {GetPlayerName=function() return "Tester" end},
     spatial = {Flag_Scenery = 4, SphereQuery=function(position, radius)
         local out = {}
@@ -701,6 +701,25 @@ class VolumeTests(unittest.TestCase):
         batch = self.batch()
         self.assertIn('hier.AddVolumeChunkToCompositeObject(@h,@r1,k12:0:8,b0)', batch)
         self.lua.execute('chunkPos, chunkVolume = {[901] = {12, 0, 8}}, {[901] = 70}; volumeLog = {}')
+        self.replay(batch)
+        self.assertEqual(list(self.lua.eval('volumeLog').values()), ['chunk removed 901'])
+
+    def test_a_ray_hitting_the_collision_child_still_finds_the_chunk(self):
+        # In the game the ray hits the chunk's collision entity; the chunk with the volume id
+        # sits two levels up (VolumeChunk > VolumeBase > VolumeRoot).
+        self.lua.execute('''
+            chunkPos, chunkVolume, parentOf = {[900] = {12, 0, 8}, [902] = {12, 0, 8}}, {[900] = 7}, {[902] = 903, [903] = 900}
+            local apis = api.world.GetWorldAPIs()
+            local h = apis.editors:CreateUndoOperationsHierarchy()
+            require("Editors.Scenery.Utils.SceneryUtils").DeleteMultiSelection_Core({chunks = {900}}, apis, nil, h)
+            local wait, preview = api.undo.PreviewChangeList(h:GetFullUndoChangeList())
+            api.undo.CommitPreview(preview)
+        ''')
+        self.tick()
+        batch = self.batch()
+        self.assertIn('hier.AddVolumeChunkToCompositeObject(@h,@r1,k12:0:8,b0)', batch)
+        self.lua.execute('''chunkPos, chunkVolume, parentOf = {[911] = {12, 0, 8}}, {[901] = 70}, {[911] = 912, [912] = 901}
+            volumeLog = {}''')
         self.replay(batch)
         self.assertEqual(list(self.lua.eval('volumeLog').values()), ['chunk removed 901'])
 

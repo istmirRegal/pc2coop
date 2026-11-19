@@ -1,4 +1,4 @@
-PC2Coop 1.12.2 - Planet Coaster 2 live zusammen bauen, ueber Steam
+PC2Coop 1.12.3 - Planet Coaster 2 live zusammen bauen, ueber Steam
 
 Installation (jeder Spieler, einmalig)
 1. ZIP in einen eigenen Ordner entpacken.
@@ -171,6 +171,10 @@ Live synchronisiert und im Spiel getestet:
 - Gelaende (Pinsel), Wege (Spline-Wege), Parkname.
 - Fahrgeschaefte (ebene, keine Achterbahnen): neu platzieren und abreissen - einzeln
   ueber ihr Menue oder mehrere per Mehrfachauswahl.
+- Stempel und Pools aus Formen, Loeschen von Wegen und Pools per Mehrfachauswahl (seit
+  1.12.3 kommt das auch bei den Mitspielern an), ebene Fahrgeschaefte aus Bauplaenen,
+  Parkverwaltung: Eintrittspreis, Parkname, Kredit, Fahrgeschaefte oeffnen/schliessen
+  (allein getestet, nachgestellter Mitspieler).
 - Anzeige der Mitspieler (Marke, Sichtkegel, Geist, Sperr-Faerbung), Pause/Tempo,
   Zahlen und Meldungen des Host-Parks, Schutz vor Absturz, wenn ein Mitspieler das
   Objekt loescht, das man gerade haelt (allein getestet, mit nachgestelltem Mitspieler).
@@ -191,10 +195,9 @@ Eingebaut, aber noch nicht im Spiel bestaetigt:
   Mittelklick-Menue, Testfahrt-Einladung, Uebernahme anfragen, Verlauf mit Meldungen und
   "Seit deinem letzten Besuch", Sicherungspunkte mit Abstimmung, Regeln, Wettbewerb,
   Besucher-Modus mit Figur, Maus-Steuerung, Emote-Rad und Kollision.
-- Stempel und Pools aus Formen, gezeichnete Flaechen, Loeschen per Mehrfachauswahl,
-  ebene Fahrgeschaefte aus Bauplaenen.
-- Wasser (Seen), weitere Parkverwaltung (Preise, Oeffnen/Schliessen, Kredite,
-  Forschung), Fahrgeschaefte verschieben, Ein- und Ausgaenge von Fahrgeschaeften.
+- Gezeichnete Flaechen.
+- Wasser (Seen), weitere Parkverwaltung (Shop- und Fahrpreise, Forschung),
+  Fahrgeschaefte verschieben, Ein- und Ausgaenge von Fahrgeschaeften.
 - Achterbahnen als Ganzes verschieben, Rueckgaengig bei Achterbahnen, alles mit zwei
   echten Spielern.
 Noch NICHT synchronisiert (folgt):

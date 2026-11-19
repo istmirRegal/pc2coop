@@ -186,9 +186,17 @@ local function chunkAt(x, y, z)
     local V = global.require("Vector3")
     local hits = global.api.physics.RayCast(physicsWorld, V:new(x, y + 4, z), V:new(x, y - 4, z), global.api.physics.Flag_Volume, 4) or {}
     local volumes = global.api.world.GetWorldAPIs().volumes
+    -- The ray hits the chunk's collision entity; the chunk the editors hand around (multi
+    -- select, delete) is the ancestor that carries its own volume id (2 levels up in 26255360).
     for _, hit in global.ipairs(hits) do
-        local okV, id = global.pcall(function() return volumes:GetVolumeIDFromEntityID(hit.nEntityID, false) end)
-        if okV and id ~= nil then return hit.nEntityID end
+        local entity = hit.nEntityID
+        for _ = 1, 4 do
+            if entity == nil then break end
+            local okV, id = global.pcall(function() return volumes:GetVolumeIDFromEntityID(entity, false) end)
+            if okV and id ~= nil then return entity end
+            local okP, parent = global.pcall(function() return global.api.transform.GetParent(entity) end)
+            entity = okP and parent or nil
+        end
     end
 end
 
