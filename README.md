@@ -5,6 +5,8 @@ selben Park, über Steam-Einladungen, ohne Portfreigabe oder Zusatzprogramm.
 
 ## Für Spieler
 
+0. Den Mod-Loader ACSE für Planet Coaster 2 installieren (Nexus Mods), falls noch nicht
+   vorhanden. Er ist nicht im PC2Coop-Paket.
 1. Neueste ZIP unter [Releases](../../releases/latest) herunterladen und entpacken.
 2. Planet Coaster 2 beenden, `INSTALL.cmd` doppelklicken.
 3. Spiel starten: Hauptmenü → **Multiplayer** → **Lobby erstellen**, Steam-Freunde einladen.
@@ -62,6 +64,6 @@ Release: Version in `probe/.../database/pc2coopprobeluadatabase.lua`,
 
 ## Lizenz
 
-Eigener Code: MIT ([LICENSE](LICENSE)). ACSE: GPL-3.0, Quellcode liegt jedem Release bei.
+Eigener Code: MIT ([LICENSE](LICENSE)). ACSE ist nicht enthalten (eigener Download, eigene Lizenz).
 Keine Spieldateien enthalten. Planet Coaster 2 ist eine Marke von Frontier Developments;
 dieses Projekt ist nicht mit Frontier verbunden.

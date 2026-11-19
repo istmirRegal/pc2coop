@@ -1,10 +1,13 @@
 PC2Coop 1.12.3 - Planet Coaster 2 live zusammen bauen, ueber Steam
 
 Installation (jeder Spieler, einmalig)
+0. ACSE (Mod-Loader fuer Planet Coaster 2) von Nexus Mods installieren, falls noch nicht
+   vorhanden. Es ist nicht in diesem Paket. Wer schon eine fruehere PC2Coop-Version hatte,
+   hat ACSE bereits. Ohne ACSE bricht INSTALL.cmd mit einem Hinweis ab und installiert nichts.
 1. ZIP in einen eigenen Ordner entpacken.
 2. Planet Coaster 2 beenden, INSTALL.cmd doppelklicken. Der Steam-Ordner wird gesucht.
    Falls nicht gefunden: INSTALL.cmd -GameDir "D:\SteamLibrary\steamapps\common\Planet Coaster 2"
-Das ist alles. Kein Zusatzprogramm, kein Browser, keine Netzwerk-Einrichtung.
+Das ist alles. Ausser ACSE kein Zusatzprogramm, kein Browser, keine Netzwerk-Einrichtung.
 
 Aktualisieren
 Planet Coaster 2 beenden, UPDATE.cmd doppelklicken. Es holt die neueste Version von
@@ -263,5 +266,5 @@ PC2 beenden, UNINSTALL.cmd doppelklicken.
 
 Lizenz und Quellcode
 Eigener Code: MIT (LICENSE-PC2Coop.txt, source\).
-ACSE 0.729: GPL-3.0, vollstaendiger Quellcode unter source\third-party\ACSE\.
+ACSE ist nicht enthalten (eigener Download, eigene Lizenz).
 Keine Spieldateien, Spielstaende oder fremden Assets enthalten.

@@ -1,4 +1,7 @@
-"""Build the player ZIP for PC2Coop 1.x: installer, mod payload, ACSE, licenses, source.
+"""Build the player ZIP for PC2Coop 1.x: installer, mod payload, license, source.
+
+No ACSE in any package (since 1.12.3): players install the loader themselves (Nexus Mods);
+the installer refuses without one.
 
 Everything runs inside the game (Lua + DLL + Steam); no Python or browser is shipped.
 Never installs or launches the game. No downloads.
@@ -17,21 +20,14 @@ import zipfile
 PROJECT = Path(__file__).resolve().parents[1]
 WORKSPACE = PROJECT.parents[1]
 EXE_HASH = "9da90ae2611bf41af532a30611082bd90cdda6b325e570ac63a469051e736c12"
-ACSE_COMMIT = "8a843e61bcb57779778536e635d334d882cee7b1"
-ACSE_FILES = ("Init.ovl", "Main.ovl", "Extras.ovl", "Manifest.xml", "Version.txt", "Readme.md", "LICENSE")
 INSTALLER_FILES = ("INSTALL.cmd", "UNINSTALL.cmd", "UPDATE.cmd", "install.ps1", "update.ps1", "LIESMICH.txt")
 # GitHub repository whose releases UPDATE.cmd reads ("owner/name"); set in release.json.
 RELEASE_CONFIG = PROJECT / "release.json"
 
-# The Nexus package: no ACSE (players get it from its own Nexus page), no source folder (on
-# GitHub), no self-updater (updates come from Nexus). The readme says so.
+# The Nexus package: no source folder (on GitHub), no self-updater (updates come from
+# Nexus). The readme says so.
 NEXUS_INSTALLER_FILES = ("INSTALL.cmd", "UNINSTALL.cmd", "install.ps1", "LIESMICH.txt")
 NEXUS_README = [
-    ("Installation (jeder Spieler, einmalig)\n1. ZIP in einen eigenen Ordner entpacken.\n",
-     "Installation (jeder Spieler, einmalig)\n"
-     "0. ACSE (Mod-Loader fuer Planet Coaster 2) von Nexus Mods installieren, falls noch nicht\n"
-     "   vorhanden. Ohne ACSE bricht INSTALL.cmd mit einem Hinweis ab und installiert nichts.\n"
-     "1. ZIP in einen eigenen Ordner entpacken.\n"),
     ("Planet Coaster 2 beenden, UPDATE.cmd doppelklicken. Es holt die neueste Version von\n"
      "GitHub, prueft die Pruefsumme und installiert sie. Alle Mitspieler brauchen dieselbe\n",
      "Planet Coaster 2 beenden, die neue Version von Nexus Mods in einen eigenen Ordner\n"
@@ -41,11 +37,9 @@ NEXUS_README = [
      "  GitHub (istmirRegal/pc2coop) und installiert nur, wenn die Pruefsumme stimmt.\n",
      "- Kein eigener Server: die Verbindung laeuft ueber Steam. Der Installer laedt nichts\n"
      "  aus dem Internet.\n"),
-    ("Eigener Code: MIT (LICENSE-PC2Coop.txt, source\\).\n"
-     "ACSE 0.729: GPL-3.0, vollstaendiger Quellcode unter source\\third-party\\ACSE\\.\n",
+    ("Eigener Code: MIT (LICENSE-PC2Coop.txt, source\\).\n",
      "Eigener Code: MIT (LICENSE-PC2Coop.txt). Quellcode und Bauanleitung:\n"
-     "https://github.com/istmirRegal/pc2coop\n"
-     "ACSE ist nicht enthalten (eigener Download, eigene Lizenz).\n"),
+     "https://github.com/istmirRegal/pc2coop\n"),
 ]
 
 
@@ -63,11 +57,9 @@ def copy(source: Path, destination: Path) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--acse-source", type=Path, default=WORKSPACE / "work/toolchain/acse-source")
-    parser.add_argument("--acse-built", type=Path, default=WORKSPACE / "work/coop-anything/local/test-install/Win64/ovldata/ACSE")
     parser.add_argument("--out", type=Path)
     parser.add_argument("--repo", help="GitHub owner/name for updates (default: release.json)")
-    parser.add_argument("--nexus", action="store_true", help="Package for Nexus Mods: without ACSE, source and updater")
+    parser.add_argument("--nexus", action="store_true", help="Package for Nexus Mods: without source and updater")
     args = parser.parse_args()
     repo = args.repo or ""
     if not repo and RELEASE_CONFIG.is_file():
@@ -83,8 +75,6 @@ def main() -> int:
     for name, expected in native["source_sha256"].items():
         if Path(name).name != name or sha(PROJECT / "native" / name) != expected:
             raise RuntimeError("Native source changed since its build; rebuild before packaging")
-    if not (args.acse_source / "LICENSE").read_text(encoding="utf8").startswith("                    GNU GENERAL PUBLIC LICENSE"):
-        raise RuntimeError("Unexpected ACSE license; review before distribution")
     with tempfile.TemporaryDirectory(prefix="pc2coop-release-", dir=WORKSPACE / "work") as temporary:
         stage = Path(temporary) / "PC2Coop"
         for name in (NEXUS_INSTALLER_FILES if args.nexus else INSTALLER_FILES):
@@ -102,10 +92,6 @@ def main() -> int:
         for file in ("Main.ovl", "Manifest.xml"):
             copy(PROJECT / "build/PC2CoopProbe" / file, stage / "payload/PC2CoopProbe" / file)
         copy(PROJECT / "build/native/PC2CoopDiagnostic.dll", stage / "payload/PC2CoopProbe/PC2CoopDiagnostic.dll")
-        if not args.nexus:
-            for file in ACSE_FILES:
-                copy(args.acse_built / file, stage / "payload/ACSE" / file)
-            copy(args.acse_source / "LICENSE", stage / "licenses/ACSE-GPL-3.0.txt")
         for folder in (() if args.nexus else ("probe", "native", "tools", "tests", "docs", "alpha-dist")):
             for file in sorted((PROJECT / folder).rglob("*")):
                 if file.is_file() and file.suffix in {".py", ".lua", ".cpp", ".h", ".js", ".html", ".css", ".md", ".json", ".xml", ".ps1", ".cmd", ".txt"} \
@@ -114,18 +100,10 @@ def main() -> int:
         if not args.nexus:
             for name in ("LICENSE", "README.md"):
                 copy(PROJECT / name, stage / "source" / name)
-            for file in sorted((args.acse_source / "Source/ACSE").rglob("*")):
-                if file.is_file():
-                    copy(file, stage / "source/third-party/ACSE" / file.relative_to(args.acse_source))
-            copy(args.acse_source / "LICENSE", stage / "source/third-party/ACSE/LICENSE")
-            (stage / "source/third-party/ACSE/BUILD.txt").write_text(
-                f"ACSE 0.729, https://github.com/OpenNaja/ACSE, commit {ACSE_COMMIT}, GPL-3.0.\n"
-                "Built unmodified with Cobra Tools 2dd9d1445608d6171c1ec1f2333cefb4d81a1317 (Python 3.11),\n"
-                "one OVL per folder (Init, Main, Extras), ZLIB, with the supplied Manifest.xml.\n", encoding="utf8")
         files = [{"path": f.relative_to(stage / "payload").as_posix(), "sha256": sha(f), "bytes": f.stat().st_size}
                  for f in sorted((stage / "payload").rglob("*")) if f.is_file()]
         manifest = {"schema": 1, "version": version, "tested_steam_build": "26255360",
-                    "tested_exe_sha256": EXE_HASH, "acse_commit": "external" if args.nexus else ACSE_COMMIT, "files": files}
+                    "tested_exe_sha256": EXE_HASH, "acse_commit": "external", "files": files}
         (stage / "payload-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf8")
         temp_zip = out.with_suffix(".tmp.zip")
         with zipfile.ZipFile(temp_zip, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
@@ -135,6 +113,8 @@ def main() -> int:
         with zipfile.ZipFile(temp_zip) as archive:
             if archive.testzip() is not None:
                 raise RuntimeError("Archive CRC check failed")
+            if any(name.startswith("PC2Coop/payload/ACSE/") or "/third-party/ACSE/" in name for name in archive.namelist()):
+                raise RuntimeError("ACSE ended up in the package")
         temp_zip.replace(out)
     digest = sha(out)
     # Uploaded next to the ZIP; UPDATE.cmd refuses a download without it.
