@@ -1467,13 +1467,16 @@ local function onNet(event)
     elseif kind == "key:mup" then
         Session._MiddleUp(global.tonumber(f[2]) or 9999, global.tonumber(f[3]) or 9999)
     elseif kind == "key:v" then
-        -- Visitor mode keys (DLL, only while it is on): Tab, T, E, 1-6.
+        -- Visitor mode keys (DLL, only while it is on): Tab, T, E, G, 1-6.
         local Visitor = global.require("pc2coop.visitor")
         local todo = Visitor.OnKey(f[2], f[3] == "1")
         if todo == "stop" then Visitor.Stop()
         elseif todo == "interact" then
             local ok, failure = Visitor.Interact(sync.RideKey, sync.GidToEntity)
             if not ok then toast("E: " .. global.tostring(failure) .. ".", "ff922b") end
+        elseif todo == "follow" then
+            local ok, failure = Visitor.FollowGuest()
+            if not ok then toast("G: " .. global.tostring(failure) .. ".", "ff922b") end
         end
     elseif kind == "mouse" then
         global.require("pc2coop.visitor").OnMouse(global.tonumber(f[2]) or 0, global.tonumber(f[3]) or 0)

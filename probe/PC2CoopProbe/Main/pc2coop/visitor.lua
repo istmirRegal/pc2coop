@@ -9,7 +9,7 @@
 -- First person (fallback, or when the figure prefab is missing): the game's "Walking" camera.
 --
 -- Keys come from the DLL while visitor mode is on (Tab back to building, T held: emote wheel,
--- E: ride the nearest ride, 1-6 in the wheel); with mouse look the DLL keeps the cursor in the
+-- E: ride the nearest ride, G: go along with the nearest guest, 1-6 in the wheel); with mouse look the DLL keeps the cursor in the
 -- middle and sends its travel, which turns the camera.
 -- Riding along uses the game's ride camera (GamefaceCameraSettings -> FirstPersonRide); the
 -- guest view the game's VisitorCamera mode. The others see the visitor through presence:
@@ -29,7 +29,8 @@ local STEP = 0.6               -- highest step the figure climbs
 local active = false
 local mode = "third"           -- "third" or "first"
 local preferred = "third"
-local riding = nil             -- {key, name} while on a ride
+local riding = nil             -- {key, name} while on a ride; {guest, name} with a guest
+local GUEST_RANGE = 30         -- metres around the figure for "Gast begleiten"
 local guestView = false        -- the game's visitor camera: looking over a guest's shoulder
 local rideStarted = 0
 local startedAt = 0
@@ -317,6 +318,53 @@ function Visitor.Ride(key, findRide)
     return true
 end
 
+-- The nearest real park guest within range of the figure (or of where the player looks).
+-- Guests have no physics flag of their own; the select mode's ray with all flags hits them,
+-- and the guest is the parent it would pick (SelectAndEditComponent), confirmed by the guest
+-- API. Tested in the test copy (build 26255360): 72 rays find guests up to 30 m away.
+local function nearestGuest(range)
+    local from
+    if pos then from = V(pos.x, pos.y + 1, pos.z)
+    else
+        local f = global.require("pc2coop.world").FocusPoint()
+        from = V(f:GetX(), f:GetY() + 1, f:GetZ())
+    end
+    physicsWorld = physicsWorld or global.api.entity.FindEntityByName("MainPhysicsWorld")
+    local ph, sec, guests = global.api.physics, apis().SelectAndEditComponent, apis().guests
+    local best, bestD = nil, nil
+    for i = 0, 71 do
+        local a = i * global.math.pi / 36
+        local to = V(from:GetX() + global.math.sin(a) * range, from:GetY(), from:GetZ() + global.math.cos(a) * range)
+        for _, hit in global.ipairs(ph.RayCast(physicsWorld, from, to, ~0, 3) or {}) do
+            local okP, guest = global.pcall(function() return sec:FindParentWithComponent(hit.nEntityID) end)
+            local okG, group = global.pcall(function() return guests:TryGetGuestGroupID(guest) end)
+            if okP and guest and okG and group ~= nil and not ownsEntity(hit.nEntityID) then
+                local okT, p = global.pcall(function() return global.api.transform.CalculateWorldTransform(guest):GetPos() end)
+                if okT and p then
+                    local dx, dz = p:GetX() - from:GetX(), p:GetZ() - from:GetZ()
+                    local d = global.math.sqrt(dx * dx + dz * dz)
+                    if d <= range and (not bestD or d < bestD) then best, bestD = guest, d end
+                end
+            end
+        end
+    end
+    return best
+end
+
+-- G: go along with the nearest guest - the game's own guest camera (radial menu of a guest:
+-- "Gast-Kamera"), with its view choice and "Zurueck". The figure waits where it stands.
+function Visitor.FollowGuest()
+    if not active or riding or guestView then return false, "gerade nicht" end
+    local ok, guest = global.pcall(nearestGuest, GUEST_RANGE)
+    if not ok or not guest then return false, "kein Gast in der Naehe" end
+    local okM = global.pcall(function()
+        global.require("Editors.Shared.BaseUIMode").SetNewMode("GamefaceCameraSettings", guest, "Guest")
+    end)
+    if not okM then return false, "die Gast-Kamera geht gerade nicht" end
+    active, riding, rideStarted, wheel = true, {guest = guest, name = "Gast"}, frames, nil
+    return true
+end
+
 -- E: the nearest ride within 25 m.
 function Visitor.Interact(keyOf, findRide)
     local list = Visitor.Rides(keyOf)
@@ -330,6 +378,7 @@ function Visitor.OnKey(name, down)
     if not active then return nil end
     if name == "tab" and down then return "stop" end
     if name == "e" and down and not riding and not guestView then return "interact" end
+    if name == "g" and down and not riding and not guestView then return "follow" end
     if name == "t" then
         if down and not riding and not wheel then wheel = {x = 0, y = 0, selected = nil}; lastNet = -1000; keepInput()
         elseif not down and wheel then
@@ -448,6 +497,7 @@ end
 function Visitor.Activity()
     if not active then return nil end
     if guestView then return "geht als Besucher in Ich-Sicht durch den Park" end
+    if riding and riding.guest then return "begleitet einen Gast" end
     if riding then return "faehrt " .. global.string.gsub(riding.name, "[|,;\n]", "") end
     return "geht als Besucher durch den Park"
 end

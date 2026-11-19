@@ -365,13 +365,15 @@ class VisitorBar extends StateComponent {
         const bar = h('div', { style: pill },
             visitor.active && h('div', { style: { margin: '0 0 4px', color: '#9fd8f0' } },
                 visitor.riding ? 'Du fährst ' + visitor.riding + ' - "Zurück" unten rechts steigt aus'
+                    : visitor.following ? 'Du begleitest einen Gast - oben rechts Ansicht oder Gast wechseln, "Zurück" unten rechts beendet das'
                     : visitor.guest ? 'Ich-Sicht des Spiels: WASD laufen, Alt springen, Strg ducken, L Lampe - "Zurück" beendet das'
-                    : 'Besucher: Maus umsehen · WASD laufen · Shift rennen · T Emotes · E einsteigen · Tab zurück'),
+                    : 'Besucher: Maus umsehen · WASD laufen · Shift rennen · T Emotes · E einsteigen · G Gast begleiten · Tab zurück'),
             buttons([
                 !visitor.active && { label: 'Als Besucher losgehen', onSelect: () => request('visitor', '1') },
                 ...(visitor.active && coop.role ? EMOTE_BUTTONS.map(([kind, label]) => ({ label, onSelect: () => request('emote', kind) })) : []),
                 { label: visitor.list ? 'Liste schließen' : 'Fahrgeschäfte', onSelect: () => request('visitorlist', visitor.list ? '0' : '1') },
-                visitor.active && !visitor.riding && !visitor.guest && { label: 'Ich-Sicht', onSelect: () => request('guest', '1') },
+                visitor.active && !visitor.riding && !visitor.guest && !visitor.following && { label: 'Ich-Sicht', onSelect: () => request('guest', '1') },
+                visitor.active && !visitor.riding && !visitor.guest && !visitor.following && { label: 'Gast begleiten', onSelect: () => request('follow', '1') },
                 visitor.active && { label: 'Zurück zum Bauen', onSelect: () => request('visitor', '0') },
             ]));
         const rides = list(visitor.rides);

@@ -129,6 +129,10 @@ Besucher-Modus (Reiter Besuchen)
   Richtung oder 1-6, T loslassen sendet. Die anderen sehen deine Figur das Emote spielen
   (winken, jubeln, lachen ...).
 - E: ins naechste Fahrgeschaeft einsteigen (bis 25 m). "Zurueck" unten rechts steigt aus.
+- G (oder "Gast begleiten"): mit der Gast-Kamera des Spiels beim naechsten Parkgast (bis
+  30 m) mitgehen - wie "Gast-Kamera" im Radialmenue eines Gastes. Oben rechts Ansicht oder
+  Gast wechseln, "Zurueck" unten rechts fuehrt wieder zur Figur (das Spiel zeigt dann das
+  Infofenster des Gastes). Die anderen sehen bei dir "begleitet einen Gast".
 - Tab: zurueck zum Bauen.
 - "Ich-Sicht (Spiel)": der eingebaute Laufmodus des Spiels an derselben Stelle - mit Boden,
   Treppen, Springen (Alt), Ducken (Strg), Schwimmen und Lampe (L). "Zurueck" unten rechts

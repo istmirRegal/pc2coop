@@ -232,6 +232,46 @@ class ThirdPersonTests(unittest.TestCase):
         self.assertEqual(self.lua.eval('figure.destroyed'), 77)
         self.assertEqual(list(self.lua.eval('commands').values())[-1], 'visitor|0|0')
 
+    def test_g_goes_along_with_the_nearest_guest_and_back(self):
+        self.lua.execute('''
+            local V3 = require("Vector3")
+            guestsAt = {[501] = {6, 0, 8}, [502] = {2, 0, 3}}   -- guest -> where it stands; 502 is nearer
+            apis.SelectAndEditComponent = {FindParentWithComponent = function(_, e)
+                if e == 601 then return 501 elseif e == 602 then return 502 end
+                return e
+            end}
+            apis.guests = {TryGetGuestGroupID = function(_, e) if guestsAt[e] then return 7 end return nil end}
+            local calc = api.transform.CalculateWorldTransform
+            api.transform.CalculateWorldTransform = function(e)
+                local g = guestsAt[e]
+                if g then return {GetPos = function() return V3:new(g[1], g[2], g[3]) end} end
+                return calc(e)
+            end
+            -- only the select mode's "everything" ray sees guests
+            api.physics.RayCast = function(world, a, b, flags, n)
+                if flags == -1 then return {{nEntityID = 9}, {nEntityID = 601}, {nEntityID = 602}} end
+                return {}
+            end''')
+        self.v.Start()
+        self.lua.execute('''local B = require("Editors.Shared.BaseUIMode")
+            B.SetNewMode = function(name, a, b) ui.mode, ui.target, ui.kind = name, a, b end''')
+        self.assertEqual(self.v.OnKey('g', True), 'follow')
+        self.assertTrue(self.v.FollowGuest())
+        self.assertEqual((self.lua.eval('ui.mode'), self.lua.eval('ui.target'), self.lua.eval('ui.kind')),
+                         ('GamefaceCameraSettings', 502, 'Guest'))
+        self.assertEqual(self.v.Activity(), 'begleitet einen Gast')
+        self.assertIsNone(self.v.Feet())                     # the others draw no figure meanwhile
+        self.assertIsNone(self.v.OnKey('g', True))
+        self.tick(30)
+        self.assertTrue(self.v.Active())
+        # "Zurueck" in the game's guest camera: back to the figure.
+        self.lua.execute('ui.mode = "Select"; cam.mode = "StandardOrbit"')
+        self.tick(90)
+        self.assertEqual(self.v.Activity(), 'geht als Besucher durch den Park')
+        self.assertEqual(self.lua.eval('cam.mode'), 'Avatar')
+        self.lua.execute('guestsAt = {}')
+        self.assertEqual(tuple(self.v.FollowGuest()), (False, 'kein Gast in der Naehe'))
+
     def test_first_person_when_the_figure_is_missing(self):
         self.lua.execute('prefabOK = false')
         self.v.Start()

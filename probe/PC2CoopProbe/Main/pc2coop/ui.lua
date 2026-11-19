@@ -199,7 +199,8 @@ local function visitorState()
     end
     local riding = Visitor.Riding()
     local wheel = Visitor.Wheel and Visitor.Wheel()
-    return {active = Visitor.Active(), riding = riding and riding.name or false, guest = Visitor.GuestView and Visitor.GuestView() or false,
+    return {active = Visitor.Active(), riding = riding and not riding.guest and riding.name or false,
+        following = riding and riding.guest ~= nil or false, guest = Visitor.GuestView and Visitor.GuestView() or false,
         wheel = wheel and {selected = wheel.selected or false} or false, view = Visitor.View and Visitor.View() or "first",
         rides = rides, list = visitorList,
         emotes = session.Emotes and session.Emotes() or {}}
@@ -297,6 +298,10 @@ local actions = {
     end,
     emote = function(arg) session.Emote(arg) end,
     guest = function() global.require("pc2coop.visitor").WatchGuest() end,
+    follow = function()
+        local ok, failure = global.require("pc2coop.visitor").FollowGuest()
+        if not ok then session.Notice("Gast begleiten: " .. global.tostring(failure) .. ".", "ff922b") end
+    end,
     visitorlist = function(arg) visitorList = arg == "1" end,
     paneltab = function(arg) if TABS[arg] then panelTab = arg end end,
     -- "<kind>|<title>|<text>|<assignee>|<radius>": tasks need no place, the rest goes to anchor().
