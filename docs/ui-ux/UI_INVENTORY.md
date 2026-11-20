@@ -85,14 +85,12 @@ Verlauf · Sitzung**. Im Hauptmenü und ohne Sitzung gibt es nur die Team-Ansich
 
 | Element | Ort | Wann | Bedienung | FEAT |
 |---|---|---|---|---|
-| Spielerleiste (`PlayerBar`) | oben rechts, ab 84 px | in Sitzung im Park, nicht beim Mitfahren | Klick auf Mitspieler = folgen | FEAT-090, FEAT-096 |
-| Hinweis „Der Host ist im Hauptmenü …“ | unter der Spielerleiste | Host im Hauptmenü | – | FEAT-033 |
+| Sitzungs-Cluster (`PlayerBar`): Avatar, Name, Krone, Tätigkeit; darunter die Wettbewerbs-Uhr | oben rechts, ab 4.2 rem | in Sitzung im Park; beim Mitfahren nur Avatare | Klick auf Mitspieler = folgen | FEAT-090, FEAT-096 |
+| Verbindungs-Pille (`ConnectionPill`): keine Verbindung zum Host / nicht synchron (+ „Neu synchronisieren“) / Host im Hauptmenü | oben Mitte, 5 rem | nur bei Problemen, Fenster zu | `resync` | FEAT-033, FEAT-031 |
 | Namensschilder | über dem Blickpunkt der Mitspieler (Coaster-Labels des Spiels, Stil in `DebugToolImports.js`) | Mitspieler im Park, F8 „Namensschilder“ an | – | FEAT-091 |
 | Bodenmarke, Sichtkegel, Geist, Sperr-Färbung, Figuren | in der Welt (`viz.lua`) | Mitspieler im Park | – | FEAT-092–094, FEAT-171 |
 | Kontextmenü (`ContextMenu`) | an der Maus | nach eigenem Ping (kurzer Mittelklick), nicht im Besuch | `ctx` (invite, ride, take, comment, proposal, area, meet, close) | FEAT-136, FEAT-137 |
-| Abstimmungs-Banner (`VoteBanner`) | oben Mitte, 140 px | offene Abstimmung | „Ja“/„Nein“ → `vote` | FEAT-141 |
-| Einladungs-Banner (`InviteBanner`) | oben Mitte, 140 px | Testfahrt-Einladung, Fenster zu | „Mitfahren“/„Später“ → `invitation` | FEAT-138 |
-| Wettbewerbs-Uhr (`CompBanner`) | oben Mitte, 18 px | Wettbewerb läuft, Fenster zu | – | FEAT-145 |
+| Anfrage-Karte (`RequestCard`), eine zur Zeit mit Zähler „1 von n“: Beitrittsanfrage (Host) „Zulassen“/„Ablehnen“ → `approve`/`deny`; Abstimmung „Ja“/„Nein“ → `vote`; Testfahrt „Mitfahren“/„Später“ → `invitation`; nach einem Bauduell „Bewerten“ → `paneltab` + `open` | oben Mitte, 7.5 rem | etwas wartet auf eine Antwort, Fenster zu | siehe Spalte links | FEAT-027, FEAT-141, FEAT-138, FEAT-147 |
 | Toasts (`Toasts`) | unten links, ab 120 px | Ereignisse; max. 5, je 6 s | – | FEAT-044, FEAT-116 |
 | Park-Meldungen | Meldungen des Spiels beim Host (Pannen, Wartung, Proteste; `World.HookNotifications`) gehen als `note` an alle → Verlauf | in Sitzung | – | FEAT-140 |
 | Undo/Redo | Spielknopf und Strg+Z (`World.HookHUD`) | immer; gesperrt für fremde Schritte | – | FEAT-074 |

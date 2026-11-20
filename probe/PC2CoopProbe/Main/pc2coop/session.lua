@@ -1010,7 +1010,7 @@ local function onMessage(from, payload)
             -- is only handed to someone the host invited from here or lets in now.
             if not players[from] and askBeforeJoin and not invited[from] and not approved[from] then
                 if not requests[from] then
-                    toast(name .. " möchte beitreten. Im Multiplayer-Fenster zulassen oder ablehnen.", "fcc419")
+                    toast(name .. " möchte beitreten.", "fcc419")
                     emit("session:join-request|" .. from)
                 end
                 requests[from] = {name = name, mode = f[4], base = f[3], dlc = f[7], mods = f[8]}

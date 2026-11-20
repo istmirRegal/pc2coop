@@ -3,6 +3,24 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-20 – UX-Overhaul P1, Schritt 1: Sitzungs-Cluster, Anfrage-Karte, Verbindungs-Pille
+
+- `VoteBanner`, `InviteBanner` und `CompBanner` sind entfernt. An ihre Stelle treten:
+  - `RequestCard` (`pendingRequests`, eine Karte mit Zähler)
+  - `ConnectionPill` (`silent`, Desync des Mitspielers, `hostlobby`)
+  - die Uhr in `PlayerBar`
+- `JoinProgress` zeigt `silent` nicht mehr; das übernimmt die Pille. Beim Mitfahren zeigt
+  `PlayerBar` nur die Avatare. `buttons()` gibt `modifiers` an den Spiel-`Button` weiter
+  (z. B. `positive`).
+- Lua-Toast bei Beitrittsanfrage ohne Bedienweg: „X möchte beitreten.“
+- Fund: Das `Icon` des Spiels ignoriert `style` und hat ohne CSS-Klasse die Größe 0. Die Krone
+  war deshalb nie zu sehen. Neu ist `glyph()`: ein `div` mit Hintergrundbild, fester Größe und
+  `filter: brightness(0) invert(1)` für dunkle Gründe. Im Spiel geprüft.
+- Testkopie (1080p) fotografiert:
+  - Anfrage-Karte mit Beitrittsanfrage („Zulassen“ grün)
+  - Uhr im Cluster, Krone, Uhr- und Multiplayer-Icon
+- Die Pille ist nicht im Spiel ausgelöst; dafür fehlt ein Desync bzw. Verbindungsabbruch.
+
 ## 2026-11-20 – UX-Overhaul P0, Schritt 2: Schrift und Texte
 
 - Die Schriftgrößen folgen der Skala des Spiels: 0.9, 1, 1.1 und 1.2 rem. Vorher waren es

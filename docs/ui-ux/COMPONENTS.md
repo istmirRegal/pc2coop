@@ -24,13 +24,12 @@ Wer ein Feld hinzufügt, trägt es hier ein.
 | Komponente | Zeigt | Liest | FEAT |
 |---|---|---|---|
 | `CoopLayer` | Wurzel, stapelt alles | – | FEAT-110 |
-| `PlayerBar` | Spielerleiste oben rechts | players, following, visitor, join | FEAT-090 |
+| `PlayerBar` | Sitzungs-Cluster oben rechts: Spieler, Wettbewerbs-Uhr | players, following, visitor, team.competition | FEAT-090, FEAT-145 |
 | `VisitorBar` | Besucher-Leiste, Kaufliste, Fahrgeschäfte-Liste, Bewertung | visitor, role | FEAT-160–169 |
 | `EmoteWheel` | Emote-Rad | visitor.wheel | FEAT-168 |
-| `VoteBanner` | Abstimmung | team.vote | FEAT-141 |
+| `RequestCard` (`pendingRequests`) | Anfrage-Karte: Beitritt, Abstimmung, Testfahrt, Bewerten | requests, team.vote, team.invitation, team.competition | FEAT-027, FEAT-141, FEAT-138, FEAT-147 |
+| `ConnectionPill` | Verbindung zum Host, Sync, Host im Hauptmenü | join, desync, role | FEAT-031, FEAT-033 |
 | `ContextMenu` | Mittelklick-Menü | team.context | FEAT-136 |
-| `CompBanner` | Wettbewerbs-Uhr | team.competition | FEAT-145 |
-| `InviteBanner` | Testfahrt-Einladung | team.invitation | FEAT-138 |
 | `Toasts` | Meldungen unten links (max. 5, 6 s) | toasts | FEAT-116 |
 | `Lobby` | Multiplayer-Fenster mit Reitern (`renderBody`, `renderVisit`, `renderPlan`, `renderHistory`, `renderSession`, `renderPlayers`, `renderChooser`, `renderPlace`, `renderChat`, `renderContent`, `renderFriends`) | fast alles | FEAT-110 |
 | `MiniLobby` | Lobby-Karte im Hauptmenü | role, players, open | FEAT-034 |
@@ -46,6 +45,7 @@ Wer ein Feld hinzufügt, trägt es hier ein.
 |---|---|
 | `C(name)` | Farbe aus den CSS-Variablen des Spiels (`--name`), gelesen in `refreshPalette()` alle 10 Abfragen; Rückfall `PALETTE_DEFAULT` (ADR-020) |
 | `rem(px)` | Größe in rem (`px / 20`, Entwurf bei 1080p) |
+| `glyph(src, size, white, extra)` | Spiel-Icon aus `/img/icons/` mit fester Größe; das `Icon` des Spiels ignoriert `style` (Größe 0) |
 | `remPx()` | aktuelle Pixel pro rem (für Mauskoordinaten) |
 | `HUD_BG(alpha)` | dunkler HUD-Grund (`--accentPanelBackground` des Standardthemas) |
 | `literal(text)` | Text für Spiel-Komponenten |

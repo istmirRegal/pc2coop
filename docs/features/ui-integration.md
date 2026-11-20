@@ -47,7 +47,7 @@ Code: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js`,
 
 ### FEAT-117 – Banner (Abstimmung, Wettbewerb, Einladung)
 - **Status:** Implemented · **Seit:** 1.12.0
-- **Technik:** Klassen `VoteBanner` (FEAT-141), `CompBanner` (FEAT-145), `InviteBanner` (FEAT-138).
+- **Technik:** Klassen `RequestCard` (Anfragen: FEAT-027, FEAT-141, FEAT-138, FEAT-147), `ConnectionPill` (FEAT-031), Uhr in `PlayerBar` (FEAT-145).
 
 ### FEAT-118 – Zustandsbrücke Lua ↔ Oberfläche
 - **Status:** Implemented · **Seit:** 1.8.0

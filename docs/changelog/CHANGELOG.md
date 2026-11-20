@@ -15,6 +15,15 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
   - „Sitzung“ statt „Lobby“ und „Park hosten“
   - „Hinbringen“ wie im Spiel
 - Meldungen jetzt mit Umlauten.
+- Neu: eine Anfrage-Karte oben für alles, was eine Antwort braucht: Beitrittsanfragen,
+  Abstimmungen, Testfahrt-Einladungen und „Bewerten“ nach einem Bauduell. Vorher konnten sich
+  zwei Banner überdecken, und Beitrittsanfragen standen nur im Fenster.
+- Die Wettbewerbs-Uhr steht jetzt unter den Spielern oben rechts. Die Spielerleiste bleibt
+  beim Mitfahren sichtbar (nur Avatare).
+- Verbindungsprobleme erscheinen als Hinweis oben in der Mitte, „Nicht synchron“ mit dem Knopf
+  „Neu synchronisieren“ direkt daneben. Vorher stand das nur im Fenster oder als großer Kasten
+  in der Bildmitte.
+- Icons sind sichtbar, z. B. die Krone des Hosts. Vorher waren sie unsichtbar.
 
 ## 1.13.0 – 2026-11-19
 

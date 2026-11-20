@@ -81,7 +81,7 @@ Gemeinsam planen, entscheiden, spielen. Konzept: `docs/KONZEPT.md`. Code:
 - **Technik:** `Session.Checkpoint`, `Session.Propose`, `Session.Vote`, `Session._VoteCheck`,
   `Session.VoteView`; Nachrichten `vote`, `vote-answer`; Wiederherstellen lädt den
   gespeicherten Park für alle. UI-Aktionen `checkpoint`, `restore`, `vote`.
-- **UI:** Reiter Verlauf „Sicherungspunkte“, Banner `VoteBanner`.
+- **UI:** Reiter Verlauf „Sicherungspunkte“, Anfrage-Karte `RequestCard`.
 
 ### FEAT-142 – Sitzungsregeln und Schnellwahl
 - **Status:** Implemented · **Seit:** 1.12.0
@@ -109,7 +109,7 @@ Gemeinsam planen, entscheiden, spielen. Konzept: `docs/KONZEPT.md`. Code:
 - **Technik:** `Session.StartCompetition("duel", minutes, topic)`; Host hält `comp`,
   sendet `cp|...` (`Session._CompLine`, `Session._CompRead`); Echtzeit von der DLL (`now`,
   FEAT-197) über `Session._CompClock`, `Session._CompCheck`; Nachzügler bekommen die cp-Zeile.
-  UI-Aktion `comp_start`. Klasse `CompBanner`.
+  UI-Aktion `comp_start`. Uhr im Sitzungs-Cluster (`PlayerBar`), Bewerten über die Anfrage-Karte.
 
 ### FEAT-146 – Wettbewerb: Koop gegen die Uhr
 - **Status:** Implemented · **Seit:** 1.12.0

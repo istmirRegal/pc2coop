@@ -155,7 +155,7 @@ const FONT = 'StandardFont, StandardFont_fallback1, StandardFont_fallback2, Stan
 // They are read like the game's BibleColours.js does: Gameface ignored var() in the inline
 // 'background' shorthand (2026-11-20, window without background); plain values work everywhere.
 // Defaults = the game's default theme.
-const PALETTE_DEFAULT = { accent: '#008ACC', neutral3: '#9cbad0', accentButtonDesaturatedDark: '#2b6e9c', accentButtonLight: '#81d3fd', accentFaint: '#cce8f5', accentLight: '#64bde8', accentText: '#0b3a56', area: '#E8EFF4', highlight: '#FFBB00', panel: '#FFFFFF', positive: '#00CA65', positiveDark: '#099340', warning: '#EE7722', warningDark: '#9b5000', whiteColor: '#FFFFFF' };
+const PALETTE_DEFAULT = { accent: '#008ACC', alert: '#FF3363', neutral3: '#9cbad0',accentButtonDesaturatedDark: '#2b6e9c', accentButtonLight: '#81d3fd', accentFaint: '#cce8f5', accentLight: '#64bde8', accentText: '#0b3a56', area: '#E8EFF4', highlight: '#FFBB00', panel: '#FFFFFF', positive: '#00CA65', positiveDark: '#099340', warning: '#EE7722', warningDark: '#9b5000', whiteColor: '#FFFFFF' };
 const palette = Object.assign({}, PALETTE_DEFAULT);
 function refreshPalette() {
     try {
@@ -167,6 +167,11 @@ function refreshPalette() {
     } catch (e) { /* keep the last colours */ }
 }
 const C = (name) => palette[name] || PALETTE_DEFAULT[name];
+// A game icon from /img/icons/. The game's Icon component ignores 'style' and gets its size only from
+// CSS classes, so icons drawn with it had no size (2026-11-20). white: tint for dark backgrounds.
+const glyph = (src, size, white, extra) => h('div', { style: Object.assign({ width: size, height: size, flexShrink: 0,
+    backgroundImage: 'url(/' + src + ')', backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center',
+    filter: white ? 'brightness(0) invert(1)' : 'none' }, extra || {}) });
 // Sizes follow the game's UI scale: 1rem = 20px at 1080p (UIScaleConfig.js), see docs/ui-ux/NATIVE_UI.md.
 const rem = (px) => (Math.round(px / 20 * 1000) / 1000) + 'rem';
 const remPx = () => parseFloat(document.documentElement.style.fontSize) || 20;
@@ -343,29 +348,36 @@ function playerActivity(coop, p) {
     return activityText(p.act, p.hold);
 }
 
-// Small round player chips, always visible while in a park session.
+// Session cluster, top right (UX_OVERHAUL.md §6): players with avatar, name, crown and activity,
+// the competition clock below. The same place in building, visiting and riding; on a ride only
+// the avatars, because the game's ride camera panel shares the corner.
 class PlayerBar extends StateComponent {
     render(props, state) {
         const coop = state.coop || {};
         if (!coop.role || coop.context === 'menu' || list(coop.players).length === 0) return null;
-        // On a ride the game's camera panel sits up here; the visitor bar shows the ride.
-        if (coop.visitor && coop.visitor.riding) return null;
-        const join = coop.join || {};
-        return h('div', { style: { position: 'absolute', top: '4.2rem', right: '1.2rem', display: 'flex', flexDirection: 'column',
+        const compact = !!(coop.visitor && coop.visitor.riding);
+        const comp = coop.team && coop.team.competition;
+        const s = comp ? (comp.left || 0) : 0;
+        return h('div', { style: { position: 'absolute', top: '4.2rem', right: '1rem', display: 'flex', flexDirection: 'column',
             alignItems: 'flex-end' } },
-            list(coop.players).map((p) => h('div', { key: p.sid, onClick: p.me ? undefined : () => request('follow', p.sid),
-                style: { display: 'flex', alignItems: 'center', margin: '0.15rem 0', pointerEvents: p.me ? 'none' : 'auto',
-                padding: '0.2rem 0.6rem 0.2rem 0.2rem', borderRadius: '1rem', backgroundColor: HUD_BG(0.72),
-                borderWidth: '2px', borderStyle: 'solid', borderColor: coop.following === p.sid ? C('highlight') : 'transparent' } },
-                h(Avatar, { player: p, size: 28, pic: avatars[p.sid] }),
-                h('div', { style: { color: C('whiteColor'), fontSize: '0.9rem', marginLeft: '0.45rem' } }, p.name + (p.me ? ' (du)' : '')),
-                p.host && h(Icon, { src: 'img/icons/crown.svg', style: { width: '0.9rem', height: '0.9rem', marginLeft: '0.35rem' } }),
-                h('div', { style: { color: coop.following === p.sid ? C('highlight') : C('accentButtonLight'), fontSize: '0.9rem', marginLeft: '0.45rem' } },
-                    coop.following === p.sid ? 'du folgst – Klick beendet'
-                        : ((coop.visitor && coop.visitor.emotes && coop.visitor.emotes[p.sid]) || playerActivity(coop, p))))),
-            join.phase === 'hostlobby' && h('div', { style: { marginTop: '0.3rem', padding: '0.4rem 0.6rem', maxWidth: '18rem', borderRadius: '0.5rem',
-                backgroundColor: HUD_BG(0.85), color: C('highlight'), fontSize: '0.9rem' } },
-                'Der Host ist im Hauptmenü. Geh auch hin, um dabeizubleiben.'));
+            list(coop.players).map((p) => {
+                const following = coop.following === p.sid;
+                const activity = following ? 'du folgst – Klick beendet'
+                    : ((coop.visitor && coop.visitor.emotes && coop.visitor.emotes[p.sid]) || playerActivity(coop, p));
+                return h('div', { key: p.sid, onClick: p.me ? undefined : () => request('follow', p.sid),
+                    style: { display: 'flex', alignItems: 'center', margin: '0.15rem 0', pointerEvents: p.me ? 'none' : 'auto',
+                    padding: compact ? '0.2rem' : '0.2rem 0.6rem 0.2rem 0.2rem', borderRadius: '1rem', backgroundColor: HUD_BG(0.72),
+                    borderWidth: '2px', borderStyle: 'solid', borderColor: following ? C('highlight') : 'transparent' } },
+                    h(Avatar, { player: p, size: 28, pic: avatars[p.sid] }),
+                    !compact && h('div', { style: { color: C('whiteColor'), fontSize: '0.9rem', marginLeft: '0.45rem' } }, p.name + (p.me ? ' (du)' : '')),
+                    !compact && p.host && glyph('img/icons/crown.svg', '0.9rem', true, { marginLeft: '0.35rem' }),
+                    !compact && h('div', { style: { color: following ? C('highlight') : C('accentButtonLight'), fontSize: '0.9rem', marginLeft: '0.45rem',
+                        maxWidth: '12rem', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' } }, activity));
+            }),
+            comp && comp.phase === 'build' && !compact && h('div', { style: { display: 'flex', alignItems: 'center', marginTop: '0.3rem',
+                padding: '0.25rem 0.6rem', borderRadius: '1rem', backgroundColor: HUD_BG(0.85), color: C('whiteColor'), fontSize: '0.9rem' } },
+                glyph('img/icons/clock.svg', '0.9rem', true, { marginRight: '0.4rem' }),
+                comp.label + (comp.topic ? ' · ' + comp.topic : '') + ' · ' + Math.floor(s / 60) + ':' + (s % 60 < 10 ? '0' : '') + (s % 60)));
     }
 }
 
@@ -476,17 +488,75 @@ class EmoteWheel extends StateComponent {
     }
 }
 
-// A decision for everyone (e.g. back to a checkpoint): a banner at the top until answered.
-class VoteBanner extends StateComponent {
+// Everything that needs an answer, in one card at one place (UX_OVERHAUL.md TP-19): join requests
+// (host), votes, test ride invitations, rating after a competition. One at a time, with a counter.
+function pendingRequests(coop) {
+    const team = coop.team || {};
+    const out = [];
+    if (coop.role === 'host') list(coop.requests).forEach((r) => out.push({ key: 'join' + r.sid, text: r.name + ' möchte beitreten.',
+        actions: [{ label: 'Zulassen', modifiers: 'positive', onSelect: () => request('approve', r.sid) },
+            { label: 'Ablehnen', onSelect: () => request('deny', r.sid) }] }));
+    const vote = team.vote;
+    if (vote) out.push({ key: 'vote', text: 'Abstimmung von ' + vote.by + ': ' + vote.text,
+        note: vote.answered ? 'Deine Stimme ist abgegeben – warte auf die anderen.' : null,
+        actions: vote.answered ? [] : [{ label: 'Ja', modifiers: 'positive', onSelect: () => request('vote', '1') },
+            { label: 'Nein', onSelect: () => request('vote', '0') }] });
+    const invite = team.invitation;
+    if (invite) out.push({ key: 'invite', text: invite.by + ' lädt zur Testfahrt auf ' + invite.name + ' ein.',
+        actions: [{ label: 'Mitfahren', modifiers: 'positive', onSelect: () => request('invitation', '1') },
+            { label: 'Später', onSelect: () => request('invitation', '0') }] });
+    const comp = team.competition;
+    if (comp && comp.phase === 'rate' && list(comp.entries).some((e) => !e.me && !(e.d && e.t))) {
+        out.push({ key: 'rate', text: 'Die Zeit ist um. Bewerte die Bauten der anderen.',
+            actions: [{ label: 'Bewerten', modifiers: 'positive', onSelect: () => { request('paneltab', 'session'); request('open'); } }] });
+    }
+    return out;
+}
+
+class RequestCard extends StateComponent {
     render(props, state) {
         const coop = state.coop || {};
-        const vote = coop.team && coop.team.vote;
-        if (!vote) return null;
-        return h('div', { style: { position: 'absolute', top: '7rem', left: '50%', width: '38rem', marginLeft: '-19rem', padding: '0.7rem 0.9rem',
-            borderRadius: '0.6rem', backgroundColor: HUD_BG(0.92), color: C('whiteColor'), fontSize: '1rem', pointerEvents: 'auto' } },
-            h('div', { style: { marginBottom: '0.4rem' } }, 'Abstimmung von ' + vote.by + ': ' + vote.text),
-            vote.answered ? h('div', { style: { color: C('accentButtonLight') } }, 'Deine Stimme ist abgegeben - warte auf die anderen.')
-                : buttons([{ label: 'Ja', onSelect: () => request('vote', '1') }, { label: 'Nein', onSelect: () => request('vote', '0') }]));
+        if (coop.open) return null;
+        const items = pendingRequests(coop);
+        if (items.length === 0) return null;
+        const item = items[0];
+        return h('div', { key: item.key, style: { position: 'absolute', top: '7.5rem', left: '50%', width: '30rem', marginLeft: '-15rem',
+            padding: '0.6rem 0.8rem', borderRadius: '0.5rem', backgroundColor: C('panel'), color: C('accentText'), fontSize: '1rem',
+            boxShadow: '0 0 1.8rem rgba(0, 0, 0, 0.4)', pointerEvents: 'auto' } },
+            h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' } },
+                h('div', { style: { fontWeight: 'bold' } }, item.text),
+                items.length > 1 && h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem', marginLeft: '0.6rem',
+                    whiteSpace: 'nowrap' } }, '1 von ' + items.length)),
+            item.note && h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem', marginTop: '0.3rem' } }, item.note),
+            item.actions.length > 0 && h('div', { style: { marginTop: '0.4rem' } }, buttons(item.actions)));
+    }
+}
+
+// The own connection to the host, only when something is wrong (UX_OVERHAUL.md TP-09): a pill at
+// the top centre like the game's online notifications.
+class ConnectionPill extends StateComponent {
+    render(props, state) {
+        const coop = state.coop || {};
+        const join = coop.join || {};
+        let pill = null;
+        if (join.phase === 'silent') {
+            pill = { icon: 'connectionStateDisconnected', tone: C('alert'), text: 'Keine Verbindung zum Host – warte …' };
+        } else if (coop.desync && coop.role === 'client') {
+            pill = { icon: 'warning', tone: C('warning'), text: 'Nicht synchron: ' + coop.desync,
+                action: { label: 'Neu synchronisieren', onSelect: () => request('resync') } };
+        } else if (join.phase === 'hostlobby') {
+            pill = { icon: 'information', tone: C('accent'),
+                text: (join.host || 'Der Host') + ' ist im Hauptmenü und wählt einen Park. Geh auch ins Hauptmenü, um dabeizubleiben.' };
+        }
+        if (!pill || coop.open) return null;
+        return h('div', { style: { position: 'absolute', top: '5rem', left: '50%', width: '44rem', marginLeft: '-22rem',
+            display: 'flex', justifyContent: 'center' } },
+            h('div', { style: { display: 'flex', alignItems: 'center', padding: '0.35rem 0.5rem 0.35rem 0.8rem', borderRadius: '1.5rem',
+                backgroundColor: pill.tone, color: C('whiteColor'), fontSize: '1rem', boxShadow: '0 0 0.5rem rgba(0, 0, 0, 0.3)',
+                pointerEvents: 'auto' } },
+                glyph('img/icons/' + pill.icon + '.svg', '1.2rem', true, { marginRight: '0.5rem' }),
+                h('div', { style: { marginRight: pill.action ? '0.6rem' : '0.3rem' } }, pill.text),
+                pill.action && buttons([pill.action])));
     }
 }
 
@@ -520,33 +590,6 @@ class ContextMenu extends StateComponent {
             item('Hier bauen (Baugebiet)', 'area'),
             item('Treffpunkt', 'meet'),
             item('Schließen', 'close'));
-    }
-}
-
-// A running competition: a small clock at the top for everyone.
-class CompBanner extends StateComponent {
-    render(props, state) {
-        const coop = state.coop || {};
-        const comp = coop.team && coop.team.competition;
-        if (!comp || coop.open || comp.phase === 'done') return null;
-        const s = comp.left || 0;
-        const text = comp.phase === 'build' ? comp.label + (comp.topic ? ' · ' + comp.topic : '') + ' · noch ' + Math.floor(s / 60) + ':' + (s % 60 < 10 ? '0' : '') + (s % 60)
-            : 'Bewerten: Multiplayer > Sitzung';
-        return h('div', { style: { position: 'absolute', top: '0.9rem', left: '50%', width: '26rem', marginLeft: '-13rem', textAlign: 'center',
-            padding: '0.3rem 0.6rem', borderRadius: '0.8rem', backgroundColor: HUD_BG(0.85), color: C('whiteColor'), fontSize: '0.9rem' } }, text);
-    }
-}
-
-// A test ride invitation from another player.
-class InviteBanner extends StateComponent {
-    render(props, state) {
-        const coop = state.coop || {};
-        const invite = coop.team && coop.team.invitation;
-        if (!invite || coop.open) return null;
-        return h('div', { style: { position: 'absolute', top: '7rem', left: '50%', width: '32rem', marginLeft: '-16rem', padding: '0.6rem 0.8rem',
-            borderRadius: '0.6rem', backgroundColor: HUD_BG(0.92), color: C('whiteColor'), fontSize: '1rem', pointerEvents: 'auto' } },
-            h('div', { style: { marginBottom: '0.4rem' } }, invite.by + ' lädt zur Testfahrt auf ' + invite.name + ' ein.'),
-            buttons([{ label: 'Mitfahren', onSelect: () => request('invitation', '1') }, { label: 'Später', onSelect: () => request('invitation', '0') }]));
     }
 }
 
@@ -610,7 +653,7 @@ const row = (children, key) => h('div', { key, style: { display: 'flex', alignIt
 
 const buttons = (items) => h('div', { style: { display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '100%' } },
     items.filter(Boolean).map((b, i) => h('div', { key: 'b' + i, style: { margin: '2px 0 2px 0.3rem', maxWidth: '100%' } },
-        h(Button, { label: literal(b.label), onSelect: b.onSelect, disabled: b.disabled, inputName: b.inputName }))));
+        h(Button, { label: literal(b.label), onSelect: b.onSelect, disabled: b.disabled, inputName: b.inputName, modifiers: b.modifiers }))));
 
 // The lobby: the same panel in the main menu and in a park. Three columns: players, where
 // to play (or the park), chat and friends. Fixed sizes: Gameface does not shrink flex boxes.
@@ -654,7 +697,7 @@ class Lobby extends StateComponent {
                 marginTop: '-19.5rem', borderRadius: '0.7rem', overflow: 'hidden', backgroundColor: C('panel'), color: C('accentText'), fontSize: '1rem',
                 boxShadow: '0 0.6rem 2rem rgba(0, 0, 0, 0.45)' } },
                 h('div', { style: { display: 'flex', alignItems: 'center', height: '3.2rem', padding: '0 1.2rem', backgroundColor: C('accent'), color: C('whiteColor') } },
-                    h(Icon, { src: 'img/icons/collaborate.svg', style: { width: '1.4rem', height: '1.4rem', marginRight: '0.6rem' } }),
+                    glyph('img/icons/collaborate.svg', '1.4rem', true, { marginRight: '0.6rem' }),
                     h('div', { style: { fontSize: '1.2rem', flexGrow: 1 } }, title),
                     coop.role && h('div', { style: { color: C('accentButtonLight'), fontSize: '1rem' } },
                         list(coop.players).length + ' / ' + SLOTS + ' Spieler' + (coop.stage === 'park' && coop.parkTitle ? ' · ' + coop.parkTitle : ''))),
@@ -907,7 +950,7 @@ class Lobby extends StateComponent {
                 h('div', { style: { flexGrow: 1, minWidth: 0, marginLeft: '0.6rem' } },
                     h('div', { style: { display: 'flex', alignItems: 'center', fontSize: '1rem', fontWeight: 'bold' } },
                         p.name + (p.me ? ' (du)' : ''),
-                        p.host && h(Icon, { src: 'img/icons/crown.svg', style: { width: '0.8rem', height: '0.8rem', marginLeft: '0.3rem' } })),
+                        p.host && glyph('img/icons/crown.svg', '0.8rem', false, { marginLeft: '0.3rem' })),
                     h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } }, playerActivity(coop, p)),
                     content && h('div', { style: { color: content.warn ? C('warningDark') : C('positiveDark'), fontSize: '0.9rem' } }, content.text),
                     canLook && buttons([
@@ -1113,7 +1156,8 @@ class JoinProgress extends StateComponent {
     render(props, state) {
         const coop = state.coop || {};
         const join = coop.join;
-        if (!join || ['joining', 'asking', 'awaiting', 'loading', 'silent'].indexOf(join.phase) < 0 || coop.open) return null;
+        // A lost connection in the park ('silent') is the connection pill, not this card.
+        if (!join || ['joining', 'asking', 'awaiting', 'loading'].indexOf(join.phase) < 0 || coop.open) return null;
         const share = join.phase === 'awaiting' ? (join.progress || 0) : join.phase === 'loading' ? 1 : 0.02;
         return h('div', { style: { position: 'absolute', left: '50%', top: '42%', width: '26rem', marginLeft: '-13rem',
             padding: '1.1rem 1.4rem', borderRadius: '0.7rem', backgroundColor: HUD_BG(0.9), color: C('whiteColor'), textAlign: 'center' } },
@@ -1171,11 +1215,10 @@ class CoopLayer extends preact.Component {
             fontFamily: FONT } },
             h(PlayerBar, null),
             h(VisitorBar, null),
-            h(VoteBanner, null),
             h(EmoteWheel, null),
-            h(InviteBanner, null),
+            h(ConnectionPill, null),
+            h(RequestCard, null),
             h(ContextMenu, null),
-            h(CompBanner, null),
             h(Toasts, null),
             h(JoinProgress, null),
             h(MiniLobby, null),
