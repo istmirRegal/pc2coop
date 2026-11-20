@@ -10,7 +10,8 @@ Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
   `setThemeIndex`, `UIScale.setUserScale` des Spiels nur in der HUD-Ansicht). Danach geprüft:
   die Config-Dateien des Eigners sind unverändert (zuletzt 18.11.).
 - Fund: Die Testkopie schreibt `Saves\player` und Autosaves (`*.prkauto2`) in den Spielstand-
-  Ordner des Eigners (heute 12:34 und 13:55). Nicht angefasst; Frage an den Eigner.
+  Ordner des Eigners (heute 12:34 und 13:55). Nicht angefasst. Der Eigner ist damit
+  einverstanden (2026-11-20).
 - Bilder: Akzent Standard, Orange, Lila; Protanopie, Tritanopie; UI-Skalierung 0.7 und 1.0,
   je HUD und Fenster. Behoben:
   - `refreshPalette` lief nur alle 10 Abfragen (3 s) und löste kein Neuzeichnen aus. Direkt nach

@@ -55,6 +55,7 @@ gleiches Steam-Konto; geprüft 2026-11-20):
 - Spiel, Steuerung, Ton: `Saved Games\Frontier Developments\Planet Coaster 2\<Steam-ID>\Config`,
   über Steam Cloud abgeglichen.
 - Die Testkopie schreibt dorthin auch `Saves\player` und Autosaves des Testparks (`*.prkauto2`).
+  Der Eigner ist damit einverstanden (2026-11-20); löschen oder ändern dürfen wir dort nichts.
 - In der Testkopie deshalb **keine Einstellungen ändern**. Für Bilder in anderer Akzentfarbe,
   Farbenblind-Modus oder UI-Skalierung: `require("pc2coop.ui")._QaLook("akzent|thema|skalierung|reiter")`
   in einem QA-Skript. Akzent 0–8 und Thema 0–3 (0 Standard, 1 Protanopie, 2 Deuteranopie,
