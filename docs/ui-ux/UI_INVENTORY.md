@@ -70,7 +70,7 @@ Esc zurück, schließt das Fenster). Titel, ein Satz, zwei bis drei Spalten:
 
 | Spalte | Elemente | Aktionen | FEAT |
 |---|---|---|---|
-| „Spieler n / 8“ | Host: „Möchte beitreten“ mit „Zulassen“/„Ablehnen“; acht Plätze: Spieler (Profilbild, Name, Krone, Tätigkeit oder fehlende Inhalte), eingeladene Freunde blass, freie Plätze „+ Einladen“; Fuß: Zustand, „Sitzung starten“ bzw. „Steam-Overlay“, „Beenden“/„Verlassen“ | `approve`, `deny`, `host`, `invite_overlay`, `leave` | FEAT-119, FEAT-027 |
+| „Spieler n / 8“ | acht Plätze: Spieler (Profilbild, Name, Krone, Tätigkeit oder fehlende Inhalte), Beitrittsanfragen als wartende Karte „<Name> möchte beitreten“ mit Icon-Knöpfen Haken (Zulassen) und X (Ablehnen), eingeladene Freunde blass, freie Plätze „+ Einladen“; Fuß: Zustand, „Sitzung starten“ bzw. „Steam-Overlay“, „Beenden“/„Verlassen“ | `approve`, `deny`, `host`, `invite_overlay`, `leave` | FEAT-119, FEAT-027 |
 | rechts | ohne Sitzung „Steam-Freunde“ (Sitzung zuerst, dann PC2, online; „Beitreten“); nach „+ Einladen“ „Freund einladen“ mit „Einladen“/„Eingeladen“, „Steam-Overlay“, „Fertig“; sonst „Chat“ mit Eingabe „Nachricht“ | `join_friend`, `invite`, `invite_overlay`, `chat` | FEAT-024, FEAT-023, FEAT-035 |
 | Host in der Lobby | Kacheln des Spiels (`FrontEndTileButton`) „Sandbox“ (öffnet die Sandbox-Seite des Spiels) und „Franchise“ (wie die Kachel des Spiels) | `choose` (franchise) | FEAT-119 |
 
@@ -110,7 +110,7 @@ UI-Skalierung 1.0 verdeckte er die Icon-Knöpfe am Ende der Bauleiste des Spiels
 
 | Element | Ort | Wann | Bedienung | FEAT |
 |---|---|---|---|---|
-| Sitzungs-Cluster (`PlayerBar`): Avatar, Name, Krone, Zustands-Icon; Tätigkeit und „Klicken zum Folgen“ im Tooltip; darunter die Wettbewerbs-Uhr | oben rechts, ab 4.2 rem | in Sitzung im Park; beim Mitfahren nur Avatare | Klick auf Mitspieler = folgen | FEAT-090, FEAT-096 |
+| Sitzungs-Cluster (`PlayerBar`): Avatar, Name, Krone, Zustands-Icon; Tätigkeit und „Klicken zum Folgen“ im Tooltip; einmal 5 s „Alle sind da“, wenn niemand mehr lädt; darunter die Wettbewerbs-Uhr | oben rechts, ab 4.2 rem | in Sitzung im Park; beim Mitfahren nur Avatare | Klick auf Mitspieler = folgen | FEAT-090, FEAT-096 |
 | Verbindungs-Pille (`ConnectionPill`): keine Verbindung zum Host / nicht synchron (+ „Neu synchronisieren“) / Host im Hauptmenü | oben Mitte, 5 rem | nur bei Problemen, Fenster zu | `resync` | FEAT-033, FEAT-031 |
 | Namensschilder: nur der Name in der Spielerfarbe | über dem Blickpunkt der Mitspieler (Coaster-Labels des Spiels, Stil in `DebugToolImports.js`) | Mitspieler im Park, „Für dich“ an (Reiter Einstellungen) | – | FEAT-091 |
 | Bodenmarke, Sichtkegel, Geist, Sperr-Färbung, Figuren | in der Welt (`viz.lua`) | Mitspieler im Park | – | FEAT-092–094, FEAT-171 |
@@ -210,3 +210,4 @@ Entwickler-Seite: technische Werte und „API-Rekorder an/aus“, „Namensschil
 | `parks` | – | Parkliste neu laden | nein (seit P3, Park über die Spielseiten) |
 | `choose` | save\|id / new\|biom\|kreativ / franchise | Park wählen | nur franchise (Kachel) |
 | `start` | – | gewählten Park öffnen | nein (seit P3) |
+| `opening` | – | Host öffnet einen Park auf den Spielseiten: Wahl „einen Park“, startet (alle sehen „<Host> öffnet einen Park“) | automatisch (Ladeseiten des Spiels) |

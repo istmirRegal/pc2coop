@@ -467,6 +467,13 @@ local actions = {
             session.SetChoice(nil)
         end
     end,
+    -- The host opens a park on the game's own pages (UX-Overhaul P3, TP-08): the spinner screens
+    -- came up. Everyone sees "<Host> öffnet einen Park" before the loading screen.
+    opening = function()
+        if not choosing() then return end
+        session.SetChoice("game", "einen Park", "")
+        session.MarkStarting()
+    end,
     -- Host opens the chosen park; everyone in the lobby then loads it.
     start = function()
         if not choosing() or not chosen then return end

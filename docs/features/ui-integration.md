@@ -91,6 +91,10 @@ Code: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js`,
   verlässt man die Seite (Esc, Brotkrumen, Spielseite), schickt `FrontEndNav.onChange` `close`.
   `openGamePage` wie die Spiel-Kacheln (`SandboxStartMenu`, Franchise über das Engine-Ereignis
   `FrontEndFranchiseSelected`). Rückfall ohne Seite: das alte Fenster (`lobbyFallback`).
+  Beitrittsanfragen warten als Karte im Platz (TP-06). Kommen die Ladeseiten des Spiels
+  (`LoadPark`, `SettingUpSpinner`), schickt die Seite `opening`: alle sehen in der Sitzungsleiste
+  „<Host> öffnet einen Park – gleich lädt er bei allen.“ (TP-08). Den Namen des Parks kennt die
+  Mod dabei nicht.
 - **Besonderheiten:** Ein Neuzeichnen aus dem Öffnen heraus rief den Öffnen-Beobachter erneut auf
   und ließ das Spiel abstürzen (Rekursion); deshalb `setTimeout`. Im Spiel geprüft: Seite ohne und
   mit Sitzung, Schließen aus Lua, Sitzungsleiste auf Hauptmenü und Sandbox-Seite. Nicht geprüft:

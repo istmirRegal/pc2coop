@@ -157,6 +157,16 @@ class UiTests(unittest.TestCase):
         self.lua.execute('ui._Request("5|choose|new|Moon|1")')       # unknown biome: nothing picked
         self.assertEqual(len(self.lua.eval('calls.choice')), 2)
 
+    def test_host_opening_a_park_on_the_game_pages(self):
+        # TP-08: the spinner screens of the host's front end tell everyone a park is being opened.
+        self.lua.execute('ui.SetFrontend(menuHud); view.role, view.stage = "client", "lobby"')
+        self.ui._Request('1|opening|')
+        self.assertEqual(len(self.lua.eval('calls.choice')), 0, 'a guest opens nothing')
+        self.lua.execute('view.role = "host"')
+        self.ui._Request('2|opening|')
+        self.assertEqual(list(self.lua.eval('calls.choice').values()), ['game|einen Park|'])
+        self.assertTrue(self.lua.eval('calls.starting'))
+
     def test_guests_cannot_pick_or_start(self):
         self.lua.execute('ui.SetFrontend(menuHud); view.role, view.stage = "client", "lobby"')
         self.lua.execute('ui._Request("1|choose|save|1"); ui._Request("2|start|")')

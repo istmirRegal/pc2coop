@@ -3,6 +3,18 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-20 – UX-Overhaul P3, Schritt 2: Anfrage im Platz, „öffnet einen Park“, „Alle sind da“
+
+- TP-06: `places` setzt Anfragen als Karte zwischen Spieler und Eingeladene (Icon-Knöpfe `tick`,
+  `close`); der gestrichelte Rand allein war in Gameface nicht zu sehen, daher `accentFaint`.
+- TP-08: `FrontEndNav.onChange` auf `LoadPark`/`SettingUpSpinner` beim Host in der Lobby →
+  UI-Aktion `opening` (`ui.lua`: `SetChoice("game", "einen Park")`, `MarkStarting`); die Wahl
+  geht mit der Roster-Zeile an alle. In der Testkopie kamen `close` und `opening` beim Anlegen
+  des Testparks aus dem Hauptmenü an.
+- „Alle sind da“: Beobachter in der HUD-Ansicht (`allHere`): erst jemand mit Lade-Tätigkeit
+  (`-`, `laedt`, `holt…`, `lobby`), dann niemand mehr → 5 s Pille unter den Spielern, einmal je
+  Park-Ansicht. Test `test_host_opening_a_park_on_the_game_pages`.
+
 ## 2026-11-20 – UX-Overhaul P3, Schritt 1: Multiplayer-Seite im Hauptmenü
 
 - Prototyp: `FrontEndNavData.screens` ist ein offenes Objekt. `pageReady` trägt `MultiplayerPage`

@@ -5,6 +5,10 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
 
 ## Unveröffentlicht
 
+- Wer beitreten möchte, wartet auf der Multiplayer-Seite als Karte in einem Platz; der Host
+  lässt ihn mit Haken oder X zu oder lehnt ab.
+- Öffnet der Host einen Park, sehen alle anderen sofort „… öffnet einen Park“. Im Park steht
+  einmal „Alle sind da“, sobald niemand mehr lädt.
 - Neu im Hauptmenü: die Seite „Multiplayer“ im Stil des Spiels (Esc führt zurück). Acht Plätze
   für die Spieler; ein Klick auf einen freien Platz lädt Freunde ein. Eingeladene stehen blass im
   Platz, bis sie kommen. Daneben der Chat.

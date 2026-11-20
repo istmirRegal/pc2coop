@@ -451,8 +451,14 @@ Brotkrumen und Esc vom Spiel. Gebaut: Seite „Multiplayer“ (TP-03) mit acht P
 einen freien Platz (TP-05), Chat, Kacheln „Sandbox“/„Franchise“ in die Spielseiten statt der
 Mod-Parkliste; Sitzungsleiste oben rechts auf allen Seiten (TP-04); Zustand auf der Kachel (TP-01,
 TP-02). Fund: Neuzeichnen aus dem Öffnen heraus rekursierte und ließ das Spiel abstürzen
-(behoben). Offen in P3: Beitrittsanfrage als Karte im Platz (TP-06), „Vici öffnet ‚Seepark‘“
-(TP-08), Park über die Spielseiten mit echtem Mitspieler prüfen (zwei PCs).
+(behoben).
+
+**P3 Schritt 2 (2026-11-20):** Beitrittsanfrage als wartende Karte im Platz (TP-06). TP-08: Öffnet
+der Host einen Park auf den Spielseiten, sehen alle „<Host> öffnet einen Park“ (Abweichung: ohne
+Parknamen, den kennt die Mod beim Laden nicht); im Park danach einmal „Alle sind da“. In der
+Testkopie: Host öffnet aus dem Hauptmenü einen Park, `opening` kam an, die Seite schloss sich;
+nachgestellter Mitspieler lädt, dann „Alle sind da“. Damit ist P3 gebaut. Offen: mit echtem
+Mitspieler auf zwei PCs prüfen (P6).
 
 Prototypen zuerst (vor P2/P3/P4): `Panel` in unserer Ebene, Seite im Hauptmenü-Rahmen,
 Bauleiste im Besuch aus. Ergebnis entscheidet, ob Ziel oder Rückfall gebaut wird.

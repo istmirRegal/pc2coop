@@ -373,7 +373,7 @@ function statusOf(coop) {
     if (coop.stage === 'lobby') {
         const choice = coop.choice;
         const hostName = host ? host.name : 'Der Host';
-        if (choice && choice.starting) return { text: hostName + ' öffnet ' + choice.title + ' - gleich lädt er bei allen.', tone: 'busy' };
+        if (choice && choice.starting) return { text: hostName + ' öffnet ' + choice.title + ' – gleich lädt er bei allen.', tone: 'busy' };
         if (coop.role === 'host') {
             return { text: choice ? 'Ausgewählt: ' + choice.title + '.' : 'Alle warten, bis du einen Park öffnest.', tone: 'wait' };
         }
@@ -454,6 +454,8 @@ class PlayerBar extends StateComponent {
                     !compact && icon && glyph('img/icons/' + icon + '.svg', '0.9rem', true, { marginLeft: '0.4rem',
                         opacity: following ? 1 : 0.75 }));
             }),
+            Date.now() < allHere.until && h('div', { style: hudPill({ marginTop: '0.3rem', color: C('positive') }) },
+                glyph('img/icons/tick.svg', '0.9rem', true, { marginRight: '0.4rem' }), 'Alle sind da'),
             comp && comp.phase === 'build' && !compact && h('div', { style: hudPill({ marginTop: '0.3rem' }) },
                 glyph('img/icons/clock.svg', '0.9rem', true, { marginRight: '0.4rem' }),
                 comp.label + (comp.topic ? ' · ' + comp.topic : '') + ' · ' + Math.floor(s / 60) + ':' + (s % 60 < 10 ? '0' : '') + (s % 60)));
@@ -1498,12 +1500,6 @@ class MultiplayerPage extends StateComponent {
         const players = list(coop.players);
         const requests = coop.role === 'host' ? list(coop.requests) : [];
         const out = [];
-        if (requests.length > 0) {
-            out.push(section('Möchte beitreten'));
-            requests.forEach((r) => out.push(row([h('div', null, r.name), buttons([
-                { label: 'Zulassen', onSelect: () => request('approve', r.sid) },
-                { label: 'Ablehnen', onSelect: () => request('deny', r.sid) }])], 'r' + r.sid)));
-        }
         if (!coop.role) {
             out.push(muted('Noch keine Sitzung.', { padding: '0.3rem 0' }));
             return out;
@@ -1522,7 +1518,15 @@ class MultiplayerPage extends StateComponent {
                         p.host && glyph('img/icons/crown.svg', '0.8rem', false, { marginLeft: '0.3rem', filter: C('accentText-filter') })),
                     muted(content && content.warn ? content.text : playerActivity(coop, p), content && content.warn ? { color: C('warningDark') } : undefined))]));
         });
-        invited.slice(0, Math.max(0, SLOTS - players.length)).forEach((f) => cards.push(card('i' + f.sid, [
+        // Who asks to join waits in a place of its own (TP-06), with the host's two answers.
+        requests.slice(0, Math.max(0, SLOTS - cards.length)).forEach((r) => cards.push(card('r' + r.sid, [
+            h('div', { key: 't', style: { flexGrow: 1, flexShrink: 1, minWidth: 0, marginLeft: '0.3rem' } }, h('div', { style: { fontWeight: 'bold' } }, r.name),
+                muted('möchte beitreten', { color: C('accent') })),
+            iconButton('tick', 'Zulassen', () => request('approve', r.sid)),
+            iconButton('close', 'Ablehnen', () => request('deny', r.sid))],
+            // A light accent ground: the dashed border alone did not show in Gameface (test copy).
+            { backgroundColor: C('accentFaint'), borderColor: C('accent') })));
+        invited.slice(0, Math.max(0, SLOTS - cards.length)).forEach((f) => cards.push(card('i' + f.sid, [
             h('div', { key: 't', style: { marginLeft: '0.3rem' } }, h('div', null, f.name), muted('eingeladen'))], { opacity: 0.55 })));
         for (let i = cards.length; i < SLOTS; i++) {
             cards.push(card('e' + i, h('div', { style: { width: '100%', textAlign: 'center', color: C('accent') } }, '+ Einladen'),
@@ -1871,6 +1875,7 @@ function patchStartTabClass(tabClass, TileButton) {
 }
 
 let started = false;
+const allHere = { seen: false, shown: false, until: 0 };   // TP-08, once per park view
 let lobbyFallback = false;   // the page could not open: the old window shows instead
 let log = (message) => console.log('PC2Coop: ' + message);
 export function start(logger) {
@@ -1882,6 +1887,17 @@ export function start(logger) {
     if (app.indexOf('HUD.html') >= 0) {
         patchPauseMenu().catch((e) => console.log('PC2Coop: ' + e));
         patchBuildBar().catch((e) => report('build bar import ' + e));
+        // "Alle sind da" once (TP-08): after someone was still loading the park and now nobody is.
+        listeners.add((s) => {
+            const players = list(s.players);
+            if (!s.role || s.context !== 'park' || players.length < 2 || allHere.shown) return;
+            const loading = players.some((p) => { const act = String(p.act || '-'); return act === '-' || act === 'laedt' || act === 'lobby' || /^holt/.test(act); });
+            if (loading) { allHere.seen = true; return; }
+            if (!allHere.seen) return;
+            allHere.shown = true;
+            allHere.until = Date.now() + 5000;
+            setTimeout(() => listeners.forEach((fn) => { try { fn(currentState); } catch (error) { /* next */ } }), 5100);
+        });
         // QA: a counter from Lua presses the tab with a mouse-down event (no real mouse).
         let qaClicks = 0;
         listeners.add((s) => {
@@ -1926,6 +1942,11 @@ export function start(logger) {
                 // Esc, a breadcrumb or a park page leaves the page: the window state follows.
                 navModule.FrontEndNav.onChange.add((screen) => {
                     if (screen !== PAGE_ID && currentState.open && currentState.context === 'menu' && !lobbyFallback) request('close');
+                    // The host opens a park on the game's pages: the spinner screens come up. Everyone
+                    // sees it in the session bar before the loading screen (TP-08).
+                    const ids = dataModule.FrontEndNavData.ScreenID;
+                    if ((screen === ids.LoadPark || screen === ids.SettingUpSpinner) && currentState.role === 'host'
+                        && currentState.stage === 'lobby') request('opening');
                 });
             })
             .catch((e) => log('nav import ' + e));

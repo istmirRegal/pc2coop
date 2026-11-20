@@ -14,7 +14,8 @@ Was ein Spieler von den anderen sieht. Code: `probe/PC2CoopProbe/Main/pc2coop/vi
   `playerActivity`, `activityText`.
 - **UI:** Immer sichtbar in einem Park mit Sitzung. Icons des Spiels: `building` baut, `camera`
   schaut zu, `move` hält etwas, `downloadArrow` empfängt den Park, `clock` lädt oder im
-  Hauptmenü, `eye` Folgen-Ziel (dazu gelb umrandet).
+  Hauptmenü, `eye` Folgen-Ziel (dazu gelb umrandet). Hat nach dem Laden niemand mehr eine
+  Lade-Tätigkeit, steht einmal 5 s „Alle sind da“ darunter (TP-08, `allHere`, einmal je Park).
 
 ### FEAT-091 – Namensschilder über dem Blickpunkt
 - **Status:** Implemented · **Seit:** 1.6.0
