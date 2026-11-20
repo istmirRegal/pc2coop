@@ -3,6 +3,22 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-20 – UX-Overhaul P2, Schritt 3: Einstellungen als Spielzeilen, Nachfrage beim Beenden
+
+- TP-20: `renderSession` mit `ToggleRow` und `ListStepperRow` des Spiels, `focusable: false`
+  (kein Fokus beim Darüberfahren). Regeln haben ihren Tooltip in `RULES` (4. Feld); Schnellwahl
+  aus `PRESETS` (wie `rule_preset` in `ui.lua`), „Eigene“ nur solange keine passt. Mitspieler:
+  `disabled` + Tooltip `LOCKED`. „Locker zusammen bauen“ war in der Auswahl abgeschnitten → „Locker“.
+- „Deine Rolle“ und „Abwesenheit“ entfallen als Abschnitte: Rolle als Tooltip am Info-Icon
+  (`HoverTip`), Gehen als Tooltip an „Beenden“/„Verlassen“ (`buttons()` kann jetzt `tip`).
+- TP-30: `endOrAsk` → `EndConfirm` (Spiel-`Dialog`) beim Host mit Mitspielern, im Park und im
+  Hauptmenü. Der Dialog dunkelt das Spiel ab, unser Fenster bleibt hell (es liegt darüber).
+- Fund: Alle Spiel-Tooltips (auch Reiter, Icon-Knöpfe) lagen unter unserer Ebene: die
+  `LayerCollection` des Spiels hat keinen z-index, unsere Wurzel 10000. `raiseTooltips` (in `poll`
+  und beim Darüberfahren) setzt nur die Tooltip-Ebene auf 10001.
+- Prüfung: Node-Rendertest (Host/Gast, Regeln passend/„Eigene“); Testkopie: Einstellungen mit
+  Tooltip über dem Fenster, „Eigene“ + Besucher-Modus aus, Dialog, Spielerleiste.
+
 ## 2026-11-20 – UX-Overhaul P2, Schritt 2: Spielerleiste und Namensschilder
 
 - TP-13: `PlayerBar` zeigt `stateIcon` (Spiel-Icons `building`, `camera`, `move`,

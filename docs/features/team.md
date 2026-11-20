@@ -86,8 +86,12 @@ Gemeinsam planen, entscheiden, spielen. Konzept: `docs/KONZEPT.md`. Code:
 ### FEAT-142 – Sitzungsregeln und Schnellwahl
 - **Status:** Implemented · **Seit:** 1.12.0
 - **Funktion:** Spieltempo/Pause: alle oder nur Host; Fremde Bauten abreißen: frei oder fragen;
-  Besucher-Modus: erlaubt oder aus. Schnellwahl „Locker zusammen bauen“, „Geordnet“, „Nur bauen“.
+  Besucher-Modus: erlaubt oder aus. Schnellwahl „Locker zusammen bauen“, „Geordnet“, „Nur bauen“
+  (im Fenster kurz „Locker“, „Geordnet“, „Nur bauen“, dazu „Eigene“, solange keine passt).
   Regeln bleiben bei Parkwechsel.
+- **UI:** Reiter „Einstellungen“ als Zeilen wie im Optionsmenü des Spiels (`ListStepperRow`,
+  `ToggleRow`, TP-20); Erklärung je Regel im Tooltip. Mitspieler sehen die Zeilen gesperrt mit
+  Tooltip „Nur der Host ändert Regeln.“
 - **Technik:** `rules`, `RULE_VALUES`, `Session.SetRule`, `Session.SetRules(values, label)`,
   `Session.Rules`; KV `rules` (FEAT-047); Nachricht `rules`; Verlauf „Regeln "<label>": …“.
   UI-Aktionen `rule`, `rule_preset`.
@@ -99,9 +103,10 @@ Gemeinsam planen, entscheiden, spielen. Konzept: `docs/KONZEPT.md`. Code:
 
 ### FEAT-144 – Rollen- und Abwesenheits-Erklärung
 - **Status:** Implemented · **Seit:** 1.12.0
-- **Funktion:** Text „Deine Rolle“ (Host/Mitspieler) und „Abwesenheit“ (was passiert, wenn
-  der Host geht oder pausiert) im Reiter Sitzung.
-- **Technik:** Nur Darstellung in `CoopLayer.js` (`renderSession`).
+- **Funktion:** Was Host und Mitspieler dürfen und was passiert, wenn jemand geht. Seit dem
+  UX-Overhaul (TP-20) als Tooltips statt Abschnitten: die Rolle am Info-Icon neben „Regeln dieser
+  Sitzung“, das Gehen an „Beenden“/„Verlassen“ im Fuß des Fensters.
+- **Technik:** Nur Darstellung in `CoopLayer.js` (`renderSession`, `HoverTip`, `END_TIP`, `LEAVE_TIP`).
 
 ### FEAT-145 – Wettbewerb: Bauduell
 - **Status:** Implemented · **Seit:** 1.12.0

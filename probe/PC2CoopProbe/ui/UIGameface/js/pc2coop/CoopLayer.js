@@ -19,6 +19,8 @@ import { loadCSS } from '/js/common/util/CSSUtil.js';
 import { CloseButton } from '/js/project/components/CloseButton.js';
 import { TooltipContainer } from '/js/project/components/Tooltip.js';
 import { AnchorLocation, TargetLine } from '/js/common/components/Constraint.js';
+import { ToggleRow } from '/js/project/components/ToggleRow.js';
+import { ListStepperRow } from '/js/project/components/ListStepperRow.js';
 
 // The window in a park uses the classes of the game's Panel and TabBar (TP-11). Their style sheets
 // come with those components; the components themselves are not used (focus handling).
@@ -104,8 +106,18 @@ function packName(pack) {
 }
 
 let polls = 0;
+// The game's tooltips above our layer: they live in a Layer_root of the game's LayerCollection,
+// which has no z-index of its own, while our root has 10000 - a tooltip over the window or the
+// player bar was drawn under them. Only the tooltip layer is raised, not the game's other layers.
+function raiseTooltips() {
+    let el = document.getElementsByClassName('TooltipContainer').item(0);
+    while (el && String(el.className || '').indexOf('Layer_root') < 0) el = el.parentElement;
+    if (el && el.style.zIndex !== '10001') el.style.zIndex = '10001';
+}
+
 function poll() {
     subscribe();
+    try { raiseTooltips(); } catch (error) { /* tooltips stay where the game puts them */ }
     try { applyState(DS.getValue(CONTEXT, 'state')); } catch (error) { /* context not created yet */ }
     try { applyAvatars(DS.getValue(CONTEXT, 'avatars')); } catch (error) { /* not there yet */ }
     polls += 1;
@@ -391,7 +403,7 @@ class HoverTip extends preact.Component {
             props.children,
             state.hover && props.tip && h(TooltipContainer, { target: this, tooltip: literal(props.tip), anchor: props.anchor, modifiers: 'wide' }));
     }
-    enter = () => this.setState({ hover: true });
+    enter = () => { this.setState({ hover: true }); setTimeout(() => { try { raiseTooltips(); } catch (error) { /* look only */ } }, 200); };
     leave = () => this.setState({ hover: false });
 }
 
@@ -851,7 +863,8 @@ const buttons = (items, wide) => h('div', { style: { display: 'flex', flexWrap: 
     width: wide ? '100%' : 'auto' } },
     // flexShrink 0: in a narrow column a button moves to the next line instead of squeezing its text.
     items.filter(Boolean).map((b, i) => h('div', { key: 'b' + i, style: { margin: '0.1rem 0 0.1rem 0.3rem', maxWidth: '100%', flexShrink: 0 } },
-        h(Button, { label: literal(b.label), onSelect: b.onSelect, disabled: b.disabled, inputName: b.inputName, modifiers: b.modifiers }))));
+        h(Button, { label: literal(b.label), onSelect: b.onSelect, disabled: b.disabled, inputName: b.inputName, modifiers: b.modifiers,
+            tooltip: b.tip ? literal(b.tip) : undefined, tooltipOnHover: !!b.tip }))));
 
 // The lobby: the same panel in the main menu and in a park. Three columns: players, where
 // to play (or the park), chat and friends. Fixed sizes: Gameface does not shrink flex boxes.
@@ -873,11 +886,41 @@ const iconButton = (icon, tip, onSelect, toggled) => h('div', { style: { marginL
         toggled: !!toggled, onSelect }));
 const BOARD_KINDS = [['task', 'Aufgabe'], ['area', 'Baugebiet'], ['proposal', 'Vorschlag'], ['comment', 'Kommentar'], ['meet', 'Treffpunkt']];
 const BOARD_WORD = { task: 'Aufgabe', area: 'Baugebiet', proposal: 'Vorschlag', comment: 'Kommentar', meet: 'Treffpunkt' };
+// Rules of the session (TP-20): key, row label, values, tooltip (the explanation lives there).
 const RULES = [
-    ['speed', 'Spieltempo und Pause', [['all', 'alle'], ['host', 'nur der Host']]],
-    ['foreign', 'Fremde Bauten abreißen', [['free', 'erlaubt'], ['ask', 'erst fragen']]],
-    ['visitors', 'Besucher-Modus', [['1', 'erlaubt'], ['0', 'aus']]],
+    ['speed', 'Spieltempo und Pause', [['all', 'alle'], ['host', 'nur der Host']], 'Wer das Spieltempo ändern und pausieren darf.'],
+    ['foreign', 'Fremde Bauten abreißen', [['free', 'erlaubt'], ['ask', 'erst fragen']],
+        'Ob Mitspieler abreißen dürfen, was ein anderer gebaut hat, oder erst fragen.'],
+    ['visitors', 'Besucher-Modus', [['1', 'erlaubt'], ['0', 'aus']], 'Ob Mitspieler als Besucher durch den Park gehen dürfen.'],
 ];
+// The same sets as ui.lua rule_preset.
+// Short words: the stepper in the narrow window cut "Locker zusammen bauen" (test copy).
+const PRESETS = [['relaxed', 'Locker', { speed: 'all', foreign: 'free', visitors: '1' }],
+    ['ordered', 'Geordnet', { speed: 'host', foreign: 'ask', visitors: '1' }],
+    ['build', 'Nur bauen', { speed: 'host', foreign: 'ask', visitors: '0' }]];
+const LOCKED = 'Nur der Host ändert Regeln.';
+const END_TIP = 'Beendet die Sitzung für alle. Beim nächsten Mal lädst du den Park, und alle steigen wieder ein.';
+const LEAVE_TIP = 'Der Park läuft beim Host weiter. Du kannst wieder beitreten.';
+
+// "Für alle beenden?" (TP-30): asked before the host ends a session with other players in it.
+let endAsked = false;
+const endListeners = new Set();
+function askEnd(on) { endAsked = !!on; endListeners.forEach((fn) => fn()); }
+function endOrAsk(coop) {
+    if (coop.role === 'host' && list(coop.players).length > 1) askEnd(true);
+    else request('leave');
+}
+class EndConfirm extends preact.Component {
+    componentDidMount() { this.update = () => this.forceUpdate(); endListeners.add(this.update); }
+    componentWillUnmount() { endListeners.delete(this.update); }
+    render() {
+        if (!endAsked) return null;
+        return h(Dialog, { modifiers: 'dialogApp', title: literal('Sitzung beenden'),
+            description: literal('Für alle beenden? Alle Mitspieler verlassen dann den Park.'),
+            buttons: [{ label: literal('Für alle beenden'), onSelect: () => { askEnd(false); request('leave'); } },
+                { label: literal('Abbrechen'), onSelect: () => askEnd(false), inputName: 'UI_Cancel' }] });
+    }
+}
 
 class Lobby extends StateComponent {
     state = { draft: '', tab: 'save', creative: true, kind: 'task', title: '', text: '', assignee: '', radius: 20 };
@@ -897,7 +940,8 @@ class Lobby extends StateComponent {
         } else {
             if (coop.desync && coop.role === 'client') footer.push({ label: 'Neu synchronisieren', onSelect: () => request('resync') });
             footer.push({ label: 'Steam-Overlay', onSelect: () => request('invite_overlay') });
-            footer.push({ label: coop.role === 'host' ? 'Beenden' : 'Verlassen', onSelect: () => request('leave') });
+            footer.push({ label: coop.role === 'host' ? 'Beenden' : 'Verlassen', tip: coop.role === 'host' ? END_TIP : LEAVE_TIP,
+                onSelect: () => endOrAsk(coop) });
         }
         footer.push({ label: 'Schließen', onSelect: () => request('close'), inputName: 'UI_Cancel' });
         const column = (width, children, last) => h('div', { style: { width: rem(width), height: '31.8rem', padding: '0 0.9rem',
@@ -948,7 +992,8 @@ class Lobby extends StateComponent {
         // at UI scale 1.0, so it is here, on every tab.
         if (!(coop.visitor && coop.visitor.active)) footer.push({ label: 'Besuchen', onSelect: () => request('visitor', '1') });
         if (coop.role && coop.desync && coop.role === 'client') footer.push({ label: 'Neu synchronisieren', onSelect: () => request('resync') });
-        if (coop.role) footer.push({ label: coop.role === 'host' ? 'Beenden' : 'Verlassen', onSelect: () => request('leave') });
+        if (coop.role) footer.push({ label: coop.role === 'host' ? 'Beenden' : 'Verlassen', tip: coop.role === 'host' ? END_TIP : LEAVE_TIP,
+            onSelect: () => endOrAsk(coop) });
         return h('div', { style: { position: 'absolute', left: 0, top: rem(PANEL_TOP * 20), width: rem(PANEL_WIDTH * 20), pointerEvents: 'none',
             color: C('accentText'), fontSize: '1rem' } },
             h('div', { className: 'Panel_root pc2coopPanel' },
@@ -1164,38 +1209,38 @@ class Lobby extends StateComponent {
         return out;
     }
 
-    // Tab "Einstellungen" (TP-11, TP-32): for you, rules, contents, competition, explanations.
+    // Tab "Einstellungen" (TP-20, TP-32): rows like the game's options menu (ToggleRow, ListStepperRow).
+    // Explanations are tooltips; other players see the rules locked. focusable false: the rows do not
+    // take the game's focus on hover (building goes on beside the window).
     renderSession(coop) {
         const rules = (coop.team && coop.team.rules) || {};
         const isHost = coop.role === 'host';
-        const label = (text) => h('div', { style: { width: '100%' } }, text);
+        const preset = PRESETS.findIndex(([, , values]) => Object.keys(values).every((k) => rules[k] === values[k]));
+        // "Eigene" only while the rules match no set; choosing it changes nothing.
+        const presetItems = (preset < 0 ? ['Eigene'] : []).concat(PRESETS.map(([, word]) => word));
+        const role = isHost
+            ? 'Du bist Host. Der Park läuft bei dir. Du legst die Regeln fest, bestätigst Beitrittsanfragen und erstellst Sicherungspunkte.'
+            : 'Du baust frei mit. Was jemand anderes gerade bearbeitet, ist für dich gesperrt. Markiere es und frag nach der Übernahme. '
+              + 'Rückgängig betrifft nur deine eigenen Schritte.';
         return [
             section('Für dich', muted('nur auf deinem PC')),
-            row([h('div', { style: { width: '100%', display: 'flex', flexDirection: 'column' } },
-                h('div', null, 'Mitspieler in der Welt zeigen'),
-                muted('Name, Blickrichtung, gehaltenes Objekt und Sperr-Färbung')),
-                buttons([['1', 'An'], ['0', 'Aus']].map(([value, text]) => ({ label: ((coop.labels ? '1' : '0') === value ? '● ' : '') + text,
-                    onSelect: () => request('labels', value) })), true)], 'labels'),
-            section('Regeln dieser Sitzung', muted(isHost ? 'du bestimmst sie' : 'nur der Host ändert sie')),
-            // One per line: wrapped button rows squeezed the labels in Gameface (acceptance pictures).
-            isHost && row([label('Schnell wählen'), h('div', { style: { width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' } },
-                buttons([{ label: 'Locker zusammen bauen', onSelect: () => request('rule_preset', 'relaxed') }]),
-                buttons([{ label: 'Geordnet', onSelect: () => request('rule_preset', 'ordered') }]),
-                buttons([{ label: 'Nur bauen', onSelect: () => request('rule_preset', 'build') }]))], 'presets'),
-            ...RULES.map(([name, text, options]) => row([h('div', { style: { width: isHost ? '100%' : '14rem' } }, text),
-                isHost ? buttons(options.map(([value, word]) => ({ label: (rules[name] === value ? '● ' : '') + word,
-                    onSelect: () => request('rule', name + '|' + value) })), true)
-                    : h('div', { style: { color: C('accent') } }, (options.find((o) => o[0] === rules[name]) || ['', '-'])[1])], name)),
+            h('div', { key: 'labels' }, h(ToggleRow, { label: literal('Mitspieler in der Welt zeigen'), toggled: !!coop.labels, focusable: false,
+                tooltip: literal('Name, Blickrichtung, gehaltenes Objekt und Sperr-Färbung'), onToggle: (on) => request('labels', on ? '1' : '0') })),
+            section('Regeln dieser Sitzung', h(HoverTip, { tip: role, className: 'pc2coopRoleTip' },
+                glyph('img/icons/information.svg', '1.1rem', false, { filter: C('accentText-filter') }))),
+            h('div', { key: 'preset' }, h(ListStepperRow, { label: literal('Schnellwahl'), items: presetItems.map(literal),
+                listIndex: preset < 0 ? 0 : preset, disabled: !isHost, focusable: false,
+                tooltip: literal(isHost ? 'Setzt alle Regeln auf einmal. Locker – alle dürfen alles. Geordnet – Tempo nur der Host, '
+                    + 'fremde Bauten erst fragen. Nur bauen – dazu ohne Besucher-Modus.' : LOCKED),
+                onChange: (i) => { const set = PRESETS[preset < 0 ? i - 1 : i]; if (set) request('rule_preset', set[0]); } })),
+            ...RULES.map(([name, text, options, tip]) => h('div', { key: name }, name === 'visitors'
+                ? h(ToggleRow, { label: literal(text), toggled: rules[name] === '1', disabled: !isHost, focusable: false,
+                    tooltip: literal(isHost ? tip : LOCKED), onToggle: (on) => request('rule', name + '|' + (on ? '1' : '0')) })
+                : h(ListStepperRow, { label: literal(text), items: options.map(([, word]) => literal(word)),
+                    listIndex: Math.max(0, options.findIndex(([value]) => value === rules[name])), disabled: !isHost, focusable: false,
+                    tooltip: literal(isHost ? tip : LOCKED), onChange: (i) => { if (options[i]) request('rule', name + '|' + options[i][0]); } }))),
             this.renderContentSetting(coop),
             this.renderCompetition(coop),
-            section('Deine Rolle'),
-            h('div', { style: { fontSize: '0.9rem' } }, isHost
-                ? 'Host: der Park läuft bei dir. Du legst die Regeln fest, bestätigst Beitrittsanfragen und erstellst Sicherungspunkte.'
-                : 'Mitspieler: du baust frei mit. Was jemand anderes gerade bearbeitet, ist für dich gesperrt; markiere es und frag nach der Übernahme. '
-                  + 'Rückgängig betrifft nur deine eigenen Schritte.'),
-            section('Abwesenheit'),
-            h('div', { style: { fontSize: '0.9rem' } },
-                'Der Park läuft beim Host. Verlässt der Host die Sitzung, endet sie für alle; beim nächsten Mal lädt er den Park und ihr steigt wieder ein.'),
         ];
     }
 
@@ -1210,8 +1255,8 @@ class Lobby extends StateComponent {
             : 'Nicht alle haben: ' + uneven.map(packName).join(', ') + (coop.guard ? '. Daraus wird nichts gebaut.' : '. Wird trotzdem gebaut.');
         return h('div', { key: 'content' }, section('Inhalte'),
             muted(text, uneven.length ? { color: C('warningDark') } : undefined),
-            coop.role === 'host' && uneven.length > 0 && h('div', { style: { marginTop: '0.3rem' } }, buttons([{ label: coop.guard ? 'Alle Inhalte erlauben' : 'Nur gemeinsame Inhalte',
-                onSelect: () => request('guard', coop.guard ? '0' : '1') }])));
+            coop.role === 'host' && uneven.length > 0 && h(ToggleRow, { label: literal('Nur gemeinsame Inhalte'), toggled: !!coop.guard, focusable: false,
+                tooltip: literal('Aus Inhalten, die nicht alle haben, wird dann nichts gebaut.'), onToggle: (on) => request('guard', on ? '1' : '0') }));
     }
 
     renderPlayers(coop) {
@@ -1507,6 +1552,7 @@ class CoopLayer extends preact.Component {
             h('div', { style: { pointerEvents: 'auto' } }, h(Lobby, null)),
             h('div', { style: { pointerEvents: 'auto' } }, h(JoinFailed, null)),
             h('div', { style: { pointerEvents: 'auto' } }, h(JoinConfirm, null)),
+            h('div', { style: { pointerEvents: 'auto' } }, h(EndConfirm, null)),
             h('div', { style: { pointerEvents: 'auto' } }, h(Rejoin, null)));
     }
 }
@@ -1701,11 +1747,13 @@ export function start(logger) {
             if (!s.qaLook || s.qaLook === qaLooks) return;
             qaLooks = s.qaLook;
             const [accent, theme, scale, tab, tip] = String(s.qaLook).split('|').map(Number);
-            // tip 1-8: that player in the cluster, 9: the first tab of the window - as if the mouse were on it.
+            // tip 1-8: that player in the cluster, 9: the first tab of the window - as if the mouse were on it;
+            // 10: the question "Für alle beenden?", 11: the tooltip of the rules' info icon.
+            if (tip === 10) askEnd(true);
             const hovered = tip >= 1 && tip <= 8 ? document.querySelectorAll('.pc2coopTip')[tip - 1]
-                : tip === 9 ? document.querySelector('.pc2coopPanel .Tab_root') : null;
+                : tip === 9 ? document.querySelector('.pc2coopPanel .Tab_root') : tip === 11 ? document.querySelector('.pc2coopRoleTip') : null;
             if (hovered) hovered.dispatchEvent(new MouseEvent('mouseenter', { bubbles: false }));
-            if (tip > 0) report('qa hover ' + (hovered ? 'found' : 'missing'));
+            if (tip > 0 && tip !== 10) report('qa hover ' + (hovered ? 'found' : 'missing'));
             // tab 0: our build bar tab hidden (does the game's bar fit without it?)
             document.querySelectorAll('.pc2coopTabBar').forEach((el) => { el.style.display = tab === 0 ? 'none' : ''; });
             Promise.all([import('/js/config/ThemeConfig.js'), import('/js/common/core/UIScale.js')]).then(([themes, ui]) => {

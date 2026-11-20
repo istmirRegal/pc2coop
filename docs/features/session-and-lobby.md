@@ -163,7 +163,8 @@ Hauptcode: `probe/PC2CoopProbe/Main/pc2coop/session.lua` (Rolle, Nachrichten, Zu
   kann „Alle Inhalte erlauben“.
 - **Technik:** `contentGuard`, `Session.SetContentGuard`, `Session._ContentChanged`,
   `Session._ContentRefused`; Nachricht `content`; UI-Aktion `guard`.
-- **UI:** Lobby Abschnitt „Inhalte“; Hinweis an den Bauenden.
+- **UI:** Abschnitt „Inhalte“: im Park Schalter „Nur gemeinsame Inhalte“ (`ToggleRow`, nur Host,
+  nur wenn nicht alle dasselbe haben), im Hauptmenü Knopf; Hinweis an den Bauenden.
 
 ### FEAT-039 – Wiederbeitritt nach Absturz
 - **Status:** Implemented · **Seit:** 1.7.0
@@ -190,6 +191,8 @@ Hauptcode: `probe/PC2CoopProbe/Main/pc2coop/session.lua` (Rolle, Nachrichten, Zu
 - **Status:** Implemented · **Seit:** 1.4.1
 - **Technik:** `Session.Leave` (UI-Aktion `leave`, F7 „Sitzung verlassen/beenden“);
   DLL `leave` → `lobby:left`. Verlässt der Host, endet die Sitzung für alle.
+- **UI:** „Beenden“ (Host) und „Verlassen“ im Fuß des Fensters, mit Tooltip. Ist noch jemand in
+  der Sitzung, fragt der Host-Knopf erst „Für alle beenden?“ (Dialog `EndConfirm`, TP-30).
 
 ### FEAT-043 – Spielerfarben
 - **Status:** Implemented · **Seit:** 1.4.1

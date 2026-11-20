@@ -25,7 +25,9 @@ Wer ein Feld hinzufügt, trägt es hier ein.
 |---|---|---|---|
 | `CoopLayer` | Wurzel, stapelt alles | – | FEAT-110 |
 | `PlayerBar` | Sitzungs-Cluster oben rechts: Spieler mit Zustands-Icon (`stateIcon`), Tätigkeit im Tooltip, Wettbewerbs-Uhr | players, following, visitor, team.competition | FEAT-090, FEAT-145 |
-| `HoverTip` | Kasten mit Spiel-Tooltip beim Darüberfahren (`TooltipContainer`, wie `Button` mit `tooltipOnHover`) | tip, onClick, style | FEAT-090 |
+| `HoverTip` | Kasten mit Spiel-Tooltip beim Darüberfahren (`TooltipContainer`, wie `Button` mit `tooltipOnHover`) | tip, anchor, onClick, style | FEAT-090, FEAT-144 |
+| `EndConfirm` | Dialog „Für alle beenden?“ (Spiel-`Dialog`), vor `leave` des Hosts mit Mitspielern | `askEnd`, `endOrAsk` | FEAT-042 |
+| `raiseTooltips` (in `poll`) | hebt die Tooltip-Ebene des Spiels (`Layer_root` mit `.TooltipContainer`) auf z-index 10001 über unsere Ebene (10000) | – | – |
 | `VisitorBar` | Besucher-Leiste, Kaufliste, Fahrgeschäfte-Liste, Bewertung | visitor, role | FEAT-160–169 |
 | `EmoteWheel` | Emote-Rad | visitor.wheel | FEAT-168 |
 | `RequestCard` (`pendingRequests`) | Anfrage-Karte: Beitritt, Abstimmung, Testfahrt, Bewerten | requests, team.vote, team.invitation, team.competition | FEAT-027, FEAT-141, FEAT-138, FEAT-147 |

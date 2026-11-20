@@ -89,11 +89,11 @@ UI-Skalierung 1.0 verdeckte er die Icon-Knöpfe am Ende der Bauleiste des Spiels
 
 | Abschnitt | Elemente | Aktionen | FEAT |
 |---|---|---|---|
-| „Für dich“ (nur auf deinem PC) | „Mitspieler in der Welt zeigen“ An/Aus (Name, Blickrichtung, gehaltenes Objekt, Sperr-Färbung) | `labels` | FEAT-091 |
-| „Inhalte“ | nur mit Mitspielern: DLC-Vergleich; Host: „Nur gemeinsame Inhalte“/„Alle Inhalte erlauben“ | `guard` | FEAT-037, FEAT-038 |
+| „Für dich“ (nur auf deinem PC) | Schalter (`ToggleRow`) „Mitspieler in der Welt zeigen“; Tooltip: Name, Blickrichtung, gehaltenes Objekt, Sperr-Färbung | `labels` | FEAT-091 |
+| „Inhalte“ | nur mit Mitspielern: DLC-Vergleich; Host: Schalter „Nur gemeinsame Inhalte“ | `guard` | FEAT-037, FEAT-038 |
 | „Wettbewerb“ | Host: Thema, Bauduell/Koop gegen die Uhr je 15/30/60 Min.; laufend: Uhr, Bewertung Gestaltung/Technik 1–5, Ergebnis; Host: „Zeit beenden, bewerten“/„Bewertung abschließen“/„Wettbewerb schließen“ | `comp_start`, `comp_rate`, `comp_next`, `goto` | FEAT-145–147 |
-| „Regeln dieser Sitzung“ | Host: Schnellwahl „Locker zusammen bauen“/„Geordnet“/„Nur bauen“ (untereinander); Spieltempo, Fremde Bauten, Besucher-Modus | `rule_preset`, `rule` | FEAT-142, FEAT-143 |
-| „Deine Rolle“, „Abwesenheit“ | Erklärtexte | – | FEAT-144 |
+| „Regeln dieser Sitzung“, Info-Icon mit der Rolle im Tooltip | Auswahl (`ListStepperRow`) „Schnellwahl“ Locker/Geordnet/Nur bauen (+ „Eigene“), „Spieltempo und Pause“ alle/nur der Host, „Fremde Bauten abreißen“ erlaubt/erst fragen; Schalter „Besucher-Modus“; Erklärung je Zeile im Tooltip; Mitspieler: gesperrt, Tooltip „Nur der Host ändert Regeln.“ | `rule_preset`, `rule` | FEAT-142–144 |
+| Fuß | „Beenden“ (Host, Tooltip: endet für alle) mit Nachfrage „Für alle beenden?“, solange noch jemand da ist; „Verlassen“ (Tooltip: Park läuft beim Host weiter) | `leave` | FEAT-042, FEAT-144 |
 
 ## 3. Im Park ohne Fenster (HUD-Ebene)
 

@@ -5,6 +5,11 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
 
 ## Unveröffentlicht
 
+- Der Reiter „Einstellungen“ sieht aus wie das Optionsmenü des Spiels: Schalter und
+  Auswahl mit Pfeilen. Was eine Regel bedeutet, steht im Tooltip. Mitspieler sehen die Regeln
+  gesperrt. Die Erklärtexte „Deine Rolle“ und „Abwesenheit“ sind jetzt Tooltips.
+- „Beenden“ fragt jetzt nach („Für alle beenden?“), solange noch jemand in der Sitzung ist.
+- Tooltips der Mod liegen nicht mehr unter dem Multiplayer-Fenster.
 - Namensschilder im Park zeigen nur noch den Namen, in der Farbe des Mitspielers. Was er gerade
   tut, siehst du, wenn du mit der Maus auf seinen Namen oben rechts fährst.
 - Die Spieler oben rechts zeigen statt abgeschnittenem Text ein Icon (baut, schaut zu, hält

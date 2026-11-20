@@ -430,6 +430,13 @@ in der Spielerfarbe. Abweichung von TP-14: Die Tätigkeit erscheint nicht beim D
 Schild selbst; die Schilder der Coaster-Labels haben keine Maus-Eingabe. Sie steht im Tooltip
 der Spielerleiste und im Fenster. Tooltips per QA-Hover fotografiert (`_QaLook`, 5. Feld).
 
+**P2 Schritt 3 (2026-11-20):** Einstellungen (TP-20) als Zeilen wie im Optionsmenü: `ToggleRow`
+(Für dich, Besucher-Modus, Inhalte) und `ListStepperRow` (Schnellwahl, Spieltempo, Fremde
+Bauten), Erklärungen als Tooltips, für Mitspieler gesperrt mit Tooltip. „Deine Rolle“ und
+„Abwesenheit“ sind Tooltips (Info-Icon, Fußknöpfe). TP-30: „Beenden“ fragt „Für alle beenden?“.
+Fund: Alle Spiel-Tooltips lagen unter unserer Ebene; `raiseTooltips` hebt nur die Tooltip-Ebene.
+Offen in P2: „Verlassen“ im Pausemenü (TP-30), Planen/Verlauf-Feinheiten (TP-17, TP-18).
+
 Prototypen zuerst (vor P2/P3/P4): `Panel` in unserer Ebene, Seite im Hauptmenü-Rahmen,
 Bauleiste im Besuch aus. Ergebnis entscheidet, ob Ziel oder Rückfall gebaut wird.
 

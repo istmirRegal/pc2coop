@@ -62,7 +62,8 @@ gleiches Steam-Konto; geprüft 2026-11-20):
   3 Tritanopie) wie `ThemeConfig.js`, Skalierung 0.7–1.0 wie im Optionsmenü, Reiter 0 blendet
   unseren Bauleisten-Reiter aus, -1 lässt einen Wert. Hover 1–8 zeigt den Tooltip dieses
   Spielers oben rechts, 9 den des ersten Fenster-Reiters (wirkt nur bei unseren Kästen, nicht
-  bei Spiel-Komponenten ohne echte Maus). Das ändert nur die laufende HUD-Ansicht und speichert
+  bei Spiel-Komponenten ohne echte Maus), 10 die Nachfrage „Für alle beenden?“, 11 den Tooltip
+  am Info-Icon der Regeln. Das ändert nur die laufende HUD-Ansicht und speichert
   nichts.
 - 1440p und 4K gehen hier nicht (Bildschirm 1080p, randlos). Die Mod-Oberfläche ist ganz in
   `rem` gebaut (außer Mauskoordinaten) und skaliert wie das Spiel mit `min(B/1920, H/1080)`.
