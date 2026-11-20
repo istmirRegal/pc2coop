@@ -5,6 +5,10 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
 
 ## Unveröffentlicht
 
+## 1.14.0 – 2026-11-21
+
+Neue Oberfläche im Stil des Spiels (UX-Overhaul P0 bis P5).
+
 - Beitreten zeigt vier Schritte (Verbinden, Zustimmung, Park kommt, Park lädt) mit
   Fortschritt, und du kannst bis zum Laden abbrechen.
 - „Sitzung starten“ ist gesperrt, bis Steam antwortet. Klappt es nicht, siehst du warum.
@@ -57,8 +61,7 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
 - Das Multiplayer-Fenster im Park ist jetzt ein Fenster wie die des Spiels am linken Rand. Du
   kannst weiterbauen, während es offen ist. Vier Reiter: Spieler, Planen, Verlauf, Einstellungen.
   Freunde lädst du über „+ Einladen“ ein. Der Chat rückt bei offenem Fenster daneben.
-- „Besuchen“ ist ein Knopf im Fuß des Fensters statt eines eigenen Reiters. Die Fahrgeschäfte
-  findest du im Besuch in der Leiste oben, die Ich-Sicht mit V.
+- „Besuchen“ ist ein Knopf im Fuß des Fensters statt eines eigenen Reiters.
 - Einträge auf dem Brett haben Icon-Knöpfe (Haken, Daumen, Hinbringen, Löschen); ein neuer Eintrag
   geht über „+ Neuer Eintrag“.
 - Änderst du Akzentfarbe oder Farbenblind-Modus, folgt die Mod-Oberfläche nach etwa einer
@@ -67,8 +70,8 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
 - „Hinbringen“ und „Folgen“ stehen in der Spieler-Karte in einer eigenen Zeile und passen wieder.
 - F8 öffnet kein Entwickler-Menü mehr. Sitzung starten, einladen und verlassen geht im
   Multiplayer-Fenster (F7).
-- Neu im Multiplayer-Fenster, Reiter „Sitzung“: „Für dich“ mit dem Schalter „Mitspieler in der
-  Welt zeigen“ (vorher nur im Entwickler-Menü).
+- Neu im Multiplayer-Fenster, Reiter „Einstellungen“: „Für dich“ mit dem Schalter „Mitspieler in
+  der Welt zeigen“ (vorher nur im Entwickler-Menü).
 - Dunkle Flächen der Mod (Chat, Meldungen, Karten) und die Linien im Fenster folgen jetzt
   deiner Akzentfarbe.
 - Auch die Meldungen sagen jetzt „Sitzung“ statt „Lobby“.

@@ -12,7 +12,7 @@ Freundesgruppen, die zusammen Parks bauen. Ziel aus den ursprünglichen Anforder
 (`docs/COOP_DESIGN.md`): mindestens **drei** Spieler gleichzeitig, mit eigener Kamera,
 ohne technische Einrichtung zwischen den Spielabenden. Bis zu 8 Plätze pro Lobby.
 
-## Was es kann (Stand 1.13.0)
+## Was es kann (Stand 1.14.0)
 
 - **Sitzung:** Lobby im Hauptmenü oder im laufenden Park, Freunde einladen, Freigabe durch
   den Host, Park-Übertragung, Parkwahl in der Lobby, Wiederbeitritt (FEAT-020–048).
@@ -23,6 +23,9 @@ ohne technische Einrichtung zwischen den Spielabenden. Bis zu 8 Plätze pro Lobb
   Testfahrt-Einladung, Sicherungspunkte, Regeln, Wettbewerbe (FEAT-130–147).
 - **Besuchen:** animierte Figur im Avatar-Look, Ich-Sicht des Spiels, Eingänge, mitfahren,
   bewerten, Emotes, kaufen (FEAT-160–171).
+- **Oberfläche:** im Stil des Spiels – Seite „Multiplayer“ im Hauptmenü, Fenster am linken
+  Rand, Anfrage-Karte, Verbindungs-Pille, Besuch ohne Leiste oben (UX-Overhaul P0–P5,
+  `docs/ui-ux/UX_OVERHAUL.md`).
 
 Vollständig: `docs/project/FEATURES.md`.
 

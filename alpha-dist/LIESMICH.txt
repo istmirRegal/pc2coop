@@ -1,4 +1,4 @@
-PC2Coop 1.13.0 - Planet Coaster 2 live zusammen bauen, ueber Steam
+PC2Coop 1.14.0 - Planet Coaster 2 live zusammen bauen, ueber Steam
 
 Installation (jeder Spieler, einmalig)
 0. ACSE (Mod-Loader fuer Planet Coaster 2) von Nexus Mods installieren, falls noch nicht
@@ -17,40 +17,45 @@ Die neue Version liegt danach unter %LOCALAPPDATA%\PC2Coop\<Version>\PC2Coop.
 Windows-Hinweis: Meldet SmartScreen oder der Virenscanner die Datei
 PC2CoopDiagnostic.dll, liegt das daran, dass sie nicht signiert ist.
 
-Spielen (Lobby)
-1. Host: im Hauptmenue die Kachel "Multiplayer" (oder F7) -> "Lobby erstellen".
-2. Freunde einladen: in der Lobby bei einem Steam-Freund "Einladen" (oder "Einladen"
-   unten fuer das Steam-Overlay). Freunde nehmen die Einladung in Steam an - oder sehen
-   in ihrer Freundesliste "hat eine offene Lobby" und klicken "Beitreten".
-3. In der Lobby seht ihr alle Spieler mit Profilbild, wer noch laedt, und ob jemand
-   DLCs oder Mods hat, die dem Host fehlen oder umgekehrt. Rechts ist der Chat: ins Feld
-   klicken, schreiben, Enter.
-4. Host: "Wo spielen wir?" - direkt in der Lobby waehlen:
-   - "Gespeichert": deine gespeicherten Sandbox-Parks,
-   - "Neu": neuer Sandbox-Park (Klima waehlen, Kreativ oder mit Budget),
-   - "Franchise": oeffnet das Franchise-Menue des Spiels.
-   Alle sehen sofort, was du ausgewaehlt hast. "Park oeffnen" startet: sobald dein Park
-   offen ist, wird er bei allen automatisch uebertragen und geladen.
+Spielen
+1. Host: im Hauptmenue die Kachel "Multiplayer" -> "Sitzung starten". Die Kachel zeigt
+   auch, ob gerade eine Sitzung offen ist oder ein Freund eine hat.
+2. Freunde einladen: auf der Seite "Multiplayer" einen freien Platz "+ Einladen" anklicken
+   und den Freund waehlen (oder "Steam-Overlay"). Eingeladene warten blass in ihrem Platz;
+   nach 2 Minuten ohne Antwort steht dort "keine Antwort" mit "Noch einmal einladen".
+   Freunde nehmen die Einladung in Steam an - oder sehen auf ihrer Seite "Multiplayer"
+   "hat eine offene Sitzung" und klicken "Beitreten". Beim Beitreten zeigen vier Schritte,
+   wie weit es ist (Verbinden, Zustimmung, Park kommt, Park laedt); "Abbrechen" geht, bis
+   der Park laedt.
+3. Auf der Seite seht ihr alle Spieler mit Profilbild und ob jemand DLCs oder Mods hat, die
+   dem Host fehlen oder umgekehrt. Rechts ist der Chat: ins Feld klicken, schreiben, Enter.
+4. Host: den Park oeffnest du auf den Seiten des Spiels - auf der Seite "Multiplayer" die
+   Kachel "Sandbox" (neuer Park oder einer deiner Parks) oder "Franchise". Alle sehen
+   "<Host> oeffnet einen Park"; sobald dein Park offen ist, wird er bei allen uebertragen
+   und geladen. Im Park steht einmal "Alle sind da", wenn niemand mehr laedt.
    Karriere und Herausforderungen folgen spaeter.
-5. Waehrend der Host im Menue einen Park sucht (oder in den Einstellungen ist), zeigt
-   eine kleine Lobby-Karte oben rechts den Stand - mit "Lobby oeffnen" und "Verlassen".
-6. Zurueck ins Hauptmenue heisst jetzt: zurueck in die Lobby, nicht raus. Oeffnet der Host
-   einen anderen Park, laden alle diesen. Verlassen geht mit "Verlassen" in der Lobby.
-   Wer schon im Park ist, kann auch dort hosten: Pausemenue -> "Multiplayer" ->
-   "Diesen Park hosten".
-7. Gemeinsam bauen. Oben rechts siehst du, wer im Park ist und was er tut; ueber der
-   Stelle, auf die ein Mitspieler schaut, schwebt sein Namensschild. Beitritte,
-   Austritte und Chat erscheinen unten links. Einen Mitspieler oben rechts anklicken:
-   deine Kamera fliegt zu ihm und folgt ihm (nochmal klicken beendet das).
+5. Waehrend der Host im Menue einen Park sucht, zeigt eine Leiste oben rechts auf jeder
+   Seite des Hauptmenues den Stand - mit "Oeffnen" und "Verlassen".
+6. Zurueck ins Hauptmenue heisst: zurueck in die Sitzung, nicht raus. Geht der Host ins
+   Hauptmenue, fragt dich ein Dialog, ob du mitkommst oder im Park wartest; den naechsten
+   Park laden alle. Wer schon im Park ist, kann auch dort hosten: Multiplayer-Fenster ->
+   "Sitzung starten".
+7. Gemeinsam bauen. Oben rechts siehst du, wer im Park ist; ein Icon zeigt, was er gerade
+   tut, mit der Maus darauf steht es ausfuehrlich. Ueber der Stelle, auf die ein Mitspieler
+   schaut, schwebt sein Namensschild. Beitritte, Austritte und Chat erscheinen unten links;
+   Enter oeffnet die Chat-Eingabe. Einen Mitspieler oben rechts anklicken: deine Kamera
+   fliegt zu ihm und folgt ihm (nochmal klicken beendet das).
 
 Was ihr braucht: Steam-Freundschaft (die Sitzung ist nur fuer Steam-Freunde des Hosts
 sichtbar). Ein Frontier-Konto oder das Franchise braucht ihr dafuer nicht.
 
 Wenn der Beitritt nicht klappt
 - "Einladung abgelaufen": die Sitzung gibt es nicht mehr (alte Einladung). Lass dich
-  neu einladen. Ein "Eingeladen"-Knopf wird nach etwa 25 Sekunden wieder aktiv.
+  neu einladen.
 - "Park konnte nicht geladen werden": "Erneut versuchen" holt den Park noch einmal.
+- Kann Steam die Sitzung nicht erstellen oder antwortet nicht, sagt ein Dialog es.
 - Wer ins Hauptmenue zurueckgeht, bleibt in der Sitzung; "Beenden" (Host) schliesst sie.
+  Solange noch jemand dabei ist, fragt "Beenden" erst nach.
 
 Die anderen sehen
 - Bodenmarke: eine kleine farbige Scheibe dort, wohin ein Mitspieler schaut, mit seinem
@@ -65,92 +70,101 @@ Die anderen sehen
   Legt er es ab, ist es wieder frei.
 - Ping: kurz mit der mittleren Maustaste klicken setzt an der Stelle unter dem Mauszeiger
   eine Markierung ("hier!") fuer alle, sichtbar etwa 8 Sekunden. Gedrueckt halten dreht wie
-  gewohnt die Kamera und pingt nicht. "Hinspringen" im Multiplayer-Fenster fliegt zum Ping.
+  gewohnt die Kamera und pingt nicht. "Hinbringen" im Multiplayer-Fenster fliegt zum Ping.
 - Folgen: Mitspieler oben rechts anklicken (oder "Folgen" im Multiplayer-Fenster) - deine
   Kamera zeigt, was er sieht. Bewegst du die Kamera selbst, endet das Folgen.
 - Urheber: Waehlst du ein Objekt aus (Info-Fenster offen) oder nimmst es in die Hand,
   steht daran, wer es erstellt und wer es zuletzt bearbeitet hat. Der Host merkt sich das
   pro Park (Datei pc2coop-authors-<Park>.txt im Spielordner), auch ueber Speichern und Laden.
-Im Multiplayer-Fenster, Reiter "Sitzung", Abschnitt "Fuer dich", laesst sich diese Anzeige
-abschalten ("Mitspieler in der Welt zeigen").
+Im Multiplayer-Fenster, Reiter "Einstellungen", Abschnitt "Fuer dich", laesst sich diese
+Anzeige abschalten ("Mitspieler in der Welt zeigen").
 
-Multiplayer im Baumenue
-Unten rechts in der Bauleiste gibt es den Reiter "Multiplayer" (oder F7). Das Fenster hat im Park
-fuenf Reiter:
-- Team: Mitspieler, Folgen, Chat, Einladen, Beitrittsanfragen (Host).
-- Besuchen: Besucher-Modus, Fahrgeschaefte mit Werten und Bewertungen, Mitfahren,
-  "Alle einladen" (gemeinsame Testfahrt).
+Das Multiplayer-Fenster
+"Multiplayer" unten rechts in der Bauleiste, F7 oder Pausemenue -> "Multiplayer" oeffnet das
+Fenster am linken Rand. Du kannst weiterbauen, waehrend es offen ist. Vier Reiter:
+- Spieler: Mitspieler mit "Hinbringen" und "Folgen", Beitrittsanfragen (Host), "+ Einladen".
+  Unten: "Besuchen" (Besucher-Modus) und "Verlassen" bzw. "Beenden".
 - Planen: das Brett des Parks - Baugebiete ("Wikingerland", mit Auftrag, Zustaendigem und
   Groesse), Aufgaben (offen/erledigt), Bauvorschlaege (alle stimmen dafuer oder dagegen),
   Kommentare und Treffpunkte. Alles mit Ort erscheint fuer alle als Marker im Park. Der Host
   speichert das Brett pro Park (pc2coop-board-<Park>.txt), es bleibt ueber Spielstarts.
-- Verlauf: "Seit deinem letzten Besuch" (was sich geaendert hat), Meldungen des Parks
-  (Defekte, festsitzende Gaeste, Blitzschlag ... - mit "Hinspringen"), Sicherungspunkte
-  und das Protokoll der Sitzung.
-- Sitzung: Regeln, Wettbewerb, Rollen, Abwesenheit.
+- Verlauf: Meldungen des Parks (Defekte, festsitzende Gaeste, Blitzschlag ... - mit
+  "Hinbringen" und "Ausblenden"), Sicherungspunkte und das Protokoll der Sitzung. Was sich
+  seit deinem letzten Besuch geaendert hat, kommt beim Beitritt einmal als Meldung.
+- Einstellungen: Fuer dich, Regeln, Inhalte, Wettbewerb. Erklaerungen stehen in Tooltips.
+Was eine Antwort braucht (Beitrittsanfrage, Abstimmung, Testfahrt-Einladung, "Bewerten" nach
+einem Bauduell), erscheint oben als Karte mit den Knoepfen dafuer.
+Im Pausemenue kannst du die Sitzung auch verlassen oder (als Host) beenden.
 
 Mittelklick: zeigen und handeln
-Ein kurzer Klick mit der mittleren Maustaste setzt einen Ping fuer alle und oeffnet neben
-dem Mauszeiger ein kleines Menue fuer genau diese Stelle (schliesst sich nach 10 Sekunden):
-- Steht dort ein Fahrgeschaeft: "Team zur Testfahrt einladen" (alle bekommen oben eine
-  Einladung mit "Mitfahren") und "Selbst mitfahren".
-- Bearbeitet dort gerade jemand etwas: "Uebernahme anfragen" - er bekommt die Bitte,
-  fertig zu bauen und freizugeben. Wegnehmen kann man es ihm nicht.
-- "Kommentar anheften", "Bauvorschlag machen", "Hier bauen (Baugebiet)", "Treffpunkt":
-  oeffnet "Planen" mit dieser Stelle.
+Ein kurzer Klick mit der mittleren Maustaste setzt einen Ping fuer alle und oeffnet um den
+Mauszeiger ein Radialmenue fuer genau diese Stelle (die Mitte schliesst es):
+- Steht dort ein Fahrgeschaeft: "Testfahrt mit allen" (alle bekommen oben eine Einladung mit
+  "Mitfahren") und "Mitfahren".
+- Bearbeitet dort gerade jemand etwas: Uebernahme anfragen - er bekommt die Bitte, fertig
+  zu bauen und freizugeben. Wegnehmen kann man es ihm nicht.
+- "Kommentar", "Vorschlag", "Baugebiet", "Treffpunkt": oeffnet "Planen" mit dieser Stelle.
 
-Regeln (Host, Reiter Sitzung)
+Regeln (Host, Reiter Einstellungen)
 - Spieltempo und Pause: alle oder nur der Host.
 - Fremde Bauten abreissen: erlaubt oder erst fragen (dann wird es beim Abreissen
   zurueckgestellt und der Urheber gefragt).
 - Besucher-Modus: erlaubt oder aus.
-- Schnell waehlen: "Locker zusammen bauen", "Geordnet", "Nur bauen".
+- Schnellwahl: "Locker", "Geordnet", "Nur bauen". Mitspieler sehen die Regeln gesperrt.
 Die Regeln bleiben bestehen, wenn der Host einen anderen Park laedt.
 Zurueck zu einem Sicherungspunkt geht nur, wenn alle zustimmen; Rueckgaengig (Strg+Z)
 betrifft nur deine eigenen Schritte.
 
-Wettbewerb (Host, Reiter Sitzung)
+Wettbewerb (Host, Reiter Einstellungen)
 - Bauduell: Thema eingeben, 15/30/60 Minuten. Jeder baut in seinem Baugebiet (Planen:
-  Baugebiet mit dir als Zustaendigem). Oben laeuft fuer alle die Uhr. Danach bewertet jeder
-  die Bauten der anderen, Gestaltung und Technik getrennt (1-5); das Ergebnis sehen alle.
+  Baugebiet mit dir als Zustaendigem). Oben rechts laeuft fuer alle die Uhr. Danach bewertet
+  jeder die Bauten der anderen, Gestaltung und Technik getrennt (1-5); das Ergebnis sehen
+  alle.
 - Koop gegen die Uhr: gemeinsam die Aufgaben vom Brett schaffen, mit Zeitlimit.
 Szenarien und Herausforderungen des Spiels laufen wie gewohnt beim Host: ihre Ziele gelten
 fuer alle gemeinsam, denn es ist ein Park mit einem Spielstand.
 
-Besucher-Modus (Reiter Besuchen)
-- "Als Besucher losgehen": du laeufst als Figur durch den Park, die Kamera hinter dir.
+Besucher-Modus (Knopf "Besuchen" im Multiplayer-Fenster)
+- Du laeufst als Figur durch den Park, die Kamera hinter dir. Wie im Laufmodus des Spiels
+  gibt es keine Leiste oben: die Tasten stehen unten rechts, die Bauleiste ist solange weg.
   Die Figur ist ein Parkgast des Spiels mit dessen Lauf-, Renn- und Stehbewegungen. Sie
   sieht aus wie dein Avatar aus dem Startbildschirm, so gut es geht: Alter und Geschlecht
   sowie die Farben von Oberteil, Hose und Haaren stimmen; Kopf, Frisur und Kleidungsstueck
   waehlt PC2Coop aus den Gast-Modellen des Grundspiels.
   Maus bewegen: umsehen (der Mauszeiger ist dann weg), WASD laufen, Shift rennen. Du
   laeufst nicht durch Gebaeude, Deko und Bahnen und gehst Stufen und Wege hoch.
-- T gedrueckt halten: Emote-Rad (Winken, Jubeln, Lachen, Super, Naja, Uebel) - Maus in die
-  Richtung oder 1-6, T loslassen sendet. Die anderen sehen deine Figur das Emote spielen
-  (winken, jubeln, lachen ...).
+- T gedrueckt halten: Emote-Rad im Look der Radialmenues des Spiels (Winken, Jubeln,
+  Lachen, Super, Naja, Uebel) - Maus in die Richtung oder 1-6, T loslassen sendet. Die
+  anderen sehen deine Figur das Emote spielen (winken, jubeln, lachen ...).
 - V: zwischen Ansicht von hinten (deine Figur) und Ich-Sicht wechseln. Die Ich-Sicht ist
   der eingebaute Laufmodus des Spiels - mit Boden, Treppen, Springen (Alt), Ducken (Strg),
   Schwimmen, Lampe (L) und Einsteigen an Eingaengen mit der Taste des Spiels. Die anderen
   sehen dich in beiden Ansichten als Figur.
 - E: das, was vor deiner Figur ist, wie im Spiel: am Eingang eines Fahrgeschaefts
-  einsteigen (oben steht, was geht, z. B. "Einsteigen: Boardslide" oder warum nicht),
-  Rutschen-Treppen, Shows. Nach der Fahrt geht es am Ausgang weiter. Die Liste
-  "Fahrgeschaefte" bringt dich auch ohne Laufen in eine Bahn.
-- E vor einem Shop oder Automaten: die Liste seiner Artikel mit Preisen. 1-6 (oder
-  anklicken) kauft, E oder Tab schliesst. Der Preis geht in die Parkkasse wie bei einem
-  Gast, alle sehen "<Name> kauft ...", und deine Figur isst oder trinkt eine Weile beim
-  Gehen. Geschlossene Shops verkaufen nichts.
+  einsteigen (unter der Bildmitte steht, was geht, z. B. "Einsteigen: Boardslide" oder
+  warum nicht), Rutschen-Treppen, Shows. Nach der Fahrt geht es am Ausgang weiter.
+- F: die Fahrgeschaefte links, mit Werten, Bewertungen als Sterne und "Mitfahren" - das
+  bringt dich auch ohne Laufen in eine Bahn. Solange die Liste offen ist, ist die Maus
+  frei. Deine Wertung: fuenf Sterne anklicken, dazu ein kurzer Vorschlag; der Host
+  speichert sie pro Park.
+- E vor einem Shop oder Automaten: ein kleines Kauf-Panel mit Artikeln und Preisen. 1-6
+  (oder anklicken) kauft, E oder Tab schliesst. Der Preis geht in die Parkkasse wie bei
+  einem Gast, alle sehen "<Name> kauft ...", und deine Figur isst oder trinkt eine Weile
+  beim Gehen. Geschlossene Shops verkaufen nichts.
 - Tab: zurueck zum Bauen.
-- Bewerten: 1 bis 5 Sterne und ein kurzer Vorschlag; der Host speichert sie pro Park.
 - Noch nicht: Toiletten, Hunger/Laune (das steckt im Spiel selbst und laesst sich von
   aussen nicht steuern).
 
 Verbindung weg?
-- Hakt die Verbindung, siehst du "Keine Verbindung zum Host - warte ...". Kommt sie zurueck
-  und dabei ist etwas verloren gegangen, laedt dein Spiel den Park des Hosts automatisch neu.
+- Hakt die Verbindung, steht oben "Keine Verbindung zum Host" mit der Zeit und "Verlassen";
+  nach einer halben Minute fragt ein Dialog "Warten" oder "Verlassen". Kommt sie zurueck,
+  wird die Anzeige kurz gruen; ging dabei etwas verloren, laedt dein Spiel den Park des
+  Hosts automatisch neu.
 - Ist dein Spiel abgestuerzt: neu starten. Spielt der Host noch, bietet das Hauptmenue
   "Wieder beitreten" an. Du bekommst den aktuellen Park und deine Farbe zurueck.
-- Stuerzt der Host ab, endet die Sitzung; der Host hostet neu und laedt wieder ein.
+- Ist der Host weg (beendet oder abgestuerzt), sagt dir ein Dialog "Die Sitzung ist
+  beendet". Du kannst im Park allein weiterspielen oder ins Hauptmenue gehen. Der Host
+  hostet neu und laedt wieder ein.
 
 Ein Park, ein Spielstand
 - Der Park des Hosts ist der echte: dort laufen Besucher, Geld, Defekte und Wartung, und
@@ -170,9 +184,9 @@ Ein Park, ein Spielstand
 
 Wenn etwas nicht ankommt
 Kann eine Aenderung eines Mitspielers bei dir nicht uebernommen werden, wird sie einmal
-wiederholt. Klappt es dann immer noch nicht, erscheint ein Hinweis, und im
-Multiplayer-Fenster gibt es "Neu synchronisieren": dein Spiel laedt dann den aktuellen
-Park des Hosts neu. Der Host sieht im Verlauf, wer nicht mehr synchron ist.
+wiederholt. Klappt es dann immer noch nicht, steht oben "Nicht synchron" mit dem Knopf
+"Neu synchronisieren": dein Spiel laedt dann den aktuellen Park des Hosts neu. Der Host
+sieht im Verlauf, wer nicht mehr synchron ist.
 
 Franchise
 Hostet ihr aus einem Franchise-Park, speichert der Host wie gewohnt: der gemeinsame
@@ -207,6 +221,10 @@ Live synchronisiert und im Spiel getestet:
   sperrt sie fuer die anderen (allein getestet, mit nachgestelltem Mitspieler).
 Eingebaut, aber noch nicht im Spiel bestaetigt:
 - Das Zusammenspiel der Sperren zwischen zwei echten Spielern.
+- Neu in 1.14.0: Oberflaeche im Stil des Spiels - Seite "Multiplayer" im Hauptmenue,
+  Fenster am linken Rand, Besuch ohne Leiste oben, Emote-Rad und Sterne, Anzeigen fuer
+  Verbindung, Beitritt und Sitzungsende (allein getestet, nachgestellter Mitspieler, ohne
+  echte Maus und Tastatur).
 - Neu in 1.13.0: Besucher-Figur als animierter Parkgast im Look deines Avatars, Ansicht
   wechseln (V) mit der Ich-Sicht des Spiels, Eingaenge wie im Spiel (E), Kaufen an Shops und
   Automaten mit Essen/Trinken beim Gehen (allein getestet, nachgestellter Mitspieler).
@@ -234,14 +252,14 @@ Einstellungen (Parkname, Preise, Oeffnen/Schliessen): aendern zwei Spieler sie g
 gilt die Reihenfolge beim Host - am Ende haben alle denselben Wert.
 Bekannte Grenze: Malen zwei Spieler gleichzeitig an derselben Stelle im Gelaende (oder nehmen
 gleichzeitig Kredite auf), kann der Park bei den Spielern leicht unterschiedlich werden.
-"Neu synchronisieren" im Multiplayer-Fenster laedt dann den Stand des Hosts.
+"Neu synchronisieren" (oben in der Mitte) laedt dann den Stand des Hosts.
 
 Sicherheit und Datenschutz
 - Nur Steam-Freunde: die Sitzung ist nur fuer Steam-Freunde des Hosts sichtbar, und die
   Mod tritt nur Sitzungen bei, deren Host in deiner Steam-Freundesliste steht.
-- Der Host entscheidet: wen du im Multiplayer-Fenster einlaedst, der kommt direkt hinein.
-  Jeder andere Freund, der beitreten will, erscheint dort unter "Moechte beitreten" und
-  bekommt den Park erst nach "Zulassen".
+- Der Host entscheidet: wen du einlaedst, der kommt direkt hinein. Jeder andere Freund,
+  der beitreten will, erscheint als Anfrage (Karte oben, im Hauptmenue in einem Platz)
+  und bekommt den Park erst nach "Zulassen".
 - Startet das Spiel mit einer Sitzung im Gepaeck (Link oder Startparameter statt einer
   angeklickten Einladung), fragt die Mod erst nach, bevor sie beitritt.
 - Aus dem Netz landen genau zwei Dateien auf deiner Platte: der Park des Hosts
@@ -251,7 +269,7 @@ Sicherheit und Datenschutz
 - Kein eigener Server: die Verbindung laeuft ueber Steam. UPDATE.cmd spricht nur mit
   GitHub (istmirRegal/pc2coop) und installiert nur, wenn die Pruefsumme stimmt.
 - Keine Administratorrechte; der Installer schreibt nur in Win64\ovldata des Spiels.
-- In der Lobby sehen alle Mitspieler deine DLC-Liste, die Ordnernamen deiner anderen
+- In der Sitzung sehen alle Mitspieler deine DLC-Liste, die Ordnernamen deiner anderen
   Mods und dein Steam-Profilbild (aus Steam, nicht von uns gespeichert).
 - Die Log-Datei bleibt auf deinem PC. Sie enthaelt Steam-Namen und Steam-IDs der
   Mitspieler - bedenke das, wenn du sie weitergibst.
@@ -267,12 +285,13 @@ Voraussetzungen
   (1.12.2.1035111); neuere Builds werden installiert und funktionieren meist ebenfalls.
   Findet die Mod im Spiel nicht, was sie braucht, bleibt der Multiplayer aus und die
   Log-Datei enthaelt "game build not supported".
-- DLCs: Die Lobby zeigt, wem welches DLC fehlt. Standard ist "Nur gemeinsame Inhalte":
+- DLCs: Das Multiplayer-Fenster zeigt, wem welches DLC fehlt. Standard ist "Nur gemeinsame
+  Inhalte":
   Objekte aus einem DLC, das nicht alle haben, werden nicht gebaut (Hinweis an den
-  Bauenden). Der Host kann das mit "Alle Inhalte erlauben" abschalten. Steht im Park
+  Bauenden). Der Host kann das im Reiter Einstellungen abschalten. Steht im Park
   des Hosts schon DLC-Inhalt, braucht ihr dieses DLC trotzdem zum Laden.
 - Andere Mods (z. B. ForgeUtils) stoeren PC2Coop nicht. Neue Objekte aus Mods, die ein
-  Mitspieler nicht hat, kann sein Spiel nicht anzeigen - die Lobby zeigt Unterschiede.
+  Mitspieler nicht hat, kann sein Spiel nicht anzeigen - das Fenster zeigt Unterschiede.
 
 Probleme melden
 Log-Datei: <Spielordner>\Win64\ovldata\PC2CoopProbe\pc2coop-diagnostic-*.log
