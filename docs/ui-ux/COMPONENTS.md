@@ -29,7 +29,7 @@ Wer ein Feld hinzufügt, trägt es hier ein.
 | `EndConfirm` | Dialog „Für alle beenden?“ (Spiel-`Dialog`), vor `leave` des Hosts mit Mitspielern | `askEnd`, `endOrAsk` | FEAT-042 |
 | `raiseTooltips` (in `poll`) | hebt die Tooltip-Ebene des Spiels (`Layer_root` mit `.TooltipContainer`) auf z-index 10001 über unsere Ebene (10000) | – | – |
 | `VisitorHud` | Besuch (TP-24, TP-25): Tastenhinweise unten rechts (`visitKeys`), E-Hinweis unter der Bildmitte, Kauf-Panel; beim Mitfahren nur „Du fährst …“ | visitor | FEAT-160, FEAT-165, FEAT-169 |
-| `VisitorRides` | Fahrgeschäfte-Panel links (Klassen `Panel_*`), Mitfahren, Wertung, Vorschlag | visitor.list, visitor.rides, role | FEAT-166, FEAT-167 |
+| `VisitorRides` | Fahrgeschäfte-Panel links (Klassen `Panel_*`), Mitfahren, Bewertung mit Spiel-`Stars`, eigene Wertung als fünf Stern-Icons (`accent-filter`), Vorschlag | visitor.list, visitor.rides, role | FEAT-166, FEAT-167 |
 | `syncVisitHud` (in `poll`) | blendet im Besuch `BrowserModule_root` und `HUD_promptsList` des Spiels aus | visitor | FEAT-160 |
 | `EmoteWheel` | Emote-Rad | visitor.wheel | FEAT-168 |
 | `RequestCard` (`pendingRequests`) | Anfrage-Karte: Beitritt, Abstimmung, Testfahrt, Bewerten | requests, team.vote, team.invitation, team.competition | FEAT-027, FEAT-141, FEAT-138, FEAT-147 |

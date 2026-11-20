@@ -137,8 +137,8 @@ ausgeblendet (`syncVisitHud`), beim Mitfahren nicht (dort liegen die Knöpfe der
 | „Du fährst <Bahn>“ | oben Mitte | beim Mitfahren | – | FEAT-166 |
 | E-Hinweis | unter der Bildmitte | von hinten, vor einem Eingang | [E] + Spieltext, darunter der Sperrgrund (Lokalisierung über `shown()`) | FEAT-165 |
 | Kauf-Panel „Kaufen“ | unten rechts über den Tastenhinweisen | Laden-Menü offen | Zeilen mit Taste, Artikel, Preis; 1–6 oder Klick → `buy`; E/Tab schließt | FEAT-169 |
-| Fahrgeschäfte-Panel | links wie das Multiplayer-Fenster | F (oder X schließt) | Zeilen: Name, Art, Entfernung, Wartende, Werte, Bewertung; „Mitfahren“ → `ride`; „Deine Wertung“ 1–5 → `rate`; Vorschlag (Enter) → `rate`; Maus frei, solange offen | FEAT-166, FEAT-167 |
-| Emote-Rad | Bildmitte | T gehalten | Maus/1–6 wählt, T loslassen sendet | FEAT-168 |
+| Fahrgeschäfte-Panel | links wie das Multiplayer-Fenster | F (oder X schließt) | Zeilen: Name, Art, Entfernung, Wartende, Werte, Bewertung als Sterne des Spiels (`Stars`); „Mitfahren“ → `ride`; „Deine Wertung“: fünf Sterne zum Klicken (gewählte gefüllt in Akzentfarbe) → `rate`; Vorschlag (Enter) → `rate`; Maus frei, solange offen | FEAT-166, FEAT-167 |
+| Emote-Rad | Bildmitte, Kreise auf einem Ring wie das Markieren-Radialmenü | T gehalten | Gast-Icons des Spiels (`guestThoughts`) mit Taste 1–6 und Wort; Maus/1–6 wählt (größer, Akzentfarbe), T loslassen sendet | FEAT-168 |
 
 Tasten im Besuch (über die DLL, FEAT-195): **WASD** laufen, **Shift** rennen, **Maus** umsehen,
 **E** Eingang/Laden, **F** Fahrgeschäfte, **V** Ich-Sicht ↔ von hinten, **T** Emote-Rad, **1–6**

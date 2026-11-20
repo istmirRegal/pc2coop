@@ -466,7 +466,11 @@ per Klasse ausblenden), E-Hinweis unter der Bildmitte und Kauf-Panel (TP-25), Fa
 Panel links, geöffnet mit F (neue DLL-Taste; solange offen, ist die Maus frei). Emote-Knöpfe
 entfallen. Nicht geprüft: echte Tasten (F könnte auch eine Taste des Spiels sein), die Maus im
 Besuch (QA schaltet den Maus-Look ab, damit er den Zeiger des Eigners nicht fängt).
-Offen in P4: Emote-Rad im Look des Spiel-Radialmenüs (TP-26), Wertung mit Spiel-Sternen (TP-27).
+
+**P4 Schritt 2 (2026-11-20):** Emote-Rad im Look des Markieren-Radialmenüs mit den Gast-Icons des
+Spiels (TP-26). Fahrgeschäfte: Bewertung als Spiel-`Stars`, eigene Wertung als fünf Sterne zum
+Klicken (TP-27). Im Spiel fotografiert (Rad mit Auswahl, Panel mit nachgestellter Bahn). Damit ist
+P4 gebaut. Nicht geprüft: echte Tasten T und F, Klicken mit der Maus.
 
 Prototypen zuerst (vor P2/P3/P4): `Panel` in unserer Ebene, Seite im Hauptmenü-Rahmen,
 Bauleiste im Besuch aus. Ergebnis entscheidet, ob Ziel oder Rückfall gebaut wird.

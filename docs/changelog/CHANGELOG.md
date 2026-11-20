@@ -5,6 +5,9 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
 
 ## Unveröffentlicht
 
+- Das Emote-Rad sieht aus wie die Radialmenüs des Spiels, mit den Gast-Symbolen des Spiels.
+- Fahrgeschäfte: Die Bewertung steht als Sterne da; deine Wertung gibst du mit fünf Sternen statt
+  mit den Knöpfen 1 bis 5.
 - Besuch wie der Laufmodus des Spiels: Die Leiste oben ist weg, die Tasten stehen unten rechts.
   Die Bauleiste ist im Besuch ausgeblendet. Was E vor einem Eingang tut, steht unter der
   Bildmitte, mit Grund, wenn es gerade nicht geht. Ein Laden zeigt ein kleines Kauf-Panel.

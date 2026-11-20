@@ -21,6 +21,7 @@ import { TooltipContainer } from '/js/project/components/Tooltip.js';
 import { AnchorLocation, TargetLine } from '/js/common/components/Constraint.js';
 import { ToggleRow } from '/js/project/components/ToggleRow.js';
 import { ListStepperRow } from '/js/project/components/ListStepperRow.js';
+import { Stars } from '/js/project/components/Stars.js';
 
 // The window in a park uses the classes of the game's Panel and TabBar (TP-11). Their style sheets
 // come with those components; the components themselves are not used (focus handling).
@@ -184,7 +185,9 @@ const FONT = 'StandardFont, StandardFont_fallback1, StandardFont_fallback2, Stan
 const PALETTE_DEFAULT = { accent: '#008ACC', alert: '#FF3363', neutral3: '#9cbad0',accentButtonDesaturatedDark: '#2b6e9c', accentButtonLight: '#81d3fd', accentFaint: '#cce8f5', accentLight: '#64bde8', accentText: '#0b3a56', area: '#E8EFF4', highlight: '#FFBB00', panel: '#FFFFFF', positive: '#00CA65', positiveDark: '#099340', warning: '#EE7722', warningDark: '#9b5000', whiteColor: '#FFFFFF',
     'accent-triplet': '0, 138, 204', 'accentPanelBackground-triplet': '0, 32, 61',
     // Tint for white game icons on light ground, as the game's filter: var(--accentText-filter).
-    'accentText-filter': 'coh-color-matrix(0, 0, 0, 0, 0.0431372549, 0, 0, 0, 0, 0.2274509804, 0, 0, 0, 0, 0.337254902, 0, 0, 0, 1, 0)' };
+    'accentText-filter': 'coh-color-matrix(0, 0, 0, 0, 0.0431372549, 0, 0, 0, 0, 0.2274509804, 0, 0, 0, 0, 0.337254902, 0, 0, 0, 1, 0)',
+    // Accent tint for white icons, as the game's Stars: var(--accent-filter).
+    'accent-filter': 'coh-color-matrix(0, 0, 0, 0, 0, 0, 0, 0, 0, 0.5411764706, 0, 0, 0, 0, 0.8, 0, 0, 0, 1, 0)' };
 const palette = Object.assign({}, PALETTE_DEFAULT);
 // Returns true when a colour changed. Right after the game switches the class on <body> the old
 // values are still returned (2026-11-20), so this runs regularly instead of once.
@@ -536,13 +539,18 @@ class VisitorRides extends StateComponent {
                             h('div', { style: { fontWeight: 'bold' } }, r.name),
                             muted(r.kind + (extra ? ' · ' + extra : '')),
                             muted(stats),
-                            h('div', { style: { color: C('accent'), fontSize: '0.9rem' } },
-                                r.count ? 'Bewertung ' + one(r.avg) + ' / 5 (' + r.count + ')' : 'noch keine Bewertung')),
+                            // The park's rating as the game's stars (TP-27).
+                            h('div', { style: { display: 'flex', alignItems: 'center', marginTop: '0.15rem' } },
+                                r.count ? h(Stars, { value: r.avg, max: 5 }) : null,
+                                muted(r.count ? ' ' + one(r.avg) + ' (' + r.count + ')' : 'noch keine Bewertung', { marginLeft: r.count ? '0.4rem' : 0 }))),
                         buttons([{ label: 'Mitfahren', onSelect: () => request('ride', r.key) }])),
-                    coop.role && h('div', { style: { display: 'flex', alignItems: 'center', marginTop: '0.2rem' } },
-                        muted('Deine Wertung', { marginRight: '0.4rem' }),
-                        buttons([1, 2, 3, 4, 5].map((n) => ({ label: (mine === n ? '(' + n + ')' : String(n)),
-                            onSelect: () => { this.setState({ picked: r.key, stars: { ...state.stars, [r.key]: n } }); request('rate', r.key + '|' + n + '|'); } })))),
+                    // The own rating: five stars, the chosen ones filled in the accent colour.
+                    coop.role && h('div', { style: { display: 'flex', alignItems: 'center', marginTop: '0.25rem' } },
+                        muted('Deine Wertung', { marginRight: '0.5rem' }),
+                        [1, 2, 3, 4, 5].map((n) => h('div', { key: 's' + n, onClick: () => { this.setState({ picked: r.key, stars: { ...state.stars, [r.key]: n } });
+                            request('rate', r.key + '|' + n + '|'); }, style: { pointerEvents: 'auto', marginRight: '0.2rem' } },
+                            glyph('img/icons/' + (mine >= n ? 'star' : 'starOutline') + '.svg', '1.3rem', false,
+                                { filter: C('accent-filter'), opacity: mine >= n ? 1 : 0.45 })))),
                     list(r.comments).slice(-2).map((c, i) => muted(c.who + ' (' + c.stars + '/5): ' + c.text, { key: 'c' + i, color: C('accentText') })));
             });
         return h('div', { style: { position: 'absolute', left: 0, top: rem(PANEL_TOP * 20), width: rem(PANEL_WIDTH * 20 * 1.3), pointerEvents: 'none',
@@ -581,24 +589,32 @@ function syncVisitHud() {
 }
 
 // Visitor mode: T held shows the emote wheel; the mouse (or 1-6) picks, letting go of T sends.
-const WHEEL = [['Winken', 0], ['Jubeln', 1], ['Lachen', 2], ['Super', 3], ['Naja', 4], ['Übel', 5]];
+// In the look of the game's radial menus (TP-26), like the mark menu: circles on a ring with the
+// game's own guest thought icons. Order as Visitor.EMOTES, clockwise from the top.
+const WHEEL = [['Winken', 'guest_bubble_mood_happy'], ['Jubeln', 'guest_bubble_mood_excited'], ['Lachen', 'guest_bubble_emotionFunny'],
+    ['Super', 'guest_bubble_like'], ['Naja', 'guest_bubble_dislike'], ['Übel', 'guest_bubble_sick']];
 class EmoteWheel extends StateComponent {
     render(props, state) {
         const coop = state.coop || {};
         const wheel = coop.visitor && coop.visitor.wheel;
         if (!wheel) return null;
-        const radius = 150;
+        const radius = 7;
         return h('div', { style: { position: 'absolute', left: '50%', top: '50%', width: '0px', height: '0px' } },
-            WHEEL.map(([label, i]) => {
+            WHEEL.map(([label, icon], i) => {
                 const angle = i * Math.PI / 3;
                 const on = wheel.selected === i + 1;
-                return h('div', { key: label, style: { position: 'absolute', left: rem((Math.sin(angle) * radius - 70)),
-                    top: rem((-Math.cos(angle) * radius - 24)), width: '7rem', height: '2.4rem', lineHeight: '2.4rem', textAlign: 'center',
-                    borderRadius: '1.2rem', fontSize: '1rem', backgroundColor: on ? C('accent') : HUD_BG(0.85), color: C('whiteColor'),
-                    borderWidth: '0.1rem', borderStyle: 'solid', borderColor: on ? C('whiteColor') : 'rgba(255, 255, 255, 0.25)' } }, (i + 1) + '  ' + label);
+                return h('div', { key: label, style: { position: 'absolute', left: (Math.sin(angle) * radius - 4.5) + 'rem',
+                    top: (-Math.cos(angle) * radius - 2.2) + 'rem', width: '9rem', display: 'flex', flexDirection: 'column', alignItems: 'center' } },
+                    h('div', { style: { width: on ? '4.4rem' : '3.8rem', height: on ? '4.4rem' : '3.8rem', borderRadius: '2.2rem', display: 'flex',
+                        alignItems: 'center', justifyContent: 'center', backgroundColor: on ? C('accent') : HUD_BG(0.85), boxShadow: '0 0 0.5rem rgba(0, 0, 0, 0.3)',
+                        borderWidth: '0.15rem', borderStyle: 'solid', borderColor: on ? C('whiteColor') : 'rgba(255, 255, 255, 0.25)' } },
+                        glyph('img/icons/guestThoughts/' + icon + '.svg', '2.4rem', false)),
+                    h('div', { style: { display: 'flex', alignItems: 'center', marginTop: '0.2rem', padding: '0.05rem 0.4rem', borderRadius: '0.35rem',
+                        backgroundColor: 'rgba(0, 0, 0, 0.45)', color: C('whiteColor'), fontSize: '0.9rem' } }, keyCap(String(i + 1)), label));
             }),
-            h('div', { style: { position: 'absolute', left: '-5.5rem', top: '-0.7rem', width: '11rem', textAlign: 'center', color: C('whiteColor'),
-                fontSize: '0.9rem', textShadow: '0 0.05rem 0.15rem #000' } }, 'Maus bewegen, T loslassen'));
+            h('div', { style: { position: 'absolute', left: '-2.2rem', top: '-2.2rem', width: '4.4rem', height: '4.4rem', borderRadius: '2.2rem',
+                backgroundColor: HUD_BG(0.85), display: 'flex', alignItems: 'center', justifyContent: 'center', color: C('whiteColor'),
+                fontSize: '0.8rem', textAlign: 'center', padding: '0 0.3rem' } }, 'T loslassen'));
     }
 }
 

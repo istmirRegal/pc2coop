@@ -3,6 +3,16 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-20 – UX-Overhaul P4, Schritt 2: Emote-Rad und Sterne
+
+- `EmoteWheel` wie `ContextMenu`: Kreise auf einem Ring (7 rem), Icons
+  `guestThoughts/guest_bubble_mood_happy`, `…_mood_excited`, `…_emotionFunny`, `…_like`,
+  `…_dislike`, `…_sick` (farbig, ohne Filter), Taste als `keyCap`, Mitte „T loslassen“.
+- `VisitorRides`: Durchschnitt als Spiel-`Stars`; eigene Wertung als fünf `star`/`starOutline`
+  mit neuem Paletten-Eintrag `accent-filter` (wie `--accent-filter` der Spiel-Sterne).
+- Testkopie: T und Maus als Ereignisse eingespielt (`key:v|t|1`, `mouse|40|25`), Rad fotografiert,
+  danach „<Name> lacht“ im Verlauf; Panel mit vorgetäuschten Bahnen und einer Wertung.
+
 ## 2026-11-20 – UX-Overhaul P4, Schritt 1: Besuch ohne Leiste oben
 
 - `VisitorBar` ersetzt durch `VisitorHud` (Tastenhinweise, E-Hinweis, Kauf-Panel) und

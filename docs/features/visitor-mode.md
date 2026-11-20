@@ -102,7 +102,8 @@ Code: `probe/PC2CoopProbe/Main/pc2coop/visitor.lua`, `probe/PC2CoopProbe/Main/pc
   T loslassen sendet; alle sehen die Animation und einen Toast.
 - **Technik:** `Visitor.EMOTES`, `Visitor.OnKey`, `Visitor.Wheel`; `Session.Emote` →
   `emote|kind` → Host `em|sid|kind`; `Session._EmoteKind`, `Session.Emotes` (4 s, Essen 20 s).
-  UI-Aktion `emote`, Klasse `EmoteWheel`. Die Emote-Knöpfe der alten Leiste sind seit P4 weg.
+  UI-Aktion `emote`, Klasse `EmoteWheel` (seit P4 im Look der Radialmenüs des Spiels, Icons
+  `guestThoughts/guest_bubble_*`, `WHEEL`). Die Emote-Knöpfe der alten Leiste sind seit P4 weg.
 
 ### FEAT-169 – Kaufen an Shops und Automaten
 - **Status:** Implemented · **Seit:** 1.13.0
