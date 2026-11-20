@@ -610,50 +610,143 @@ class ContextMenu extends StateComponent {
     }
 }
 
-// Key hint like the game's input hints (bottom right, above the build bar): the mark is the way to
-// everything in the radial menu, so it is shown while playing in a session (TP-15, UX-C1).
+// A key as the game's input hints draw it: white outline, the key's name inside.
+const keyCap = (label) => h('div', { style: { padding: '0 0.3rem', marginRight: '0.4rem', borderRadius: '0.25rem', borderWidth: '0.1rem',
+    borderStyle: 'solid', borderColor: C('whiteColor') } }, label);
+
+// Key hints like the game's input hints (bottom right, above the build bar): Enter opens the chat,
+// the mark is the way to everything in the radial menu (TP-15, TP-22, UX-C1).
 class MarkHint extends StateComponent {
     render(props, state) {
         const coop = state.coop || {};
         if (!coop.role || coop.context !== 'park' || coop.open || (coop.visitor && coop.visitor.active) || (coop.team && coop.team.context)) return null;
         return h('div', { style: { position: 'absolute', right: '1rem', bottom: '5.2rem', display: 'flex', alignItems: 'center',
             padding: '0.3rem 0.4rem', borderRadius: '0.35rem', backgroundColor: 'rgba(0, 0, 0, 0.3)', color: C('whiteColor'), fontSize: '0.9rem' } },
-            h('div', { style: { padding: '0 0.3rem', marginRight: '0.4rem', borderRadius: '0.25rem', borderWidth: '0.1rem', borderStyle: 'solid',
-                borderColor: C('whiteColor') } }, 'Mittelklick'),
-            'Markieren');
+            keyCap('Enter'), h('div', { style: { marginRight: '0.9rem' } }, 'Chat'),
+            keyCap('Mittelklick'), 'Markieren');
     }
 }
 
-// Short notifications: joins, leaves, chat, conflicts.
-class Toasts extends StateComponent {
-    state = { visible: [] };
+// Bottom left (TP-22): chat messages and what players did ("event"), fading out after a while;
+// notices (warnings, answers) as cards above them. Enter (DLL "key:chat") opens the game's input
+// field like a game chat: Enter sends, Esc or a click elsewhere closes, the draft stays.
+const CHAT_SHOW_MS = 10000;
+const NOTICE_SHOW_MS = 6000;
+const chatFits = (coop) => !!coop.role && coop.context === 'park' && !coop.open;
+
+class ChatArea extends StateComponent {
+    state = { lines: [], notices: [], typing: false, draft: '' };
     componentDidMount() {
         super.componentDidMount();
         this._seen = 0;
-        this._listenerToasts = (coop) => {
-            const fresh = (coop.toasts || []).filter((t) => t.id > this._seen);
-            if (fresh.length === 0) return;
-            this._seen = Math.max(...fresh.map((t) => t.id));
-            const now = Date.now();
-            this.setState({ visible: [...this.state.visible, ...fresh.map((t) => ({ ...t, until: now + 6000 }))].slice(-5) });
-        };
-        listeners.add(this._listenerToasts);
-        this._timer = setInterval(() => {
-            const now = Date.now();
-            if (this.state.visible.some((t) => t.until < now)) this.setState({ visible: this.state.visible.filter((t) => t.until >= now) });
-        }, 500);
+        this._chatKey = null;
+        this._closedAt = 0;
+        this._foreignAt = 0;
+        this._history = [];
+        this._listenerChat = (coop) => { try { this.onCoop(coop || {}); } catch (error) { log('chat ' + error); } };
+        listeners.add(this._listenerChat);
+        this._listenerChat(currentState);
+        this._timer = setInterval(() => { try { this.tick(); } catch (error) { log('chat tick ' + error); } }, 200);
     }
     componentWillUnmount() {
         super.componentWillUnmount();
-        listeners.delete(this._listenerToasts);
+        listeners.delete(this._listenerChat);
         clearInterval(this._timer);
+        if (this.state.typing) request('chatinput', '0');
+    }
+    componentDidUpdate() {
+        // Focus the game's input field once it is there; its own focus handler starts the edit.
+        if (this.state.typing && !this._focused && this.base && this.base.querySelector) {
+            const input = this.base.querySelector('input');
+            if (input) {
+                this._focused = true;
+                this._input = input;
+                input.focus();
+            }
+        }
+    }
+    onCoop(coop) {
+        const fresh = (coop.toasts || []).filter((t) => t.id > this._seen);
+        if (fresh.length) {
+            this._seen = Math.max(...fresh.map((t) => t.id));
+            const now = Date.now();
+            const talk = (t) => t.kind === 'chat' || t.kind === 'event';
+            const lines = fresh.filter(talk);
+            this._history = [...this._history, ...lines].slice(-30);
+            this.setState({
+                lines: [...this.state.lines, ...lines.map((t) => ({ ...t, until: now + CHAT_SHOW_MS }))].slice(-6),
+                notices: [...this.state.notices, ...fresh.filter((t) => !talk(t)).map((t) => ({ ...t, until: now + NOTICE_SHOW_MS }))].slice(-3) });
+        }
+        const key = coop.chatKey || 0;
+        if (this._chatKey === null) this._chatKey = key;   // presses from before this view do not count
+        else if (key !== this._chatKey) {
+            this._chatKey = key;
+            this.onEnter(coop);
+        }
+        if (this.state.typing && !chatFits(coop)) this.close(this.state.draft);
+    }
+    onEnter(coop) {
+        const now = Date.now();
+        // The same Enter also sends (the input field handles that itself) or confirms a text field
+        // of the game: then the chat stays closed.
+        if (this.state.typing || now - this._closedAt < 800 || now - this._foreignAt < 800 || !chatFits(coop)) return;
+        this._focused = false;
+        this.setState({ typing: true });
+        request('chatinput', '1');
+    }
+    close(draft) {
+        this._closedAt = Date.now();
+        this._focused = false;
+        this._input = null;
+        this.setState({ typing: false, draft: draft || '' });
+        request('chatinput', '0');
+    }
+    tick() {
+        const active = document.activeElement;
+        const tag = active && active.tagName ? String(active.tagName).toUpperCase() : '';
+        if ((tag === 'INPUT' || tag === 'TEXTAREA') && active !== this._input) this._foreignAt = Date.now();
+        const now = Date.now();
+        const { lines, notices } = this.state;
+        if (lines.some((t) => t.until < now) || notices.some((t) => t.until < now)) {
+            this.setState({ lines: lines.filter((t) => t.until >= now), notices: notices.filter((t) => t.until >= now) });
+        }
+    }
+    line(t) {
+        const style = { padding: '0.1rem 0', fontSize: '0.9rem', color: C('whiteColor') };
+        if (t.kind === 'chat') {
+            // Gameface lays out every element as a flex box: name and text side by side, the text
+            // wraps in its own column.
+            const at = t.text.indexOf(': ');
+            return h('div', { key: 'l' + t.id, style: { ...style, display: 'flex', flexDirection: 'row', alignItems: 'flex-start' } },
+                at > 0 && h('div', { style: { color: '#' + (t.color || '9cbad0'), fontWeight: 'bold', flexShrink: 0, marginRight: '0.3rem' } }, t.text.slice(0, at) + ':'),
+                h('div', { style: { flexGrow: 1, flexShrink: 1, minWidth: 0 } }, at > 0 ? t.text.slice(at + 2) : t.text));
+        }
+        return h('div', { key: 'l' + t.id, style: { ...style, color: C('neutral3') } }, t.loc ? shown(t.text) : t.text);
     }
     render(props, state) {
-        if (state.visible.length === 0) return null;
-        return h('div', { style: { position: 'absolute', bottom: '6rem', left: '1.2rem', display: 'flex', flexDirection: 'column' } },
-            state.visible.map((t) => h('div', { key: t.id, style: { margin: '0.2rem 0', padding: '0.5rem 0.8rem', maxWidth: '26rem',
+        const { notices, typing } = state;
+        const lines = typing ? this._history.slice(-12) : state.lines;
+        if (!typing && notices.length === 0 && lines.length === 0) return null;
+        return h('div', { style: { position: 'absolute', bottom: '6rem', left: '1.2rem', width: '26rem', display: 'flex', flexDirection: 'column',
+            alignItems: 'flex-start' } },
+            notices.map((t) => h('div', { key: 'n' + t.id, style: { margin: '0.2rem 0', padding: '0.5rem 0.8rem', maxWidth: '26rem',
                 borderRadius: '0.5rem', backgroundColor: HUD_BG(0.82), color: C('whiteColor'), fontSize: '0.9rem',
-                borderLeft: '0.25rem solid #' + (t.color || '00c6ff') } }, t.loc ? shown(t.text) : t.text)));
+                borderLeftWidth: '0.25rem', borderLeftStyle: 'solid', borderLeftColor: '#' + (t.color || '00c6ff') } }, t.loc ? shown(t.text) : t.text)),
+            (typing || lines.length > 0) && h('div', { style: { alignSelf: 'stretch', marginTop: '0.2rem', padding: '0.4rem 0.6rem',
+                borderRadius: '0.5rem', backgroundColor: HUD_BG(typing ? 0.85 : 0.55), pointerEvents: typing ? 'auto' : 'none' } },
+                lines.length === 0 ? h('div', { style: { color: C('neutral3'), fontSize: '0.9rem' } }, 'Noch keine Nachrichten.') : lines.map((t) => this.line(t)),
+                typing && h('div', { style: { marginTop: '0.4rem' } },
+                    h(InputField, { text: state.draft, promptText: literal('Nachricht an alle'), maxInputLength: 200, modifiers: 'alt', commitOnCancel: false,
+                        onChange: (e) => this.setState({ draft: (e && e.text) || '' }),
+                        onCommit: (e) => {
+                            const text = String((e && e.text) || '').trim();
+                            this.close('');
+                            if (text) request('chat', text);
+                        },
+                        onCancel: (e) => this.close((e && e.text) || '') })),
+                typing && h('div', { style: { display: 'flex', alignItems: 'center', marginTop: '0.35rem', color: C('whiteColor'), fontSize: '0.9rem' } },
+                    keyCap('Enter'), h('div', { style: { marginRight: '0.9rem' } }, 'Senden'),
+                    keyCap('Esc'), 'Schließen')));
     }
 }
 
@@ -1251,7 +1344,7 @@ class CoopLayer extends preact.Component {
             h(RequestCard, null),
             h(ContextMenu, null),
             h(MarkHint, null),
-            h(Toasts, null),
+            h(ChatArea, null),
             h(JoinProgress, null),
             h(MiniLobby, null),
             h('div', { style: { pointerEvents: 'auto' } }, h(Lobby, null)),

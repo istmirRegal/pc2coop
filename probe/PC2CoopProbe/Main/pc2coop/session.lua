@@ -36,6 +36,7 @@ local friends, friendsLoading = {}, {}
 local chat = {}           -- {name, text, color}
 local toasts = {}         -- {id, text, color}
 local toastId = 0
+local typing = false      -- the chat input of the HUD is open: visitor key presses are text
 local joining, hostName = false, nil  -- joiner: invite accepted / host shown while loading
 local progress = {}       -- joiner: file name -> {received, total}
 local desync = nil        -- reason when a remote change could not be applied here
@@ -164,16 +165,18 @@ local send
 
 -- loc: the text is in the game's own notification format and is translated by the UI.
 -- Only notifications of the host's park are; anything a player typed never is.
-local function toast(text, color, loc)
+-- kind: "chat" (a message) and "event" (what a player did) go to the chat area bottom
+-- left, everything else is a notice.
+local function toast(text, color, loc, kind)
     toastId = toastId + 1
-    toasts[#toasts+1] = {id = toastId, text = text, color = color, loc = loc == true}
+    toasts[#toasts+1] = {id = toastId, text = text, color = color, loc = loc == true, kind = kind or "notice"}
     while #toasts > 10 do global.table.remove(toasts, 1) end
 end
 
 local function addFeed(text)
     feed[#feed+1] = text
     while #feed > 30 do global.table.remove(feed, 1) end
-    toast(text)
+    toast(text, nil, false, "event")
     emit("session:feed|" .. text)
     if role == "host" then
         for _, sid in global.ipairs(order) do if sid ~= me then send(sid, "feed|" .. text) end end
@@ -740,7 +743,7 @@ local function hostChange(sid, f)
             for _, other in global.ipairs(order) do
                 if other ~= me and other ~= sid and players[other] and not players[other].pending then send(other, line) end
             end
-            if sid ~= me then toast(nameOf(sid) .. " zeigt auf etwas (oben rechts anklicken: folgen)", players[sid].color) end
+            if sid ~= me then toast(nameOf(sid) .. " zeigt auf etwas (oben rechts anklicken: folgen)", players[sid].color, false, "event") end
         end
     elseif f[1] == "who" and players[sid] and validGid(f[2] or "") then
         local creator, last = authorOf(f[2])
@@ -822,7 +825,7 @@ local function hostChange(sid, f)
             for _, other in global.ipairs(order) do
                 if other ~= me and other ~= sid and players[other] and not players[other].pending then send(other, line) end
             end
-            toast(nameOf(sid) .. " " .. EMOTES[f[2]], players[sid].color)
+            toast(nameOf(sid) .. " " .. EMOTES[f[2]], players[sid].color, false, "event")
         end
     elseif f[1] == "rate" and players[sid] and validRideKey(f[2]) then
         local stars = global.tonumber(f[3])
@@ -1096,7 +1099,7 @@ local function onMessage(from, payload)
             if EMOTES[f[3] or ""] then
                 emotes[f[2]] = {kind = f[3], frame = frames}
                 for _, pl in global.ipairs(roster.players or {}) do
-                    if pl.sid == f[2] and f[4] ~= "q" then toast(pl.name .. " " .. EMOTES[f[3]], pl.color) end
+                    if pl.sid == f[2] and f[4] ~= "q" then toast(pl.name .. " " .. EMOTES[f[3]], pl.color, false, "event") end
                 end
             end
         elseif kind == "sold" then
@@ -1140,7 +1143,7 @@ local function onMessage(from, payload)
                 ratings[f[3]].by[f[2]] = {stars = stars, text = cleanText(f[7] or ""), who = clean(f[6])}
                 if f[8] == "1" then
                     toast(clean(f[6]) .. " bewertet " .. clean(f[5]) .. " mit " .. stars .. "/5"
-                        .. ((f[7] or "") ~= "" and (": " .. cleanText(f[7])) or ""))
+                        .. ((f[7] or "") ~= "" and (": " .. cleanText(f[7])) or ""), nil, false, "event")
                 end
             end
         elseif kind == "pg" then
@@ -1149,7 +1152,7 @@ local function onMessage(from, payload)
             if x and y and z then
                 pings[f[2]] = {x = x, y = y, z = z, frame = frames}
                 for _, pl in global.ipairs(roster.players or {}) do
-                    if pl.sid == f[2] then toast(pl.name .. " zeigt auf etwas (oben rechts anklicken: folgen)", pl.color) end
+                    if pl.sid == f[2] then toast(pl.name .. " zeigt auf etwas (oben rechts anklicken: folgen)", pl.color, false, "event") end
                 end
             end
         elseif kind == "who" then
@@ -1166,7 +1169,7 @@ local function onMessage(from, payload)
         elseif kind == "feed" then
             feed[#feed+1] = global.string.sub(payload, 6)
             while #feed > 30 do global.table.remove(feed, 1) end
-            toast(feed[#feed])
+            toast(feed[#feed], nil, false, "event")
         elseif kind == "reject" then
             local f = split(payload, "|")
             local hostVersion, hostGame = clean(f[2] or "?"), clean(f[3] or "?")
@@ -1376,6 +1379,9 @@ local function onNet(event)
         if Session.OnMenuKey then Session.OnMenuKey() end
     elseif kind == "key:dev" then
         if Session.OnDevKey then Session.OnDevKey() end
+    elseif kind == "key:chat" then
+        -- Enter: the UI opens the chat input when it fits (in a park, no text field of the game).
+        if Session.OnChatKey then Session.OnChatKey() end
     elseif kind == "friends:begin" then
         friendsLoading = {}
     elseif kind == "friend" then
@@ -1477,6 +1483,8 @@ local function onNet(event)
         middle = {frame = frames, camera = {World.Camera()}}
     elseif kind == "key:mup" then
         Session._MiddleUp(global.tonumber(f[2]) or 9999, global.tonumber(f[3]) or 9999)
+    elseif kind == "key:v" and typing and f[3] == "1" then
+        -- The chat input is open: T, E, V and 1-6 are letters there. Releases still go through.
     elseif kind == "key:v" then
         -- Visitor mode keys (DLL, only while it is on): Tab, T, E, V, 1-6.
         local Visitor = global.require("pc2coop.visitor")
@@ -1568,6 +1576,8 @@ end
 -- "menu": the main menu is open (joining only). "park": a park is loaded.
 function Session.SetContext(value) context = value == "menu" and "menu" or "park" end
 function Session.Chat() return chat end
+function Session.SetTyping(on) typing = on == true end
+function Session.Typing() return typing end
 function Session.Toasts() return toasts end
 function Session.RefreshFriends() net.NetCommand("friends") end
 function Session.InviteFriend(sid)
@@ -1577,7 +1587,7 @@ end
 function Session._AddChat(name, color, text)
     chat[#chat+1] = {name = clean(name), color = color, text = global.string.sub(global.tostring(text), 1, 200)}
     while #chat > 40 do global.table.remove(chat, 1) end
-    toast(clean(name) .. ": " .. chat[#chat].text, color)
+    toast(clean(name) .. ": " .. chat[#chat].text, color, false, "chat")
 end
 
 function Session._BroadcastChat(name, color, text)

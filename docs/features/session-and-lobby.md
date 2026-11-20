@@ -134,10 +134,11 @@ Hauptcode: `probe/PC2CoopProbe/Main/pc2coop/session.lua` (Rolle, Nachrichten, Zu
 
 ### FEAT-035 – Chat
 - **Status:** Implemented · **Seit:** 1.8.0
-- **Funktion:** Textchat in Lobby und Park; neue Nachrichten auch als Toast.
+- **Funktion:** Textchat in Lobby und Park; im Park unten links, **Enter** öffnet die Eingabe
+  (FEAT-116).
 - **Technik:** `Session.SendChat`, `Session._BroadcastChat`, `Session._AddChat`,
   `Session.Chat`; Nachricht `chat`. UI-Aktion `chat`.
-- **UI:** Lobby rechte Spalte, Reiter Team; Eingabefeld (Enter sendet).
+- **UI:** Lobby rechte Spalte, Reiter Team; Eingabefeld (Enter sendet). Im Park `ChatArea`.
 - **Besonderheiten:** Texte werden bereinigt (`cleanText`, 120 Zeichen bzw. 200 im Chat).
 
 ### FEAT-036 – Steam-Profilbilder
@@ -200,7 +201,7 @@ Hauptcode: `probe/PC2CoopProbe/Main/pc2coop/session.lua` (Rolle, Nachrichten, Zu
 - **Funktion:** Beitritte, Austritte, Konflikte, Käufe usw. als Liste und kurz unten links.
 - **Technik:** `addFeed` (Host sendet `feed|...` an alle), `toast`, `Session.Toasts`;
   Nachrichten mit `loc = true` sind Spieltexte und werden übersetzt (`shown` im JS).
-- **UI:** `Toasts`, Reiter Verlauf „Verlauf der Sitzung“.
+- **UI:** `ChatArea` (Feed-Zeilen als `event`), Reiter Verlauf „Verlauf der Sitzung“.
 
 ### FEAT-045 – Erst-Hinweis im Park
 - **Status:** Implemented · **Seit:** 1.12.0

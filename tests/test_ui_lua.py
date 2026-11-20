@@ -29,7 +29,8 @@ session = {
     Ratings = function() return {F1_0_2 = {avg = 4.5, count = 2, mine = 5, comments = {{who = "Vici", stars = 4, text = "mehr Schatten"}}}} end,
     Emotes = function() return {["200"] = "winkt"} end,
     Emote = function(kind) calls.emote = kind end,
-    Rate = function(key, stars, name, text) calls.rate = key .. "|" .. stars .. "|" .. name .. "|" .. text end}
+    Rate = function(key, stars, name, text) calls.rate = key .. "|" .. stars .. "|" .. name .. "|" .. text end,
+    SetTyping = function(on) calls.typing = on end}
 visitor = {active = false, ticks = 0}
 package.preload["pc2coop.visitor"] = function() return {
     Tick = function() visitor.ticks = visitor.ticks + 1 end,
@@ -77,6 +78,19 @@ class UiTests(unittest.TestCase):
         self.assertGreater(self.lua.eval('visitor.ticks'), 0)
         self.ui._Request('95|visitor|0')
         self.assertFalse(self.lua.eval('visitor.active'))
+
+    def test_enter_counts_up_and_the_chat_input_switches_typing(self):
+        before = self.state()['chatKey']
+        self.lua.execute('ui.ChatKey(); ui.ChatKey()')
+        self.assertEqual(self.state()['chatKey'], before + 2)
+        self.ui._Request('81|chatinput|1')
+        self.assertTrue(self.lua.eval('calls.typing'))
+        self.ui._Request('82|chatinput|0')
+        self.assertFalse(self.lua.eval('calls.typing'))
+        self.ui._Request('83|chatinput|1')
+        self.ui._Request('84|hello|hud')
+        self.assertFalse(self.lua.eval('calls.typing'), 'a fresh view has no open chat input')
+        self.assertFalse(any('chatinput' in line for line in self.lua.eval('logs').values()), 'typing is not logged')
 
     def open_close_open(self):
         self.lua.execute('ui.SetOpen(true)')

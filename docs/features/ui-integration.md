@@ -41,9 +41,22 @@ Code: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js`,
   `STRING_LITERAL`-Texte); DLL `key:dev` → `Session.OnDevKey`. Hauptseite: Raum hosten,
   Freunde einladen, Sitzung verlassen/beenden, „Zu <Name>“, Entwickler, Schließen.
 
-### FEAT-116 – Toasts unten links
-- **Status:** Implemented · **Seit:** 1.6.0 · **Hängt ab von:** FEAT-044
-- **Technik:** Klasse `Toasts`; Farbe = Spielerfarbe oder Warnfarbe `ff922b`.
+### FEAT-116 – Chat-Bereich unten links
+- **Status:** Implemented · **Seit:** 1.6.0 (als Toasts) · **Hängt ab von:** FEAT-044, FEAT-035
+- **Funktion:** Chat und Spieler-Ereignisse unten links, blenden nach 10 s aus. **Enter** öffnet
+  die Eingabe wie ein Spiel-Chat: Enter sendet, Esc oder ein Klick daneben schließt (Entwurf
+  bleibt). Meldungen (Warnungen, Antworten) stehen als Karten darüber (6 s, höchstens 3).
+- **Technik:** Klasse `ChatArea` (bis 1.13.0 `Toasts`). Lua markiert jeden Toast mit `kind`:
+  `chat` (`Session._AddChat`), `event` (`addFeed`, Emotes, Markierungen, Bewertungen), sonst
+  `notice`. DLL `key:chat` → `Session.OnChatKey` → `Ui.ChatKey` → Zähler `chatKey` im Zustand.
+  Die Eingabe ist das `InputField` des Spiels (`alt`, `commitOnCancel: false`).
+- **Besonderheiten:**
+  - Enter öffnet nur im Park bei geschlossenem Fenster.
+  - Kein Öffnen innerhalb von 0,8 s nach dem Senden oder nach Enter in einem Textfeld des Spiels
+    (`document.activeElement` wird alle 0,2 s geprüft).
+  - UI-Aktion `chatinput` 1/0 → `Session.SetTyping`: Solange die Eingabe offen ist, verwirft
+    Lua Tastendrücke `key:v` (T, E, V, 1–6 sind dann Buchstaben); Loslassen kommt durch.
+  - `hello` (neue Oberfläche) setzt `SetTyping(false)`.
 
 ### FEAT-117 – Banner (Abstimmung, Wettbewerb, Einladung)
 - **Status:** Implemented · **Seit:** 1.12.0

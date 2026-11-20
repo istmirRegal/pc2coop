@@ -874,11 +874,13 @@ void poll_visitor() {
     }
 }
 
-// F7 opens the multiplayer window, F8 the developer menu.
+// F7 opens the multiplayer window, F8 the developer menu, Enter the chat (Lua and the UI decide
+// whether it opens: only in a park, never while a text field of the game has the keyboard).
 void poll_hotkeys() {
-    static bool f7 = false, f8 = false;
+    static bool f7 = false, f8 = false, enter = false;
     poll_key(VK_F7, f7, "key:menu");
     poll_key(VK_F8, f8, "key:dev");
+    poll_key(VK_RETURN, enter, "key:chat");
     poll_middle_button();
     poll_visitor();
 }

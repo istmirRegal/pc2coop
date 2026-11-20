@@ -14,7 +14,7 @@ Alle in `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js`.
 Wichtige Zustandsfelder (aus `ui.lua`): `available`, `role`, `context` (menu/park), `open`,
 `canHost`, `players[]` (sid, name, host, me, color, act, …), `following`, `join` (phase,
 host, progress, reason, retry), `stage`, `parkTitle`, `choice`, `canChoose`, `parks[]`,
-`friends[]`, `chat[]`, `log[]`, `toasts[]`, `desync`, `dlc`, `guard`, `requests[]`,
+`friends[]`, `chat[]`, `log[]`, `toasts[]` (id, text, color, loc, kind), `chatKey`, `desync`, `dlc`, `guard`, `requests[]`,
 `team` (tab, board, events, since, checkpoints, rules, vote, competition, context,
 invitation), `visitor` (active, riding, guest, hint, shop, list, rides[], emotes, wheel).
 Wer ein Feld hinzufügt, trägt es hier ein.
@@ -30,8 +30,8 @@ Wer ein Feld hinzufügt, trägt es hier ein.
 | `RequestCard` (`pendingRequests`) | Anfrage-Karte: Beitritt, Abstimmung, Testfahrt, Bewerten | requests, team.vote, team.invitation, team.competition | FEAT-027, FEAT-141, FEAT-138, FEAT-147 |
 | `ConnectionPill` | Verbindung zum Host, Sync, Host im Hauptmenü | join, desync, role | FEAT-031, FEAT-033 |
 | `ContextMenu` | Markieren-Radialmenü (`MARK_ITEMS`) | team.context | FEAT-136 |
-| `MarkHint` | Tastenhinweis „Mittelklick Markieren“ | role, context, visitor, team.context | FEAT-095 |
-| `Toasts` | Meldungen unten links (max. 5, 6 s) | toasts | FEAT-116 |
+| `MarkHint` | Tastenhinweise „Enter Chat“, „Mittelklick Markieren“ (`keyCap`) | role, context, visitor, team.context | FEAT-095, FEAT-116 |
+| `ChatArea` | Chat, Ereignisse und Meldungen unten links, Chat-Eingabe per Enter | toasts (kind), chatKey, role, context, open | FEAT-116 |
 | `Lobby` | Multiplayer-Fenster mit Reitern (`renderBody`, `renderVisit`, `renderPlan`, `renderHistory`, `renderSession`, `renderPlayers`, `renderChooser`, `renderPlace`, `renderChat`, `renderContent`, `renderFriends`) | fast alles | FEAT-110 |
 | `MiniLobby` | Lobby-Karte im Hauptmenü | role, players, open | FEAT-034 |
 | `JoinProgress` | Beitrittsfortschritt | join | FEAT-031 |

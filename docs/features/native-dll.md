@@ -47,10 +47,11 @@ und Maus, Dateien im Spielordner. Lua spricht sie über `probe/PC2CoopProbe/Main
   Spielfenster vorne ist.
 - **Besonderheiten:** `GetAsyncKeyState`/`SetCursorPos` – Virenscanner-Heuristik (ADR-010).
 
-### FEAT-196 – Mittelklick, F7, F8
+### FEAT-196 – Mittelklick, F7, F8, Enter
 - **Status:** Implemented · **Seit:** 1.6.0
 - **Technik:** Ereignisse `key:mdown`, `key:mup|ms|weg²` (nur im Spielfenster), `key:menu` (F7),
-  `key:dev` (F8).
+  `key:dev` (F8), `key:chat` (Enter, seit P1 des UX-Overhauls; ob der Chat aufgeht, entscheiden
+  Lua und die Oberfläche, FEAT-116).
 
 ### FEAT-197 – Echtzeit-Uhr
 - **Status:** Implemented · **Seit:** 1.12.0

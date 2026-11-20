@@ -3,6 +3,21 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-20 – UX-Overhaul P1, Schritt 3: Chat unten links mit Enter
+
+- DLL: `poll_key(VK_RETURN, …, "key:chat")` (nur im Spielfenster, wie F7/F8). DLL neu gebaut.
+- Lua:
+  - `toast(text, color, loc, kind)` markiert `chat`, `event` (Feed, Emotes, Markierungen,
+    Bewertungen) und `notice`.
+  - `key:chat` → `Session.OnChatKey` → `Ui.ChatKey` (Zähler `chatKey`).
+  - `Session.SetTyping`: Während die Eingabe offen ist, werden `key:v`-Drücke verworfen.
+- JS: `ChatArea` ersetzt `Toasts`. Die Eingabe ist das `InputField` des Spiels und wird per
+  `focus()` gestartet. Schutz gegen doppeltes Enter (0,8 s nach Senden) und gegen Enter in
+  einem Textfeld des Spiels (`document.activeElement`). `MarkHint` zeigt auch „Enter Chat“.
+- Fund im UI-Code des Spiels: `InputFieldBase` hört selbst auf `keydown` (Enter/Esc), aber nur
+  im Bearbeiten-Modus. Ob Tasten ohne Fokus im HUD ankommen, ist nicht belegt, daher die DLL.
+- Tests: `tests/test_chat_lua.py` (3), `test_ui_lua.py` (1).
+
 ## 2026-11-20 – UX-Overhaul P1, Schritt 2: Markieren-Radialmenü, Tastenhinweis
 
 - `ContextMenu` ist ein Radialmenü:

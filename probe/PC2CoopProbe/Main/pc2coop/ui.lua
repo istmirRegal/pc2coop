@@ -81,6 +81,7 @@ local function refreshParks()
 end
 
 local closedAt = -1000
+local chatKeys = 0         -- Enter presses (DLL): the UI opens the chat input on a new one
 
 function Ui.SetOpen(value)
     if value == true and not open and choosing() then global.pcall(refreshParks) end
@@ -92,6 +93,8 @@ function Ui.SetOpen(value)
 end
 
 function Ui.Toggle() Ui.SetOpen(not open) end
+
+function Ui.ChatKey() chatKeys = chatKeys + 1; lastState = nil end
 
 -- Hosting: a lobby in the main menu, or the loaded park.
 function Ui.SetCanHost(value) canHost = value == true end
@@ -247,7 +250,7 @@ local function buildState()
         park = view.park or false, log = recentLog(view.feed), stats = statsList(view.stats),
         requests = session.Requests and session.Requests() or {},
         following = session.Following and session.Following() or false,
-        chat = session.Chat(), toasts = session.Toasts(),
+        chat = session.Chat(), toasts = session.Toasts(), chatKey = chatKeys,
         stage = view.stage or false, parkTitle = view.parkTitle or "", guard = view.guard ~= false,
         context = view.context or false, dlc = view.dlc,
         choice = view.choice or false, canChoose = choosing(), parks = choosing() and parkList or {},
@@ -258,7 +261,7 @@ local function buildState()
 end
 
 local actions = {
-    hello = function() lastState = nil end,
+    hello = function() lastState = nil; session.SetTyping(false) end,
     -- A menu tile can report a select right after the panel closed (focus comes back to it).
     open = function() if frames - closedAt > 45 then Ui.SetOpen(true) end end,
     close = function() Ui.SetOpen(false) end,
@@ -273,6 +276,8 @@ local actions = {
     approve = function(arg) session.Answer(arg, true) end,
     deny = function(arg) session.Answer(arg, false) end,
     chat = function(arg) session.SendChat(arg) end,
+    -- "1" while the chat input of the HUD is open, "0" when it closes.
+    chatinput = function(arg) session.SetTyping(arg == "1") end,
     jump = function(arg)
         -- To the player's recent ping when there is one, else to their camera.
         for _, ping in global.ipairs(session.Pings()) do
@@ -479,7 +484,7 @@ local function onRequest(_, raw)
     local _, command, argument = global.string.match(raw, "^(%d+)|([%w_]+)|(.*)$")
     local action = command and actions[command]
     if action then
-        if command ~= "chat" and command ~= "hello" then emit("ui:request|" .. command .. "|" .. frames) end
+        if command ~= "chat" and command ~= "hello" and command ~= "chatinput" then emit("ui:request|" .. command .. "|" .. frames) end
         local okAction, failure = global.pcall(action, argument)
         if not okAction then emit("ui:request-error|" .. command .. "|" .. global.tostring(failure)) end
         lastState = nil

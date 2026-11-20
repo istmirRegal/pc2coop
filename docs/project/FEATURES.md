@@ -129,7 +129,7 @@ der Bereich nicht, die nächste freie Nummer ab 230.
 | FEAT-113 | Kachel „Multiplayer“ im Hauptmenü | Implemented | 1.8.0 |
 | FEAT-114 | F7 öffnet Multiplayer | Implemented | 1.4.1 |
 | FEAT-115 | Entwickler-Menü (F8) | Implemented | 1.6.0 |
-| FEAT-116 | Toasts unten links | Implemented | 1.6.0 |
+| FEAT-116 | Chat-Bereich unten links | Implemented | 1.6.0 |
 | FEAT-117 | Banner (Abstimmung, Wettbewerb, Einladung) | Implemented | 1.12.0 |
 | FEAT-118 | Zustandsbrücke Lua ↔ Oberfläche | Implemented | 1.8.0 |
 
@@ -186,7 +186,7 @@ der Bereich nicht, die nächste freie Nummer ab 230.
 | FEAT-193 | Schlüssel-Wert-Speicher | Implemented | 1.4.1 |
 | FEAT-194 | Freunde, Einladungen, Profilbilder, Mod-Liste | Implemented | 1.8.0 |
 | FEAT-195 | Tasten und Maus im Besucher-Modus | Implemented | 1.12.0 |
-| FEAT-196 | Mittelklick, F7, F8 | Implemented | 1.6.0 |
+| FEAT-196 | Mittelklick, F7, F8, Enter | Implemented | 1.6.0 |
 | FEAT-197 | Echtzeit-Uhr | Implemented | 1.12.0 |
 | FEAT-198 | Diagnose-Kanal und String-Probe | Implemented | 1.4.1 |
 | FEAT-199 | Bahn-Dateien löschen | Implemented | 1.10.0 |

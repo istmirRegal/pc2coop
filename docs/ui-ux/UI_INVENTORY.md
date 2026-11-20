@@ -19,6 +19,7 @@ Darstellung: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js` (Kompone
 | Park, Bauleiste unten | Reiter „Multiplayer“ rechts neben der Leiste, **nicht** in der TabBar (`patchBuildBar`, ADR-007) | im Park | `open` | FEAT-111 |
 | Park, Pausemenü (Esc) | Eintrag „Multiplayer“ (`patchMenuClass`) | im Park | `open` | FEAT-112 |
 | Tastatur | **F7** öffnet/schließt das Fenster (`key:menu` → `Ui.Toggle`) | überall | – | FEAT-114 |
+| Tastatur | **Enter** öffnet die Chat-Eingabe unten links (`key:chat` → `Ui.ChatKey`) | im Park, Fenster zu, kein Textfeld des Spiels aktiv | `chatinput` | FEAT-116 |
 | Tastatur | **F8** Entwickler-Dialog (Spiel-Dialog, `menu.lua`) | im Park | – | FEAT-115 |
 
 ## 2. Multiplayer-Fenster (`Lobby`, 1320 × 780 px, Mitte)
@@ -90,9 +91,10 @@ Verlauf · Sitzung**. Im Hauptmenü und ohne Sitzung gibt es nur die Team-Ansich
 | Namensschilder | über dem Blickpunkt der Mitspieler (Coaster-Labels des Spiels, Stil in `DebugToolImports.js`) | Mitspieler im Park, F8 „Namensschilder“ an | – | FEAT-091 |
 | Bodenmarke, Sichtkegel, Geist, Sperr-Färbung, Figuren | in der Welt (`viz.lua`) | Mitspieler im Park | – | FEAT-092–094, FEAT-171 |
 | Markieren-Radialmenü (`ContextMenu`): Titel (Fahrgeschäft oder „Markierung“), Kreise mit Spiel-Icons „Testfahrt mit allen“, „Mitfahren“, „Übernahme von …“, „Kommentar“, „Vorschlag“, „Baugebiet“, „Treffpunkt“; Mitte = Schließen | um die Maus | nach eigener Markierung (kurzer Mittelklick), nicht im Besuch | `ctx` (invite, ride, take, comment, proposal, area, meet, close) | FEAT-136, FEAT-137 |
-| Tastenhinweis „[Mittelklick] Markieren“ (`MarkHint`) | unten rechts über der Bauleiste | in Sitzung im Park, Fenster zu, kein Besuch, kein Radialmenü offen | – | FEAT-095 |
+| Tastenhinweise „[Enter] Chat“ und „[Mittelklick] Markieren“ (`MarkHint`) | unten rechts über der Bauleiste | in Sitzung im Park, Fenster zu, kein Besuch, kein Radialmenü offen | – | FEAT-095 |
 | Anfrage-Karte (`RequestCard`), eine zur Zeit mit Zähler „1 von n“: Beitrittsanfrage (Host) „Zulassen“/„Ablehnen“ → `approve`/`deny`; Abstimmung „Ja“/„Nein“ → `vote`; Testfahrt „Mitfahren“/„Später“ → `invitation`; nach einem Bauduell „Bewerten“ → `paneltab` + `open` | oben Mitte, 7.5 rem | etwas wartet auf eine Antwort, Fenster zu | siehe Spalte links | FEAT-027, FEAT-141, FEAT-138, FEAT-147 |
-| Toasts (`Toasts`) | unten links, ab 120 px | Ereignisse; max. 5, je 6 s | – | FEAT-044, FEAT-116 |
+| Chat-Bereich (`ChatArea`): Chat-Zeilen (Name in Spielerfarbe), Spieler-Ereignisse (hell), darüber Meldungs-Karten | unten links, ab 6 rem | Zeilen 10 s (max. 6), Karten 6 s (max. 3) | – | FEAT-044, FEAT-116 |
+| Chat-Eingabe (`ChatArea`): letzte 12 Zeilen, Feld „Nachricht an alle“, Hinweise „[Enter] Senden“, „[Esc] Schließen“ | unten links | nach Enter im Park, Fenster zu | `chat`, `chatinput` | FEAT-035, FEAT-116 |
 | Park-Meldungen | Meldungen des Spiels beim Host (Pannen, Wartung, Proteste; `World.HookNotifications`) gehen als `note` an alle → Verlauf | in Sitzung | – | FEAT-140 |
 | Undo/Redo | Spielknopf und Strg+Z (`World.HookHUD`) | immer; gesperrt für fremde Schritte | – | FEAT-074 |
 | Spieltempo/Pause | Spielknöpfe (`World.HookHUD`) | Regel „nur Host“ sperrt Gäste | – | FEAT-078 |
@@ -149,6 +151,7 @@ Entwickler-Seite: technische Werte und „API-Rekorder an/aus“, „Namensschil
 | `approve`, `deny` | sid | Beitrittsanfrage | ja |
 | `rejoin`, `forget_rejoin` | – | Wiederbeitritt | ja |
 | `chat` | Text | Chat senden | ja |
+| `chatinput` | 1/0 | Chat-Eingabe offen/zu (`Session.SetTyping`) | ja (automatisch beim Öffnen/Schließen) |
 | `jump` | sid | Kamera zum Spieler | ja |
 | `follow` | sid | folgen an/aus | ja |
 | `ping` | – | Ping unter dem Mauszeiger (`Session.Ping`) | **nein** (Ping kommt über Mittelklick) |

@@ -26,6 +26,9 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
 - Icons sind sichtbar, z. B. die Krone des Hosts. Vorher waren sie unsichtbar.
 - Der kurze Mittelklick (Markieren) öffnet jetzt ein Radialmenü mit Icons statt einer Liste.
   Unten rechts steht der Hinweis „Mittelklick Markieren“, damit man es findet.
+- Neu: Chat unten links. **Enter** öffnet die Eingabe, Enter sendet, Esc schließt. Nachrichten
+  und Ereignisse wie „Vici ist beigetreten“ stehen dort und blenden nach ein paar Sekunden aus;
+  Warnungen erscheinen als Karten darüber.
 
 ## 1.13.0 – 2026-11-19
 

@@ -45,7 +45,7 @@ Berührungspunkte, Bewertung, Zielbild). Dort sind alle IDs dieser Datei einem B
 | UX-D2 | Abstimmungs- und Einladungs-Banner liegen beide bei 140 px oben Mitte und können sich überdecken | `VoteBanner`, `InviteBanner` |
 | UX-D3 | Besucher-Leiste (52 px) und Wettbewerbs-Uhr (18 px) oben Mitte: Abstand zur Spiel-HUD oben nicht in allen Modi geprüft | `VisitorBar`, `CompBanner` |
 | UX-D4 | Spielerleiste verschwindet beim Mitfahren (Kamera-Leiste des Spiels) – gewollt, aber dann sieht man keine Mitspieler | `PlayerBar` |
-| UX-D5 | Toasts: max. 5, 6 s, kein Weg zurück außer Reiter „Verlauf“ | `Toasts` |
+| UX-D5 | Toasts: max. 5, 6 s, kein Weg zurück außer Reiter „Verlauf“ (P1: `ChatArea`, Enter zeigt die letzten 12 Zeilen) | `Toasts` |
 
 ## E. Rückmeldung und Zustände
 

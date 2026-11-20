@@ -21,6 +21,7 @@ function Frontend.Tick(menu)
         ui.SetCanHost(true)
         ui.SetFrontend(menu)
         session.OnMenuKey = function() ui.Toggle() end
+        session.OnChatKey = function() ui.ChatKey() end
         state = {session = session, ui = ui, menu = menu, diagnostic = diagnostic}
         diagnostic.Write("[PC2CoopSession] frontend-init")
     elseif state.menu ~= menu then

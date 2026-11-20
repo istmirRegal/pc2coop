@@ -129,7 +129,7 @@ Steuerzeilen ohne Nummer: `S|<name>` (Synchronisation starten), `X` (stoppen), `
 | `note:data`, `note:end`, `note:error` | FEAT-192 |
 | `kv` | FEAT-193 |
 | `key:v`, `mouse` | FEAT-195 |
-| `key:mdown`, `key:mup`, `key:menu`, `key:dev` | FEAT-196 |
+| `key:mdown`, `key:mup`, `key:menu`, `key:dev`, `key:chat` | FEAT-196 |
 | `key:ping` | nur noch Lua-Zweig, DLL sendet es nicht mehr (FEAT-095) |
 | `now` | FEAT-197 |
 

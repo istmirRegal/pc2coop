@@ -42,6 +42,8 @@ Manager.Init=function(self,properties,environment)
     -- F7: multiplayer window inside the HUD; F8: developer dialog.
     self.session.OnMenuKey=function() self.ui.Toggle() end
     self.session.OnDevKey=function() self.menu.Toggle() end
+    -- Enter: chat input bottom left (the UI decides whether it opens).
+    self.session.OnChatKey=function() self.ui.ChatKey() end
     self.diagnostic.Write("[PC2CoopQA] park-manager-init")
 end
 

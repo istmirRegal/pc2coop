@@ -11,7 +11,7 @@ läuft daneben, kein Server, kein Port.
   (Maus,     │  ┌───────────────────┐  DataStore   ┌──────────────────────┐ NetCmd ┌────────┐ │
   Tasten)    │  │ CoopLayer.js      │◄─'pc2coop'───┤ ui.lua               │───────►│steam_  │ │◄──► Steam
              │  │ (Leiste, Fenster, │              │ session.lua (Sitzung)│◄───────│net.cpp │ │    Networking
-             │  │  Lobby, Toasts)   │──Request────►│ sync/replay/rides    │ NetPoll└────────┘ │    Messages
+             │  │  Lobby, Chat)     │──Request────►│ sync/replay/rides    │ NetPoll└────────┘ │    Messages
              │  └───────────────────┘ 'n|cmd|arg'  │ visitor/figure/shop  │                   │
              │                                     │ viz/labels/world     │──► Spiel-APIs     │
              │                                     └──────────────────────┘    (api.*)        │

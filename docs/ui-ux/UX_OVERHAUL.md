@@ -408,8 +408,9 @@ NAVIGATION, Registry) und Screenshots aus der Testkopie.
 
 **Stand (2026-11-20):** P0 Schritte 1 und 2 erledigt: Farben, Einheiten, Schriftskala, Texte,
 Lua-Umlaute (`docs/ui-ux/DESIGN_SYSTEM.md`). Offen in P0: Bausteine, HUD-Grund in Akzentfarbe. P1 Schritt 1 erledigt: Sitzungs-Cluster, Anfrage-Karte,
-Verbindungs-Pille. P1 Schritt 2 erledigt: Markieren-Radialmenü und Tastenhinweis. Offen in P1: Chat unten links mit
-eigener Taste (braucht die DLL), Konflikt-Meldung am Objekt (TP-16).
+Verbindungs-Pille. P1 Schritt 2 erledigt: Markieren-Radialmenü und Tastenhinweis. P1 Schritt 3
+erledigt: Chat-Bereich unten links, Enter öffnet die Eingabe (DLL `key:chat`). Offen in P1:
+Konflikt-Meldung am Objekt (TP-16).
 
 Prototypen zuerst (vor P2/P3/P4): `Panel` in unserer Ebene, Seite im Hauptmenü-Rahmen,
 Bauleiste im Besuch aus. Ergebnis entscheidet, ob Ziel oder Rückfall gebaut wird.
@@ -418,6 +419,7 @@ Bauleiste im Besuch aus. Ergebnis entscheidet, ob Ziel oder Rückfall gebaut wir
 
 1. Begriff „Sitzung“ überall (Vorschlag) – oder „Lobby“ für die Wartephase im Hauptmenü?
 2. Multiplayer-Fenster im Park **links** (kollidiert nicht mit den Info-Fenstern rechts) – ok?
-3. Chat dauerhaft unten links, Eingabe per Taste – welche Taste (Vorschlag Enter, prüfen)?
+3. ~~Chat dauerhaft unten links, Eingabe per Taste – welche Taste?~~ Entschieden: **Enter**
+   (Eigner, 2026-11-20).
 4. „Besuchen“ als eigener Knopf in der Bauleiste neben „Multiplayer“ – ok?
 5. Reihenfolge P0 → P6 so, oder ein Bereich zuerst (z. B. Besuch)?
