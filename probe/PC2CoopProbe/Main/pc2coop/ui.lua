@@ -172,9 +172,12 @@ local function teamState()
         local yes, no = 0, 0
         if okB then yes, no = Board.Tally(item) end
         local mine = item.votes and myName and item.votes[myName]
+        -- No vote yet: false. ("mine == nil and false or ..." gave "0": a and false or b is never false.)
+        local myVote = false
+        if mine ~= nil then myVote = mine and "1" or "0" end
         board[#board+1] = {id = item.id, kind = item.kind, title = item.title, text = item.text, by = item.by,
             assignee = item.assignee, done = item.done, x = item.x or false, z = item.z or false, radius = item.radius,
-            yes = yes, no = no, myVote = mine == nil and false or (mine and "1" or "0")}
+            yes = yes, no = no, myVote = myVote}
     end
     local events = {}
     for _, e in global.ipairs(view.events or {}) do events[#events+1] = {label = e.label, x = e.x, y = e.y, z = e.z} end

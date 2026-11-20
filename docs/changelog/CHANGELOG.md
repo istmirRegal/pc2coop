@@ -5,6 +5,8 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
 
 ## Unveröffentlicht
 
+- Vorschläge auf dem Brett zeigen „Dagegen“ nicht mehr als gewählt, wenn du noch gar nicht
+  abgestimmt hast.
 - Brett: Jeder Eintrag hat ein Icon für seine Art. Wer für eine Aufgabe oder ein Baugebiet
   zuständig ist, kannst du jetzt auch nachträglich ändern. Beim neuen Eintrag wählst du Art,
   Zuständig und Größe mit Pfeilen wie im Optionsmenü.

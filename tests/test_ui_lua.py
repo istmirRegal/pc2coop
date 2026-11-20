@@ -79,6 +79,16 @@ class UiTests(unittest.TestCase):
         self.ui._Request('95|visitor|0')
         self.assertFalse(self.lua.eval('visitor.active'))
 
+    def test_board_vote_of_this_player(self):
+        # Before: a proposal nobody had voted on showed "Dagegen" as chosen.
+        self.lua.execute('view.role = "host"; view.context = "park"; view.players = {{sid = "100", name = "Ada"}}; '
+                         'view.board = {{id = "b1", kind = "proposal", title = "See", votes = {}}, '
+                         '{id = "b2", kind = "proposal", title = "Bahn", votes = {Ada = true}}, '
+                         '{id = "b3", kind = "proposal", title = "Turm", votes = {Ada = false}}, '
+                         '{id = "b4", kind = "task", title = "Wege"}}')
+        votes = {item['id']: item['myVote'] for item in self.state()['team']['board']}
+        self.assertEqual(votes, {'b1': False, 'b2': '1', 'b3': '0', 'b4': False})
+
     def test_enter_counts_up_and_the_chat_input_switches_typing(self):
         before = self.state()['chatKey']
         self.lua.execute('ui.ChatKey(); ui.ChatKey()')

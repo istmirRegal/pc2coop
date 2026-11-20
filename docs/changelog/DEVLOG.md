@@ -3,6 +3,13 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-20 – Brett: eigene Stimme falsch angezeigt
+
+- `ui.lua` `teamState`: `myVote = mine == nil and false or (…)` ergab ohne Stimme "0" (in Lua
+  ist `a and false or b` nie `false`), der Daumen „Dagegen“ war bei jedem Vorschlag gewählt.
+  Gefunden auf den Bildern von P2. Test `test_board_vote_of_this_player` (scheitert ohne die
+  Korrektur). Im Spiel nicht erneut fotografiert.
+
 ## 2026-11-20 – Wackliger Test `test_alpha`
 
 - `BridgeTests.test_pid_bound_inbox_explicit_newpark_ack_and_error_stop` scheiterte etwa jeden
