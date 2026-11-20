@@ -34,17 +34,20 @@ Host-Logik in `probe/PC2CoopProbe/Main/pc2coop/session.lua`.
 ### FEAT-062 – Halten und Sperren beim Bearbeiten
 - **Status:** Implemented · **Seit:** 1.6.0
 - **Funktion:** Wer ein Objekt zuerst aufnimmt, hat es; andere sehen es eingefärbt und können
-  es nicht nehmen (ihr Werkzeug wird zurückgesetzt, Hinweis wer es bearbeitet).
+  es nicht nehmen (ihr Werkzeug wird zurückgesetzt, am Objekt steht, wer es bearbeitet).
 - **Technik:** Nachricht `hold|label|gids|items` → `hostHold`; `locks`, `holds`,
   `Session.Holds`; `Sync.SetRemoteLocks`, `Sync.RemoteLocks`, `Sync.HeldParts`, `Sync._SetHeld`;
-  `hold-denied` → `Session._Denied`; `hold-lost`; Host antwortet `deny`/`h`.
-- **UI:** Sperr-Färbung (FEAT-094), Toast „<Name> bearbeitet das gerade“.
+  `hold-denied|name|gid` → `Session._Denied`; `hold-lost`; Host antwortet `deny|name|gid`/`h`.
+- **UI:** Sperr-Färbung (FEAT-094), „<Name> baut hier gerade“ am Objekt (FEAT-082).
 
 ### FEAT-063 – Konflikte: spätere Änderung wird zurückgenommen
 - **Status:** Implemented · **Seit:** 1.6.0
 - **Funktion:** Kommen zwei Änderungen am selben Objekt gleichzeitig an, gilt die Reihenfolge
-  beim Host; die spätere wird zurückgenommen, der Spieler bekommt einen Hinweis.
-- **Technik:** Revisionen in `authorityUp`; `conflicts`-Zähler im Roster.
+  beim Host; die spätere wird zurückgenommen, der Spieler sieht am Objekt, wer schneller war
+  (FEAT-082).
+- **Technik:** Revisionen in `authorityUp`; `conflicts`-Zähler im Roster. Die Ablehnung
+  `R|gid|grund|wer` nennt, wer das Objekt zuletzt geändert hat (`restore`) oder es hält
+  (`refuseLocked`).
 
 ### FEAT-064 – Gebündelte Übernahme
 - **Status:** Implemented · **Seit:** 1.5.0
@@ -169,7 +172,8 @@ Host-Logik in `probe/PC2CoopProbe/Main/pc2coop/session.lua`.
 - **Status:** Implemented · **Seit:** 1.6.0
 - **Funktion:** Löscht ein Mitspieler das Objekt, das man gerade hält, stürzt das Spiel nicht ab.
 - **Technik:** Trifft eine fremde Änderung ein gehaltenes Teil, bricht `sync.lua` die eigene
-  Vorschau ab (`sync:hold-lost`, Toast) und verlässt das Werkzeug (`World.LeaveTool`), bevor
+  Vorschau ab (`sync:hold-lost|wer|gid`, Meldung am Objekt, FEAT-082) und verlässt das Werkzeug
+  (`World.LeaveTool`), bevor
   die Änderung angewendet wird. QA-Befehl `held-delete-test`.
 
 ### FEAT-081 – Fahrgeschäfte verschieben
@@ -177,3 +181,26 @@ Host-Logik in `probe/PC2CoopProbe/Main/pc2coop/session.lua`.
 - **Technik:** `flatrides.MoveFlatRide` in `OBJECT_METHODS`.
 - **Besonderheiten:** Per Skript nicht prüfbar: das Spiel lehnt jede Verschiebung ohne seine
   Gelände-Anpassung pro Frame ab (bIntersectingTerrain). Nur von Hand prüfbar.
+
+### FEAT-082 – Ablehnung am Objekt
+- **Status:** Implemented · **Seit:** unveröffentlicht · **Hängt ab von:** FEAT-062, FEAT-063,
+  FEAT-080, FEAT-091
+- **Funktion:** Wird eine eigene Änderung zurückgenommen, steht der Grund 5 s lang am Objekt,
+  mit dem Namen des Mitspielers: „Vici baut hier gerade“ (Objekt gehalten, auch beim
+  Aufnehmen), „Vici war schneller“ (spätere Änderung), „Vici hat das gerade geändert“
+  (gehaltenes Objekt fremd geändert). Das Objekt blinkt 2 s in der Farbe des Mitspielers.
+  Ist das Objekt in diesem Spiel nicht zu finden, kommt die Meldung als Karte unten links.
+- **Technik:**
+  - Host: `R|gid|grund|wer`, `deny|name|gid` (statt nur Grund bzw. Name).
+  - sync: `sync:rejected|gid|grund|wer`, `sync:hold-denied|name|gid`, `sync:hold-lost|wer|gid`
+    (`touchesHeld` gibt die Zeile zurück, die gewonnen hat).
+  - session: `markConflict` legt eine Marke an (höchstens 4, eine je Objekt). `checkMarks`
+    prüft jeden Frame mit `Sync.GidToEntity`, ob das Objekt da ist; nach 0,5 s ohne Objekt
+    wird daraus eine Karte. `Session.Conflicts` liefert die sichtbaren Marken.
+  - `pc2coopqa.lua`: Schild über die Coaster-Labels (wie FEAT-091, 4 m über dem Objekt),
+    Blinken über die Sperr-Färbung (`locked`, Kanal 3, FEAT-094) alle 0,25 s.
+- **UI:** Schild in der Welt, kein Toast (TP-16, UX-E2).
+- **Besonderheiten:** Namen und gids aus dem Netz werden geprüft (`clean`, Muster). Ein
+  Name „host“ (Löschung durch den Host) wird zu „Ein Mitspieler“. Grund `fremd` (Sitzungsregel)
+  hat seine eigene Meldung und bekommt keine Marke. Geprüft in der Testkopie mit
+  nachgestelltem Mitspieler (gehalten, schneller, Karte als Rückfall).

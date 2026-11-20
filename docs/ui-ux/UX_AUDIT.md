@@ -52,7 +52,7 @@ Berührungspunkte, Bewertung, Zielbild). Dort sind alle IDs dieser Datei einem B
 | ID | Befund | Ort |
 |---|---|---|
 | UX-E1 | Gesperrte Knöpfe (z. B. Hosten nicht möglich) sagen nicht warum | `Lobby` Fuß |
-| UX-E2 | Abgelehnte Änderungen (Konflikt, Regel) nur als Toast; das Objekt springt zurück ohne Markierung | `session.lua` `restore` |
+| UX-E2 | Abgelehnte Änderungen (Konflikt, Regel) nur als Toast; das Objekt springt zurück ohne Markierung (erledigt 2026-11-20: Meldung am Objekt, FEAT-082; Regel-Ablehnungen bleiben Karten) | `session.lua` `restore` |
 | UX-E3 | Statuszeile im Fuß ist die einzige Stelle für den Verbindungszustand im Fenster | `statusOf` |
 
 ## Noch nicht geprüft

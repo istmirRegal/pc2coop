@@ -3,6 +3,29 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-20 – UX-Overhaul P1, Schritt 4: Ablehnung am Objekt (TP-16)
+
+- Netz: `R|gid|grund|wer` und `deny|name|gid`. Der Host nennt, wer im Weg war (`restore`:
+  letzter Bearbeiter, `refuseLocked`/`hostHold`: wer hält). Alte Zeilen ohne `wer` gehen
+  weiter („Ein Mitspieler“).
+- sync.lua: `sync:rejected|gid|grund|wer`, `sync:hold-denied|name|gid`,
+  `sync:hold-lost|wer|gid`; `touchesHeld` gibt die gewinnende Zeile zurück.
+- session.lua: `markConflict`, `checkMarks`, `Session.Conflicts`. Eine Marke lebt 5 s. Findet
+  `Sync.GidToEntity` das Objekt nicht binnen 0,5 s (z. B. gelöscht), wird eine Karte daraus.
+- pc2coopqa.lua: Schild über `labels.lua`, Blinken über `locked` und Kanal-3-Farbe.
+- Test in der Testkopie (1080p, Vici nachgestellt, Testkopie mit Watchdog):
+  - Vici hält einen Stein, der Host ändert ihn: `sync:rejected|P988|gesperrt|Vici`, Schild
+    „Vici baut hier gerade“, Blinken in Vicis Blau sichtbar.
+  - Vici verschiebt den Stein, der Host schickt eine veraltete Änderung: „Vici war schneller“.
+  - Ohne auffindbares Objekt (gid `nil`): Karte statt Schild.
+  - Testaufbau-Fund, kein Fehler der Mod: Ein per API nach dem Sync-Start gesetzter Stein
+    hat keine gid-Zuordnung; ein `U` für `P<part>` legt dann einen zweiten Stein an. Im Spiel
+    deckt der Start-Abgleich den ganzen Park ab (6 km), neue Objekte laufen über die Hooks.
+- Nicht geprüft: echtes Aufnehmen mit der Maus (Werkzeug-Reset), Schild-Höhe bei großen
+  Objekten, zwei echte PCs.
+- Tests: `tests/test_conflict_lua.py` (6), `test_editor_sync_lua.py` (1 neu, 2 angepasst),
+  `test_coop_play_lua.py` (3 angepasst).
+
 ## 2026-11-20 – UX-Overhaul P1, Schritt 3: Chat unten links mit Enter
 
 - DLL: `poll_key(VK_RETURN, …, "key:chat")` (nur im Spielfenster, wie F7/F8). DLL neu gebaut.

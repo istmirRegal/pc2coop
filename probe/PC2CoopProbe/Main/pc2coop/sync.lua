@@ -340,7 +340,8 @@ end
 -- A remote change touched the objects the player holds (it won the race at the host).
 -- Re-previewing the player's change list would bring back parts that no longer exist, so
 -- the player's token is pointed at an empty preview and the editor tool is left.
-local function abandonLocalPreview(oldToken)
+-- hit: the remote line that won ({kind, seq, gid, owner, ...}), named in "sync:hold-lost".
+local function abandonLocalPreview(oldToken, hit)
     if not oldToken then return end
     local undo = global.api.undo
     local hierarchy = apis().editors:CreateUndoOperationsHierarchy()
@@ -354,18 +355,18 @@ local function abandonLocalPreview(oldToken)
     Replay.OnCancel(oldToken)
     localPreview = {changeList = changeList, token = token}
     heldParts = {}
-    emit("sync:hold-lost")
+    emit("sync:hold-lost|" .. global.tostring(hit and hit[4] or "") .. "|" .. global.tostring(hit and hit[3] or ""))
     World.LeaveTool()
 end
 
--- True when one of these remote lines changes an object the local player holds.
+-- The first of these remote lines that changes an object the local player holds, or nil.
 local function touchesHeld(lines)
-    if global.next(heldParts) == nil then return false end
+    if global.next(heldParts) == nil then return nil end
     for _, f in global.ipairs(lines) do
         local part = (f[1] == "U" or f[1] == "D") and globalToLocal[f[3]]
-        if part and heldParts[part] then return true end
+        if part and heldParts[part] then return f end
     end
-    return false
+    return nil
 end
 
 -- Internal checks must never wait on our own remote task.
@@ -691,7 +692,7 @@ local function camera(f)
 end
 
 -- U|seq|gid|owner|rev|resource|x|y|z|qx|qy|qz|qw|scale   D|seq|gid|owner|rev
--- M|seq|gid|part|rev (our own change accepted)             R|seq|gid|reason (rejected)
+-- M|seq|gid|part|rev (our own change accepted)             R|seq|gid|reason|who (rejected)
 local function runOp(f)
     local kind, seq = f[1], global.tonumber(f[2])
     if kind == "U" then
@@ -724,7 +725,8 @@ local function runOp(f)
             waitFor = function(predicate, label) waitFor(predicate, label, 7200) end,
             commit = function(changeList) commitList(w, changeList) end})
     elseif kind == "R" then
-        emit("sync:rejected|" .. global.tostring(f[3]) .. "|" .. global.tostring(f[4]))
+        -- f[5]: who was in the way (from the host; the session cleans it before showing it).
+        emit("sync:rejected|" .. global.tostring(f[3]) .. "|" .. global.tostring(f[4]) .. "|" .. global.tostring(f[5] or ""))
     end
     lastSeq = seq
     emit("sync:applied|" .. global.tostring(seq))
@@ -801,7 +803,7 @@ local function hold()
         -- Someone else already works on one of these objects: step back at once.
         for _, gid in global.ipairs(gids) do
             if remoteLocked[gid] then
-                emit("sync:hold-denied|" .. global.tostring(remoteLocked[gid]))
+                emit("sync:hold-denied|" .. global.tostring(remoteLocked[gid]) .. "|" .. gid)
                 heldParts = {}
                 World.LeaveTool()
                 return
@@ -814,7 +816,7 @@ local function hold()
         local keys = Rides.Editing()
         for _, key in global.ipairs(keys) do
             if remoteLocked[key] then
-                emit("sync:hold-denied|" .. global.tostring(remoteLocked[key]))
+                emit("sync:hold-denied|" .. global.tostring(remoteLocked[key]) .. "|" .. key)
                 Rides.Abandon()
                 World.LeaveTool()
                 return
@@ -950,7 +952,7 @@ function Sync.Tick()
                 local paused = pauseLocalPreview()
                 local hit = touchesHeld(run)
                 local ok, failure = global.pcall(kind == "U" and applyUpserts or applyDeletes, run)
-                if hit then abandonLocalPreview(paused) else resumeLocalPreview(paused) end
+                if hit then abandonLocalPreview(paused, hit) else resumeLocalPreview(paused) end
                 if not ok then global.error(failure, 0) end
             end)
         else
@@ -959,7 +961,7 @@ function Sync.Tick()
                 local paused = pauseLocalPreview()
                 local hit = touchesHeld({fields})
                 local ok, failure = global.pcall(runOp, fields)
-                if hit then abandonLocalPreview(paused) else resumeLocalPreview(paused) end
+                if hit then abandonLocalPreview(paused, hit) else resumeLocalPreview(paused) end
                 if not ok then global.error(failure, 0) end
             end)
         end

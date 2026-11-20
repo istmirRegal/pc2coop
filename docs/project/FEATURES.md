@@ -103,6 +103,7 @@ der Bereich nicht, die nächste freie Nummer ab 230.
 | FEAT-079 | Zahlen und Meldungen des Host-Parks | Implemented | 1.6.0 |
 | FEAT-080 | Schutz, wenn ein gehaltenes Objekt gelöscht wird | Implemented | 1.6.0 |
 | FEAT-081 | Fahrgeschäfte verschieben | Implemented-Untested | 1.12.0 |
+| FEAT-082 | Ablehnung am Objekt | Implemented | unveröffentlicht |
 
 ## Mitspieler sehen — [features/presence.md](../features/presence.md)
 

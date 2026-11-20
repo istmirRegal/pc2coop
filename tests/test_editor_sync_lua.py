@@ -66,7 +66,7 @@ class EditorSyncTests(unittest.TestCase):
         self.lua.execute('sync.SetRemoteLocks({g7 = "Vici"})')
         self.hold(part)
         self.tick(10)
-        self.assertEqual(self.records('sync:hold-denied|'), ['sync:hold-denied|Vici'])
+        self.assertEqual(self.records('sync:hold-denied|'), ['sync:hold-denied|Vici|g7'])
         self.assertEqual(self.lua.eval('editor.left'), 1)
         self.assertEqual(self.records('sync:hold|'), [])
 
@@ -84,11 +84,17 @@ class EditorSyncTests(unittest.TestCase):
         self.preview_held(part)
         self.lua.execute('sync.Receive("D|2|g7|Vici|2")')
         self.tick(40)
-        self.assertEqual(self.records('sync:hold-lost'), ['sync:hold-lost'])
+        self.assertEqual(self.records('sync:hold-lost'), ['sync:hold-lost|Vici|g7'])
         self.assertEqual(self.records('sync:preview-resumed'), [])
         self.assertIsNone(self.lua.eval(f'game.parts[{part}]'))
         self.assertEqual(self.lua.eval('#previewLists[#previewLists].hierarchy.ops'), 0)   # an empty preview
         self.assertEqual(self.lua.eval('editor.left'), 1)
+
+    def test_a_refusal_names_who_was_in_the_way(self):
+        self.shared_rock()
+        self.lua.execute('sync.Receive("R|2|g7|gesperrt|Vici")')
+        self.tick(10)
+        self.assertEqual(self.records('sync:rejected|'), ['sync:rejected|g7|gesperrt|Vici'])
 
     def test_remote_change_elsewhere_keeps_the_players_preview(self):
         part = self.shared_rock()

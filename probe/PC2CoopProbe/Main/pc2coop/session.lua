@@ -58,6 +58,10 @@ local waiting = false     -- joiner: the host has not let us in yet
 local gameVersion = ""    -- this game's version; players of different versions do not mix
 local pings = {}          -- sid -> {x, y, z, frame}: "here!" markers, shown for PING_FRAMES
 local PING_FRAMES = 480
+-- Refused changes (TP-16): a short line at the object, {gid, text, color, fallback, frame, seen}.
+-- When the object does not turn up in this game within MARK_FIND_FRAMES, a notice card says it.
+local marks = {}
+local MARK_FRAMES, MARK_FIND_FRAMES = 300, 30
 local lastPing = {}       -- host: sid -> frame of their last ping (one per second at most)
 -- Visitor mode (visitor.lua): emotes and ratings of rides, for everyone in the session.
 local EMOTES = {wave = "winkt", cheer = "jubelt", laugh = "lacht", sick = "ist schlecht", up = "findet das super",
@@ -171,6 +175,49 @@ local function toast(text, color, loc, kind)
     toastId = toastId + 1
     toasts[#toasts+1] = {id = toastId, text = text, color = color, loc = loc == true, kind = kind or "notice"}
     while #toasts > 10 do global.table.remove(toasts, 1) end
+end
+
+-- The player another one's name stands for in a refusal; "host" marks a removal by the host.
+local function someone(name)
+    name = clean(name or "")
+    if name == "" or name == "?" or name == "host" then return "Ein Mitspieler", false end
+    return name, true
+end
+
+local function colorOfName(name)
+    if role == "host" then
+        for _, p in global.pairs(players) do if p.name == name then return p.color end end
+    end
+    for _, p in global.ipairs(roster.players or {}) do if p.name == name then return p.color end end
+end
+
+-- A change of the local player was refused or undone: say it at the object (TP-16).
+local function markConflict(gid, text, color, fallback)
+    if global.type(gid) ~= "string" or not global.string.match(gid, "^[%w_%.%-]+$") or #gid > 64 then
+        toast(fallback, "ff922b")
+        return
+    end
+    for i = #marks, 1, -1 do if marks[i].gid == gid then global.table.remove(marks, i) end end
+    marks[#marks+1] = {gid = gid, text = text, color = color, fallback = fallback, frame = frames}
+    while #marks > 4 do global.table.remove(marks, 1) end
+end
+
+-- Each frame: a mark whose object is not in this game in time becomes a notice card.
+local function checkMarks()
+    for i = #marks, 1, -1 do
+        local m = marks[i]
+        local age = frames - m.frame
+        if not m.seen then
+            local ok, entity = global.pcall(function() return sync.GidToEntity and sync.GidToEntity(m.gid) end)
+            if ok and entity then m.seen = true end
+        end
+        if not m.seen and age >= MARK_FIND_FRAMES then
+            toast(m.fallback, "ff922b")
+            global.table.remove(marks, i)
+        elseif age >= MARK_FRAMES then
+            global.table.remove(marks, i)
+        end
+    end
 end
 
 local function addFeed(text)
@@ -381,7 +428,8 @@ end
 
 local function restore(sid, gid, reason)
     conflicts = conflicts + 1
-    local out = {{sid, "R|" .. gid .. "|" .. reason}}
+    -- The refusal names who changed the object last (shown at the object, TP-16).
+    local out = {{sid, "R|" .. gid .. "|" .. reason .. (objects[gid] and ("|" .. clean(objects[gid].last)) or "")}}
     if objects[gid] then
         out[#out+1] = {sid, upsertLine(gid)}
         addFeed(nameOf(sid) .. ": Änderung verworfen, " .. objects[gid].last .. " war schneller")
@@ -395,7 +443,7 @@ end
 -- game is put back to the shared state (from this host's world for untouched park objects).
 local function refuseLocked(sid, gid)
     conflicts = conflicts + 1
-    local out = {{sid, "R|" .. gid .. "|gesperrt"}}
+    local out = {{sid, "R|" .. gid .. "|gesperrt|" .. clean(nameOf(locks[gid]))}}
     if objects[gid] then
         out[#out+1] = {sid, upsertLine(gid)}
     else
@@ -661,18 +709,19 @@ end
 -- Host: a player picked something up or put it down.
 function hostHold(sid, label, gids, items)
     releaseLocks(sid)
-    local denied
+    local denied, deniedGid
     if label ~= "" then
         for gid in global.string.gmatch(gids or "", "[^,]+") do
             if validGid(gid) then
-                if locks[gid] and locks[gid] ~= sid then denied = locks[gid] else locks[gid] = sid end
+                if locks[gid] and locks[gid] ~= sid then denied, deniedGid = locks[gid], gid else locks[gid] = sid end
             end
         end
     end
     if denied then
         releaseLocks(sid)
         label, gids, items = "", "", ""
-        if sid == me then Session._Denied(nameOf(denied)) else send(sid, "deny|" .. nameOf(denied)) end
+        if sid == me then Session._Denied(nameOf(denied), deniedGid)
+        else send(sid, "deny|" .. clean(nameOf(denied)) .. "|" .. deniedGid) end
     end
     setHold(sid, label, gids, items)
     local line = "h|" .. sid .. "|" .. clean(label) .. "|" .. (gids or "") .. "|" .. (items or "")
@@ -948,9 +997,17 @@ function Session.OnSyncLine(line)
         if role == "client" and hostId then send(hostId, "desync|" .. global.string.sub(clean(desync), 1, 120)) end
         return
     end
-    if kind == "hold-denied" then Session._Denied(rest); return end
+    if kind == "hold-denied" then
+        local f = split(rest, "|")
+        Session._Denied(f[1], f[2])
+        return
+    end
     if kind == "hold-lost" then
-        toast("Ein Mitspieler hat das Objekt geändert, das du gerade bearbeitet hast.", "ff922b")
+        -- hold-lost|<who changed it>|<gid>
+        local f = split(rest, "|")
+        local who, named = someone(f[1])
+        markConflict(f[2], who .. " hat das gerade geändert", named and colorOfName(who) or nil,
+            who .. " hat das Objekt geändert, das du gerade bearbeitet hast.")
         return
     end
     if kind == "undo-blocked" then
@@ -958,10 +1015,16 @@ function Session.OnSyncLine(line)
         return
     end
     if kind == "rejected" then
-        local reason = global.string.match(rest, "|(.*)$") or ""
-        if reason == "gesperrt" then toast("Zurückgenommen: ein Mitspieler bearbeitet dieses Objekt gerade.", "ff922b")
-        elseif reason == "fremd" then return
-        elseif reason == "veraltet" then toast("Zurückgenommen: ein Mitspieler war bei diesem Objekt schneller.", "ff922b") end
+        -- rejected|<gid>|<reason>|<who was in the way>: the object is put back, the line says why.
+        local f = split(rest, "|")
+        local reason = f[2] or ""
+        local who, named = someone(f[3])
+        local color = named and colorOfName(who) or nil
+        if reason == "gesperrt" then
+            markConflict(f[1], who .. " baut hier gerade", color, "Zurückgenommen: " .. who .. " baut hier gerade.")
+        elseif reason == "veraltet" then
+            markConflict(f[1], who .. " war schneller", color, "Zurückgenommen: " .. who .. " war bei diesem Objekt schneller.")
+        end
         return
     end
     if kind == "unsupported" then
@@ -1068,7 +1131,8 @@ local function onMessage(from, payload)
             local f = split(payload, "|")
             setHold(f[2], f[3] or "", f[4] or "", f[5] or "")
         elseif kind == "deny" then
-            Session._Denied(clean(split(payload, "|")[2] or "?"))
+            local f = split(payload, "|")
+            Session._Denied(f[2], f[3])
         elseif kind == "time" then
             local f = split(payload, "|")
             local paused, index = f[2] == "1", global.tonumber(f[3]) or 1
@@ -2318,6 +2382,15 @@ function Session.Pings()
     return list
 end
 
+-- Refusals shown at the object right now: {gid, text, color, age (0..1)}.
+function Session.Conflicts()
+    local list = {}
+    for _, m in global.ipairs(marks) do
+        if m.seen then list[#list+1] = {gid = m.gid, text = m.text, color = m.color, age = (frames - m.frame) / MARK_FRAMES} end
+    end
+    return list
+end
+
 function Session.Notice(text, color) toast(text, color) end
 
 -- Follow another player's camera; nil stops.
@@ -2368,8 +2441,11 @@ end
 function Session.Park() return park end
 function Session.Holds() return holds end
 
-function Session._Denied(name)
-    toast(global.tostring(name) .. " bearbeitet das gerade. Dein Werkzeug wurde zurückgesetzt.", "ff922b")
+-- The player picked up something another one is editing: the tool is reset, the object says who.
+function Session._Denied(name, gid)
+    local who, named = someone(name)
+    markConflict(gid, who .. " baut hier gerade", named and colorOfName(who) or nil,
+        who .. " baut hier gerade. Dein Werkzeug wurde zurückgesetzt.")
     World.LeaveTool()
 end
 
@@ -2457,7 +2533,7 @@ function Session.Leave()
     ratingsFile = nil
     if role == "host" then for _, sid in global.ipairs(order) do global.pcall(Session._RememberVisit, sid) end end
     boardFile, visitsFile, events, sinceText, vote, checkpoints, invitation = nil, nil, {}, nil, nil, {}, nil
-    pingContext, lastTakeAsk = nil, {}
+    pingContext, lastTakeAsk, marks = nil, {}, {}
     comp, compView, compMine = nil, nil, {}
     if role == "host" then remember("rules", "") end
     rules.speed, rules.visitors, rules.foreign = "all", "1", "free"
@@ -2534,6 +2610,7 @@ function Session.Tick()
         if frames % 300 == 0 then flushAuthors() end
     end
     if role then global.pcall(shareLook) end
+    checkMarks()
     if role == "client" and memory.phase == "live" and not hostSilent and lastHostFrame > 0 and frames - lastHostFrame > 600 then
         hostSilent = true
         toast("Keine Verbindung zum Host - warte ...", "ff922b")

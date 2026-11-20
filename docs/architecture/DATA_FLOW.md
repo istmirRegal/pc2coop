@@ -14,7 +14,8 @@ Spieler setzt Objekt
   → Host: authorityUp prüft Felder, Sperre, Content Guard, Revision, Grabstein
        ok:      Autor bekommt  M|gid|part|rev   (Host-gid für sein lokales Teil)
                 alle anderen   U|gid|…           (Teil anlegen/setzen)
-       Konflikt: Autor bekommt R|gid|grund + U oder D (Host-Stand zurück) – restore()
+       Konflikt: Autor bekommt R|gid|grund|wer + U oder D (Host-Stand zurück) – restore()
+                 → beim Autor Meldung am Objekt (Session.Conflicts, FEAT-082)
   → deliver → sendOps: "ops\n<Zeile>\n<Zeile>…" (≤ 3900 Zeichen pro Nachricht)
   → beim Empfänger toGame: Zeilen nummeriert (Folge-Nr.) → Sync.Receive
   → Sync.Tick: runOp in Reihenfolge, gleichartige Läufe gebündelt (FEAT-064)

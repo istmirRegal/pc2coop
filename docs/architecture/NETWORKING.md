@@ -55,7 +55,7 @@ geprüft (`clean`, `cleanText`, `validGid`, `validRideKey`, `Figure.ParseLook` �
 | `feed` | text | Verlaufszeile | FEAT-044 |
 | `p` | sid, fokus, aktivität, kamera | Anwesenheit eines anderen | FEAT-091–099 |
 | `h` | sid, label, gids, items | was ein anderer hält | FEAT-062 |
-| `deny` | name | dein Halten abgelehnt | FEAT-062 |
+| `deny` | name, gid | dein Halten abgelehnt (gid für die Meldung am Objekt) | FEAT-062, FEAT-082 |
 | `time` | paused, index | Pause/Tempo | FEAT-078 |
 | `note` | x, y, z, text | Park-Meldung mit Ort | FEAT-140 |
 | `pg` | sid, x, y, z | Ping eines anderen | FEAT-095 |
@@ -86,7 +86,7 @@ Der Host schickt Änderungen als `ops\n<Zeile>\n<Zeile>…`. Beim Empfänger num
 | `D` | gid, wer, rev | Teil löschen |
 | `M` | gid, part, rev | eigene Änderung angenommen (rev 0 = eigenes Löschen) |
 | `A` | gid, part, rev | Alias aus dem Park-Manifest nach dem Laden |
-| `R` | gid, grund | eigene Änderung abgelehnt (`veraltet`, `geloescht`, `fremd`, `gesperrt`, `unbekannt`) |
+| `R` | gid, grund, wer | eigene Änderung abgelehnt (`veraltet`, `geloescht`, `fremd`, `gesperrt`, `unbekannt`); wer = wer zuletzt geändert hat oder hält (FEAT-082) |
 | `Y` | alt, neu, datei | Bahn gegen Bauplan tauschen |
 | `K` | batch | abgespielte Editor-Aufrufe |
 
@@ -143,10 +143,10 @@ Steuerzeilen ohne Nummer: `S|<name>` (Synchronisation starten), `X` (stoppen), `
 | `up`, `del` | lokaler Teil-Endzustand (FEAT-060) |
 | `cmd` | lokaler Replay-Batch (FEAT-065) |
 | `ride`, `ridedel` | Bahn-Bauplan fertig / Datei löschen (FEAT-072) |
-| `hold`, `hold-denied`, `hold-lost` | Halten (FEAT-062, FEAT-080) |
+| `hold`, `hold-denied`, `hold-lost` | Halten (FEAT-062, FEAT-080); `hold-denied` mit Name und gid, `hold-lost` mit wer und gid (FEAT-082) |
 | `applied`, `apply-error`, `read-error`, `run-split`, `preview-resumed`, `commit-refused` | Anwenden fremder Änderungen |
 | `desync` | nicht übernehmbar (FEAT-076) |
-| `rejected` | beim Host abgelehnt (FEAT-075) |
+| `rejected` | beim Host abgelehnt, mit gid, Grund und wer (FEAT-075, FEAT-082) |
 | `undo-blocked` | Rückgängig gesperrt (FEAT-074) |
 | `unsupported` | nicht synchronisiertes Werkzeug (FEAT-077) |
 

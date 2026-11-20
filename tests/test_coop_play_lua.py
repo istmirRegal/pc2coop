@@ -67,7 +67,8 @@ class CoopPlayTests(unittest.TestCase):
         gid = self.build('200')
         self.hold('200', gid)
         self.hold('300', gid)
-        self.assertTrue(any('Alex bearbeitet das gerade' in t for t in self.toasts('300')), self.toasts('300'))
+        self.peers['300'].lua.execute('for i = 1, 31 do session.Tick() end')   # not in this game: a notice card
+        self.assertTrue(any('Alex baut hier gerade' in t for t in self.toasts('300')), self.toasts('300'))
         self.assertIsNone(self.view('100')['Sam']['hold'])
         self.assertEqual(self.view('100')['Alex']['hold']['label'], 'AQ_Rock_04')
         # Put down: now Sam may take it.
@@ -82,7 +83,7 @@ class CoopPlayTests(unittest.TestCase):
         self.peers['300'].local_change(f'sync:up|55|{gid}|1|AQ_Rock_04|9|9|9|0|0|0|1|1')
         self.pump(4)
         answers = self.peers['300'].ops()[before:]
-        self.assertTrue(any(op.startswith('R|') and op.endswith('gesperrt') for op in answers), answers)
+        self.assertTrue(any(op.startswith('R|') and op.endswith('|gesperrt|Alex') for op in answers), answers)
         restored = [op for op in answers if op.startswith('U|')][-1]
         self.assertIn('|AQ_Rock_04|1|2|3|', restored)
         self.peers['300'].local_change(f'sync:del|55|{gid}|1')
@@ -152,8 +153,9 @@ class CoopPlayTests(unittest.TestCase):
         peer.local_change('sync:rejected|g1|gesperrt')
         peer.local_change('sync:undo-blocked|undo')
         peer.local_change('sync:hold-lost')
+        peer.lua.execute('for i = 1, 31 do session.Tick() end')   # g1 is not in this game: a notice card
         texts = ' / '.join(self.toasts('300'))
-        self.assertIn('bearbeitet dieses Objekt gerade', texts)
+        self.assertIn('Zurückgenommen: Ein Mitspieler baut hier gerade.', texts)
         self.assertIn('eigenen letzten Schritt', texts)
         self.assertIn('Objekt geändert, das du gerade bearbeitet hast', texts)
 

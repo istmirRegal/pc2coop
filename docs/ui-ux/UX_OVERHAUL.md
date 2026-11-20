@@ -409,8 +409,9 @@ NAVIGATION, Registry) und Screenshots aus der Testkopie.
 **Stand (2026-11-20):** P0 Schritte 1 und 2 erledigt: Farben, Einheiten, Schriftskala, Texte,
 Lua-Umlaute (`docs/ui-ux/DESIGN_SYSTEM.md`). Offen in P0: Bausteine, HUD-Grund in Akzentfarbe. P1 Schritt 1 erledigt: Sitzungs-Cluster, Anfrage-Karte,
 Verbindungs-Pille. P1 Schritt 2 erledigt: Markieren-Radialmenü und Tastenhinweis. P1 Schritt 3
-erledigt: Chat-Bereich unten links, Enter öffnet die Eingabe (DLL `key:chat`). Offen in P1:
-Konflikt-Meldung am Objekt (TP-16).
+erledigt: Chat-Bereich unten links, Enter öffnet die Eingabe (DLL `key:chat`). P1 Schritt 4
+erledigt: Konflikt-Meldung am Objekt (TP-16, FEAT-082). Damit ist P1 gebaut; die Abnahme
+mit echter Tastatur (Enter, Esc) steht noch aus.
 
 Prototypen zuerst (vor P2/P3/P4): `Panel` in unserer Ebene, Seite im Hauptmenü-Rahmen,
 Bauleiste im Besuch aus. Ergebnis entscheidet, ob Ziel oder Rückfall gebaut wird.

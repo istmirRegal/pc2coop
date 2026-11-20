@@ -5,6 +5,9 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
 
 ## Unveröffentlicht
 
+- Wird eine Änderung von dir zurückgenommen, steht der Grund jetzt direkt am Objekt, mit
+  Namen: „Vici baut hier gerade“ oder „Vici war schneller“. Das Objekt blinkt kurz in Vicis
+  Farbe. Vorher kam nur eine Meldung ohne Namen.
 - Die Oberfläche der Mod benutzt die Farben des Spiels. Sie folgt deiner Akzentfarbe und den
   Farbenblind-Modi.
 - Die Oberfläche wächst mit Auflösung und UI-Skalierung wie das Spiel (vorher feste Pixel,

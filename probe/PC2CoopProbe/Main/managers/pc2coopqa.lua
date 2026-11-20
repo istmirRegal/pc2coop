@@ -147,6 +147,21 @@ Manager.Advance=function(self,delta)
             end
         end
         if self.authorTag then tags[#tags+1]=self.authorTag end
+        -- Refused changes (TP-16): a line at the object, which flashes in the other
+        -- player's colour for the first two seconds.
+        if view.role and self.session.Conflicts then
+            for _,c in global.ipairs(self.session.Conflicts()) do
+                local entity=self.sync.GidToEntity(c.gid)
+                if entity then
+                    local at=global.api.transform.CalculateWorldPosition(entity)
+                    tags[#tags+1]={key="conflict:" .. c.gid,name=c.text,activity="",x=at:GetX(),y=at:GetY()+4,z=at:GetZ()}
+                    if c.age<0.4 then
+                        locked[entity]=global.math.floor(c.age*20)%2==0 or nil
+                        colour=c.color or "ff922b"
+                    end
+                end
+            end
+        end
         self.labels.Show(tags,delta)
         self.viz.Update(remote,locked,colour,delta,pings)
         -- Follow another player's camera until the player moves it.
