@@ -66,7 +66,12 @@ gleiches Steam-Konto; geprüft 2026-11-20):
   am Info-Icon der Regeln, 12 im Hauptmenü die Sandbox-Seite des Spiels (wie die Kachel).
 - **Hauptmenü testen:** Bot-Schritt `inspect:qa:frontend=true` statt `new-test-park` (das Spiel
   bleibt im Hauptmenü). QA-Skripte holen Session und UI dort über
-  `require("pc2coop.frontend").Session()` bzw. `.Ui()`. Das ändert nur die laufende HUD-Ansicht und speichert
+  `require("pc2coop.frontend").Session()` bzw. `.Ui()`.
+- **Besuch testen:** Im Besuch hält die DLL den Mauszeiger in der Fenstermitte, sobald die
+  Testkopie vorne ist – das fängt die Maus des Eigners. Vorher im QA-Skript den Maus-Look
+  abschalten: `require("pc2coop.visitor").Init(function(c) if c == "visitor|1|1" then c =
+  "visitor|1|0" end; require("pc2coop.diagnostic").NetCommand(c) end)`. Tasten wie F über
+  `session._onNet("key:v|f|1")`. Das ändert nur die laufende HUD-Ansicht und speichert
   nichts.
 - 1440p und 4K gehen hier nicht (Bildschirm 1080p, randlos). Die Mod-Oberfläche ist ganz in
   `rem` gebaut (außer Mauskoordinaten) und skaliert wie das Spiel mit `min(B/1920, H/1080)`.

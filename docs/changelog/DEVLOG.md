@@ -3,6 +3,19 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-20 – UX-Overhaul P4, Schritt 1: Besuch ohne Leiste oben
+
+- `VisitorBar` ersetzt durch `VisitorHud` (Tastenhinweise, E-Hinweis, Kauf-Panel) und
+  `VisitorRides` (Panel links). `syncVisitHud` blendet `BrowserModule_root` und `HUD_promptsList`
+  des Spiels im Besuch aus und danach wieder ein (Prototyp „Bauleiste im Besuch aus“).
+- Fund: Ein `div` ohne Größe als Wurzel – `bottom` und `top: 58%` der Kinder rechneten von einem
+  Kasten der Höhe 0 oben am Bild: Hinweise unsichtbar, E-Hinweis oben. Jetzt `100vw × 100vh`.
+- F: DLL `poll_visitor` mit 11 Tasten (`'F'` → `f`), `Visitor.OnKey` → `list`,
+  `Visitor.SetList`/`ListOpen` (Maus-Look aus, solange offen), `ui.lua` liest die Liste von dort
+  (`visitorList` entfällt). Test `test_f_opens_the_rides_and_frees_the_mouse`.
+- QA-Sicherheit: Maus-Look im QA-Skript abgeschaltet (TESTING.md), die DLL hätte sonst den
+  Zeiger des Eigners in die Mitte der Testkopie gezogen.
+
 ## 2026-11-20 – UX-Overhaul P3, Schritt 2: Anfrage im Platz, „öffnet einen Park“, „Alle sind da“
 
 - TP-06: `places` setzt Anfragen als Karte zwischen Spieler und Eingeladene (Icon-Knöpfe `tick`,

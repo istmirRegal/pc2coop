@@ -460,6 +460,14 @@ Testkopie: Host öffnet aus dem Hauptmenü einen Park, `opening` kam an, die Sei
 nachgestellter Mitspieler lädt, dann „Alle sind da“. Damit ist P3 gebaut. Offen: mit echtem
 Mitspieler auf zwei PCs prüfen (P6).
 
+**P4 Schritt 1 (2026-11-20):** Besuch ohne Leiste oben (TP-24): Tastenhinweise unten rechts,
+Bauleiste und Bau-Tastenhinweise des Spiels im Besuch aus (Prototyp gelungen: die beiden Elemente
+per Klasse ausblenden), E-Hinweis unter der Bildmitte und Kauf-Panel (TP-25), Fahrgeschäfte als
+Panel links, geöffnet mit F (neue DLL-Taste; solange offen, ist die Maus frei). Emote-Knöpfe
+entfallen. Nicht geprüft: echte Tasten (F könnte auch eine Taste des Spiels sein), die Maus im
+Besuch (QA schaltet den Maus-Look ab, damit er den Zeiger des Eigners nicht fängt).
+Offen in P4: Emote-Rad im Look des Spiel-Radialmenüs (TP-26), Wertung mit Spiel-Sternen (TP-27).
+
 Prototypen zuerst (vor P2/P3/P4): `Panel` in unserer Ebene, Seite im Hauptmenü-Rahmen,
 Bauleiste im Besuch aus. Ergebnis entscheidet, ob Ziel oder Rückfall gebaut wird.
 

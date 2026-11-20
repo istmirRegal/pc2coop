@@ -40,7 +40,8 @@ und Maus, Dateien im Spielordner. Lua spricht sie über `probe/PC2CoopProbe/Main
 
 ### FEAT-195 – Tasten und Maus im Besucher-Modus
 - **Status:** Implemented · **Seit:** 1.12.0 (V statt G seit 1.13.0)
-- **Funktion:** Tab, T, E, V, 1–6 als Tastenereignisse; mit Maus-Look bleibt der Zeiger in der
+- **Funktion:** Tab, T, E, V, F, 1–6 als Tastenereignisse (F seit UX-Overhaul P4: Fahrgeschäfte);
+  mit Maus-Look bleibt der Zeiger in der
   Fenstermitte, die Bewegung geht an Lua.
 - **Technik:** Befehl `visitor|<tasten 0/1>|<maus 0/1>` (Erneuerung nötig, sonst Abschalten
   nach 2 s); `poll_visitor()`; Ereignisse `key:v|name|0/1`, `mouse|dx|dy`. Nur wenn das

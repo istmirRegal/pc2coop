@@ -5,6 +5,11 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
 
 ## Unveröffentlicht
 
+- Besuch wie der Laufmodus des Spiels: Die Leiste oben ist weg, die Tasten stehen unten rechts.
+  Die Bauleiste ist im Besuch ausgeblendet. Was E vor einem Eingang tut, steht unter der
+  Bildmitte, mit Grund, wenn es gerade nicht geht. Ein Laden zeigt ein kleines Kauf-Panel.
+- Neu im Besuch: Taste **F** öffnet die Fahrgeschäfte links, solange ist die Maus frei zum Klicken.
+- Die sechs Emote-Knöpfe sind weg; Emotes gibt es mit T (Rad).
 - Wer beitreten möchte, wartet auf der Multiplayer-Seite als Karte in einem Platz; der Host
   lässt ihn mit Haken oder X zu oder lehnt ab.
 - Öffnet der Host einen Park, sehen alle anderen sofort „… öffnet einen Park“. Im Park steht

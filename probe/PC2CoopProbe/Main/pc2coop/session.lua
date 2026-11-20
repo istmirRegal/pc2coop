@@ -1550,7 +1550,7 @@ local function onNet(event)
     elseif kind == "key:v" and typing and f[3] == "1" then
         -- The chat input is open: T, E, V and 1-6 are letters there. Releases still go through.
     elseif kind == "key:v" then
-        -- Visitor mode keys (DLL, only while it is on): Tab, T, E, V, 1-6.
+        -- Visitor mode keys (DLL, only while it is on): Tab, T, E, V, F, 1-6.
         local Visitor = global.require("pc2coop.visitor")
         local todo, number = Visitor.OnKey(f[2], f[3] == "1")
         if todo == "stop" then Visitor.Stop()
@@ -1559,6 +1559,8 @@ local function onNet(event)
             if not ok then toast("E: " .. global.tostring(failure) .. ".", "ff922b") end
         elseif todo == "view" then
             Visitor.ToggleView()
+        elseif todo == "list" then
+            Visitor.SetList(not Visitor.ListOpen())
         elseif todo == "buy" then
             Session.BuyPick(number)
         end

@@ -16,7 +16,9 @@ Code: `probe/PC2CoopProbe/Main/pc2coop/visitor.lua`, `probe/PC2CoopProbe/Main/pc
   (vom Manager jedes Frame); UI-Aktion `visitor`. Beginnt dort, wo man hinschaut
   (`World.FocusPoint`). Die DLL bekommt alle 60 Frames `visitor|1|<maus>` (Tasten an,
   Mauszeiger fangen) – ohne Erneuerung schaltet sie nach 2 s ab.
-- **UI:** Besucherleiste oben Mitte (`VisitorBar`) mit Steuerungshinweis.
+- **UI:** Wie der Laufmodus des Spiels (UX-Overhaul P4): Tastenhinweise unten rechts
+  (`VisitorHud`), keine Leiste oben; Bauleiste und Bau-Tastenhinweise des Spiels sind
+  ausgeblendet (`syncVisitHud`), außer beim Mitfahren.
 - **Besonderheiten:** Verlässt das Spiel die Besucherkamera durch eigene Tasten, endet der
   Modus (Prüfung in `Visitor.Tick`).
 
@@ -84,7 +86,9 @@ Code: `probe/PC2CoopProbe/Main/pc2coop/visitor.lua`, `probe/PC2CoopProbe/Main/pc
   Bewertungen; „Mitfahren“ ohne hinzulaufen.
 - **Technik:** `Visitor.Rides(keyOf, cache, at)`, `Visitor.Ride(key, findRide)`
   (Kamera-Einstellungen des Spiels, `GamefaceCameraSettings`), `Visitor.Riding`.
-  UI-Aktionen `visitorlist`, `ride`.
+  UI-Aktionen `visitorlist`, `ride`. Öffnen mit F (`Visitor.OnKey` → `list`, `Visitor.SetList`,
+  `Visitor.ListOpen`); solange das Panel offen ist, fängt die DLL die Maus nicht
+  (`visitor|1|0`), damit man klicken kann. Panel links (`VisitorRides`).
 
 ### FEAT-167 – Bewertungen und Vorschläge
 - **Status:** Implemented · **Seit:** 1.11.0
@@ -98,7 +102,7 @@ Code: `probe/PC2CoopProbe/Main/pc2coop/visitor.lua`, `probe/PC2CoopProbe/Main/pc
   T loslassen sendet; alle sehen die Animation und einen Toast.
 - **Technik:** `Visitor.EMOTES`, `Visitor.OnKey`, `Visitor.Wheel`; `Session.Emote` →
   `emote|kind` → Host `em|sid|kind`; `Session._EmoteKind`, `Session.Emotes` (4 s, Essen 20 s).
-  UI-Aktion `emote`, Klasse `EmoteWheel`, Knöpfe `EMOTE_BUTTONS`.
+  UI-Aktion `emote`, Klasse `EmoteWheel`. Die Emote-Knöpfe der alten Leiste sind seit P4 weg.
 
 ### FEAT-169 – Kaufen an Shops und Automaten
 - **Status:** Implemented · **Seit:** 1.13.0

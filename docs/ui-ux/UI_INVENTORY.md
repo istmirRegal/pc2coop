@@ -77,7 +77,7 @@ Esc zurück, schließt das Fenster). Titel, ein Satz, zwei bis drei Spalten:
 ### 2.2 Besuchen (Reiter entfallen, P2)
 
 Besuchen ist eine Aktion (TP-23): Knopf „Besuchen“ im Fuß des Fensters. Die Fahrgeschäfte-Liste
-steht in der Besucher-Leiste (§4), „Testfahrt mit allen“ im Markieren-Radialmenü, die Ich-Sicht
+öffnet im Besuch die Taste F (§4), „Testfahrt mit allen“ im Markieren-Radialmenü, die Ich-Sicht
 wechselt man im Besuch mit V. Der Knopf in der Bauleiste neben „Multiplayer“ wurde verworfen: Bei
 UI-Skalierung 1.0 verdeckte er die Icon-Knöpfe am Ende der Bauleiste des Spiels.
 
@@ -125,23 +125,25 @@ UI-Skalierung 1.0 verdeckte er die Icon-Knöpfe am Ende der Bauleiste des Spiels
 | Spieltempo/Pause | Spielknöpfe (`World.HookHUD`) | Regel „nur Host“ sperrt Gäste | – | FEAT-078 |
 | Mittelklick kurz | Welt | im Park | Ping (DLL `key:mup`) | FEAT-095 |
 
-## 4. Besucher-Modus (`VisitorBar`, `EmoteWheel`)
+## 4. Besucher-Modus (`VisitorHud`, `VisitorRides`, `EmoteWheel`)
+
+Wie der Laufmodus des Spiels (UX-Overhaul P4, TP-24): keine Leiste oben. Die Bauleiste
+(`BrowserModule_root`) und die Bau-Tastenhinweise des Spiels (`HUD_promptsList`) sind im Besuch
+ausgeblendet (`syncVisitHud`), beim Mitfahren nicht (dort liegen die Knöpfe der Fahrkamera).
 
 | Element | Ort | Wann | Bedienung | FEAT |
 |---|---|---|---|---|
-| Hilfezeile | Leiste oben Mitte, 52 px | im Besuch, Fenster zu | Text je Zustand (von hinten / Ich-Sicht / Mitfahren) | FEAT-160 |
-| E-Hinweis | in der Leiste | von hinten, vor einem Eingang | „E: <Spieltext>“ + Sperrgrund (Lokalisierung über `shown()`) | FEAT-165 |
-| Kaufliste | in der Leiste | Laden-Menü offen | 1–6 oder Klick → `buy`; E/Tab schließt | FEAT-169 |
-| Emote-Knöpfe | in der Leiste | im Besuch mit Sitzung | Winken, Jubeln, Lachen, Super, Naja, Übel → `emote` | FEAT-168 |
-| „Fahrgeschäfte“ / „Liste schließen“ | in der Leiste | im Besuch | `visitorlist` | FEAT-166 |
-| „Ich-Sicht“ / „Ansicht von hinten“ | in der Leiste | im Besuch, nicht beim Mitfahren | `view` | FEAT-164 |
-| „Zurück zum Bauen“ | in der Leiste | im Besuch | `visitor` 0 | FEAT-160 |
-| Fahrgeschäfte-Liste | unter der Leiste, 1000 px | Liste offen | „Mitfahren“ → `ride`; Sterne 1–5 → `rate`; Vorschlag (Enter) → `rate` | FEAT-166, FEAT-167 |
+| Tastenhinweise | unten rechts über der Statusleiste | im Besuch, Fenster zu | von hinten: WASD Laufen, Umschalt Rennen, E Benutzen, F Fahrgeschäfte, T Emotes, V Ich-Sicht, Tab Zurück; Ich-Sicht: WASD, Alt Springen, Strg Ducken, L Lampe, E Shop, F, T, V Ansicht, Tab; Laden offen: 1–6 Kaufen, E Schließen | FEAT-160, FEAT-195 |
+| „Du fährst <Bahn>“ | oben Mitte | beim Mitfahren | – | FEAT-166 |
+| E-Hinweis | unter der Bildmitte | von hinten, vor einem Eingang | [E] + Spieltext, darunter der Sperrgrund (Lokalisierung über `shown()`) | FEAT-165 |
+| Kauf-Panel „Kaufen“ | unten rechts über den Tastenhinweisen | Laden-Menü offen | Zeilen mit Taste, Artikel, Preis; 1–6 oder Klick → `buy`; E/Tab schließt | FEAT-169 |
+| Fahrgeschäfte-Panel | links wie das Multiplayer-Fenster | F (oder X schließt) | Zeilen: Name, Art, Entfernung, Wartende, Werte, Bewertung; „Mitfahren“ → `ride`; „Deine Wertung“ 1–5 → `rate`; Vorschlag (Enter) → `rate`; Maus frei, solange offen | FEAT-166, FEAT-167 |
 | Emote-Rad | Bildmitte | T gehalten | Maus/1–6 wählt, T loslassen sendet | FEAT-168 |
 
 Tasten im Besuch (über die DLL, FEAT-195): **WASD** laufen, **Shift** rennen, **Maus** umsehen,
-**E** Eingang/Laden, **V** Ich-Sicht ↔ von hinten, **T** Emote-Rad, **1–6** kaufen/Emote,
-**Tab** zurück (schließt zuerst das Laden-Menü). In der Ich-Sicht gelten zusätzlich die Tasten
+**E** Eingang/Laden, **F** Fahrgeschäfte, **V** Ich-Sicht ↔ von hinten, **T** Emote-Rad, **1–6**
+kaufen/Emote, **Tab** zurück (schließt zuerst das Laden-Menü). Entfallen (P4): die Emote-Knöpfe
+(das Rad reicht) und die Knöpfe „Ich-Sicht“ und „Zurück zum Bauen“ (V, Tab). In der Ich-Sicht gelten zusätzlich die Tasten
 des Spiels (Alt springen, Strg ducken, L Lampe).
 
 ## 5. Beitritt (Dialoge des Spiels)
@@ -190,7 +192,7 @@ Entwickler-Seite: technische Werte und „API-Rekorder an/aus“, „Namensschil
 | `emote` | Art | Emote | ja |
 | `buy` | 1–6 | kaufen | ja |
 | `shopclose` | – | Laden-Menü schließen | **nein** (E/Tab) |
-| `visitorlist` | 1/0 | Fahrgeschäfte-Liste | ja |
+| `visitorlist` | 1/0 | Fahrgeschäfte-Panel (`Visitor.SetList`) | ja (X am Panel; öffnen mit F) |
 | `rate` | key\|sterne\|text | bewerten | ja |
 | `invite_ride` | key\|name | Testfahrt-Einladung | nein (seit P2; Radialmenü „Testfahrt mit allen“ über `ctx`) |
 | `invitation` | 1/0 | Einladung annehmen/später | ja |

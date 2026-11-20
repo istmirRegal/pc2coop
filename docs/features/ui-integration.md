@@ -71,7 +71,7 @@ Code: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js`,
   - Kein Öffnen innerhalb von 0,8 s nach dem Senden oder nach Enter in einem Textfeld des Spiels
     (`document.activeElement` wird alle 0,2 s geprüft).
   - UI-Aktion `chatinput` 1/0 → `Session.SetTyping`: Solange die Eingabe offen ist, verwirft
-    Lua Tastendrücke `key:v` (T, E, V, 1–6 sind dann Buchstaben); Loslassen kommt durch.
+    Lua Tastendrücke `key:v` (T, E, V, F, 1–6 sind dann Buchstaben); Loslassen kommt durch.
   - `hello` (neue Oberfläche) setzt `SetTyping(false)`.
 
 ### FEAT-117 – Banner (Abstimmung, Wettbewerb, Einladung)

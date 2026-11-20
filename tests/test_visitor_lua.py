@@ -237,6 +237,22 @@ class ThirdPersonTests(unittest.TestCase):
                 return {bModeChanged = true}
             end}'''
 
+    def test_f_opens_the_rides_and_frees_the_mouse(self):
+        # TP-27: F opens the rides panel; mouse look pauses so its buttons can be clicked.
+        self.v.Start()
+        self.assertEqual(self.v.OnKey('f', True), 'list')
+        self.assertIsNone(self.v.OnKey('f', False))
+        self.v.SetList(True)
+        self.assertTrue(self.v.ListOpen())
+        self.assertEqual(list(self.lua.eval('commands').values())[-1], 'visitor|1|0')
+        self.v.SetList(False)
+        self.assertEqual(list(self.lua.eval('commands').values())[-1], 'visitor|1|1')
+        self.v.SetList(True)
+        self.v.Stop()
+        self.assertFalse(self.v.ListOpen(), 'gone with the visit')
+        self.v.SetList(True)
+        self.assertFalse(self.v.ListOpen(), 'only while visiting')
+
     def test_tab_and_e_use_the_entrance_in_front_like_the_game(self):
         self.lua.execute(self.NATIVE)
         self.v.Start()

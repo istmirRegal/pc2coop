@@ -119,7 +119,6 @@ local function statsList(stats)
 end
 
 -- Visitor mode: walking, riding along, the park's rides with stats and ratings.
-local visitorList = false   -- the rides list of the visitor bar is unfolded
 local panelTab = "team"     -- tab of the multiplayer window in a park: team|visit|plan|history|session
 local TABS = {team = true, visit = true, plan = true, history = true, session = true}
 
@@ -219,7 +218,7 @@ local function visitorState()
         hint = hint and {action = hint.action, blocker = hint.blocker or false} or false, shop = shop,
         guest = Visitor.GuestView and Visitor.GuestView() or false,
         wheel = wheel and {selected = wheel.selected or false} or false, view = Visitor.View and Visitor.View() or "first",
-        rides = rides, list = visitorList,
+        rides = rides, list = Visitor.ListOpen and Visitor.ListOpen() or false,
         emotes = session.Emotes and session.Emotes() or {}}
 end
 
@@ -332,7 +331,11 @@ local actions = {
     view = function() global.require("pc2coop.visitor").ToggleView() end,
     buy = function(arg) session.BuyPick(global.tonumber(arg)) end,
     shopclose = function() global.require("pc2coop.visitor").CloseShop() end,
-    visitorlist = function(arg) visitorList = arg == "1" end,
+    -- The rides panel of the visit (F or its X); visitor.lua frees the mouse while it is open.
+    visitorlist = function(arg)
+        local Visitor = global.require("pc2coop.visitor")
+        if Visitor.SetList then Visitor.SetList(arg == "1") end
+    end,
     paneltab = function(arg) if TABS[arg] then panelTab = arg end end,
     -- "<kind>|<title>|<text>|<assignee>|<radius>": tasks need no place, the rest goes to anchor().
     board_add = function(arg)

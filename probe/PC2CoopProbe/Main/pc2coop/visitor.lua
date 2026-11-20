@@ -50,6 +50,7 @@ local MEAL_FRAMES = 1200
 local toFigure = nil           -- frame we left the game's walk for the figure (camera follows)
 local pendingYaw = 0
 local wheel = nil              -- {x, y, selected} while T is held
+local listOpen = false         -- the rides panel (F): the mouse is free while it is open
 local lastNet = -1000
 local physicsWorld
 local testKeys = nil           -- QA: {binding = true} instead of the keyboard
@@ -217,7 +218,7 @@ end
 local function keepInput()
     if frames - lastNet >= 60 then
         lastNet = frames
-        net("visitor|1|" .. ((active and not riding and not guestView and not wheel) and "1" or "0"))
+        net("visitor|1|" .. ((active and not riding and not guestView and not wheel and not listOpen) and "1" or "0"))
     end
 end
 
@@ -241,7 +242,7 @@ function Visitor.Stop()
     if riding or guestView then global.pcall(function() global.require("Editors.Shared.BaseUIMode").SetNewMode("Select") end) end
     global.pcall(function() camera():RequestDefaultMode() end)
     dropFigure()
-    pos, active, riding, guestView, wheel, shopMenu, toFigure = nil, false, nil, false, nil, nil, nil
+    pos, active, riding, guestView, wheel, shopMenu, toFigure, listOpen = nil, false, nil, false, nil, nil, nil, false
     net("visitor|0|0")
 end
 
@@ -484,6 +485,7 @@ function Visitor.OnKey(name, down)
     local number = global.tonumber(name)
     if shopMenu and number and down then return "buy", number end
     if name == "v" and down and not riding and not wheel then return "view" end
+    if name == "f" and down and not riding and not wheel and not shopMenu then return "list" end
     if name == "t" then
         if down and not riding and not wheel and not shopMenu then wheel = {x = 0, y = 0, selected = nil}; lastNet = -1000; keepInput()
         elseif not down and wheel then
@@ -500,6 +502,14 @@ function Visitor.OnKey(name, down)
     local digit = global.tonumber(name)
     if digit and down and wheel and Visitor.EMOTES[digit] then wheel.selected = digit end
     return nil
+end
+
+-- The rides panel (TP-27): open while visiting; mouse look pauses so it can be clicked.
+function Visitor.ListOpen() return listOpen end
+function Visitor.SetList(on)
+    listOpen = (on and active) and true or false
+    lastNet = -1000
+    keepInput()
 end
 
 -- Mouse travel from the DLL: turns the camera, or picks a wedge of the emote wheel.

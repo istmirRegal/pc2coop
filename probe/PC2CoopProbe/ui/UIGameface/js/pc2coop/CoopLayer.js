@@ -118,6 +118,7 @@ function raiseTooltips() {
 function poll() {
     subscribe();
     try { raiseTooltips(); } catch (error) { /* tooltips stay where the game puts them */ }
+    try { syncVisitHud(); } catch (error) { /* the build bar stays */ }
     try { applyState(DS.getValue(CONTEXT, 'state')); } catch (error) { /* context not created yet */ }
     try { applyAvatars(DS.getValue(CONTEXT, 'avatars')); } catch (error) { /* not there yet */ }
     polls += 1;
@@ -462,89 +463,121 @@ class PlayerBar extends StateComponent {
     }
 }
 
-// Visitor mode: walk through the park as a guest, ride along, rate rides, emote. A small
-// bar at the top centre; "Fahrgeschäfte" unfolds the rides with stats and ratings.
-const EMOTE_BUTTONS = [['wave', 'Winken'], ['cheer', 'Jubeln'], ['laugh', 'Lachen'], ['up', 'Super'], ['down', 'Naja'], ['sick', 'Übel']];
+// Visiting (UX_OVERHAUL.md TP-24, TP-25): no bar at the top any more. Like the game's own walking
+// mode: key hints bottom right, what E does under the screen centre, a small buy panel; the
+// build bar and the game's build key hints are hidden meanwhile (syncVisitHud). F opens the rides.
 const one = (v) => (typeof v === 'number' ? (Math.round(v * 10) / 10).toFixed(1) : '-');
 
-class VisitorBar extends StateComponent {
-    state = { picked: null, stars: {}, draft: '' };
+function visitKeys(visitor) {
+    if (visitor.shop) return [...keyHint('1–6', 'Kaufen'), ...keyHint('E', 'Schließen', true)];
+    const rides = visitor.list ? 'Liste zu' : 'Fahrgeschäfte';
+    if (visitor.guest) {
+        return [...keyHint('WASD', 'Laufen'), ...keyHint('Alt', 'Springen'), ...keyHint('Strg', 'Ducken'), ...keyHint('L', 'Lampe'),
+            ...keyHint('E', 'Shop'), ...keyHint('F', rides), ...keyHint('T', 'Emotes'), ...keyHint('V', 'Ansicht'), ...keyHint('Tab', 'Zurück', true)];
+    }
+    return [...keyHint('WASD', 'Laufen'), ...keyHint('Umschalt', 'Rennen'), ...keyHint('E', 'Benutzen'), ...keyHint('F', rides),
+        ...keyHint('T', 'Emotes'), ...keyHint('V', 'Ich-Sicht'), ...keyHint('Tab', 'Zurück', true)];
+}
+
+class VisitorHud extends StateComponent {
     render(props, state) {
         const coop = state.coop || {};
         const visitor = coop.visitor;
         if (!visitor || !visitor.active || coop.context === 'menu' || coop.open) return null;
-        const pill = { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0.3rem 0.5rem', borderRadius: '0.9rem',
-            backgroundColor: HUD_BG(0.82), color: C('whiteColor'), fontSize: '0.9rem' };
-        const bar = h('div', { style: pill },
-            visitor.active && h('div', { style: { margin: '0 0 0.2rem', color: C('accentButtonLight') } },
-                visitor.riding ? 'Du fährst ' + visitor.riding + ' - "Zurück" unten rechts steigt aus'
-                    : visitor.guest ? 'Ich-Sicht: WASD laufen, Alt springen, Strg ducken, L Lampe, Eingänge wie im Spiel · E Shop · T Emotes · V Ansicht von hinten · Tab zurück'
-                    : 'Besucher: Maus umsehen · WASD laufen · Shift rennen · E Eingang oder Shop · T Emotes · V Ich-Sicht · Tab zurück'),
-            // A shop's buy list: 1-6 buy, E or Tab close (names are the game's loc keys).
-            visitor.shop && h('div', { style: { display: 'flex', flexDirection: 'column', margin: '0 0 0.3rem', padding: '0.3rem 0.5rem',
-                    borderRadius: '0.5rem', backgroundColor: 'rgba(255, 255, 255, 0.08)' } },
-                h('div', { style: { color: C('highlight'), margin: '0 0 0.2rem' } }, 'Kaufen: Taste 1-6 oder anklicken · E schließt'),
-                ...list(visitor.shop.items).map((it) => h('div', { key: 'buy' + it.n, onClick: () => request('buy', String(it.n)),
-                        style: { display: 'flex', justifyContent: 'space-between', padding: '0.1rem 0', cursor: 'pointer' } },
-                    h('span', { style: { margin: '0 0.4rem 0 0', color: C('accentButtonLight') } }, it.n + ''),
-                    h('span', { style: { flexGrow: 1 } }, (it.name && shown(it.name)) || it.fallback),
-                    h('span', { style: { margin: '0 0 0 0.6rem' } }, it.price)))),
-            // What E does at the entrance in front, in the game's own words (loc keys).
-            visitor.active && !visitor.guest && visitor.hint && h('div', { style: { display: 'flex', margin: '0 0 0.2rem', color: C('highlight') } },
-                h('span', { style: { margin: '0 0.3rem 0 0' } }, 'E:'), h('span', null, shown(visitor.hint.action)),
-                visitor.hint.blocker && h('span', { style: { margin: '0 0 0 0.3rem', color: C('warning') } }, shown(visitor.hint.blocker))),
-            buttons([
-                !visitor.active && { label: 'Als Besucher losgehen', onSelect: () => request('visitor', '1') },
-                ...(visitor.active && coop.role ? EMOTE_BUTTONS.map(([kind, label]) => ({ label, onSelect: () => request('emote', kind) })) : []),
-                { label: visitor.list ? 'Liste schließen' : 'Fahrgeschäfte', onSelect: () => request('visitorlist', visitor.list ? '0' : '1') },
-                visitor.active && !visitor.riding && { label: visitor.guest ? 'Ansicht von hinten' : 'Ich-Sicht', onSelect: () => request('view', '1') },
-                visitor.active && { label: 'Zurück zum Bauen', onSelect: () => request('visitor', '0') },
-            ]));
+        // On a ride the game's ride camera has its own buttons (Zurück) bottom right.
+        if (visitor.riding) {
+            return hintBar({ position: 'absolute', left: '50%', top: '2.6rem', width: '24rem', marginLeft: '-12rem', justifyContent: 'center' },
+                h('div', null, 'Du fährst ' + visitor.riding));
+        }
+        const shop = visitor.shop;
+        const hint = !visitor.guest && !shop && visitor.hint;
+        // Full screen: "bottom" and "top: 58%" need a box of the screen's size (a plain div put
+        // the hints above the screen and the prompt at the top, test copy).
+        return h('div', { style: { position: 'absolute', left: 0, top: 0, width: '100vw', height: '100vh', pointerEvents: 'none' } },
+            // Where the game's own key hints were, above the status bar.
+            hintBar({ position: 'absolute', right: '1rem', bottom: '2.6rem' }, visitKeys(visitor)),
+            // What E does here, under the screen centre, with the game's reason when it cannot.
+            hint && h('div', { style: { position: 'absolute', left: '50%', top: '58%', width: '30rem', marginLeft: '-15rem',
+                display: 'flex', flexDirection: 'column', alignItems: 'center' } },
+                hintBar({}, [keyCap('E'), h('div', { key: 'a' }, shown(hint.action))]),
+                hint.blocker && h('div', { style: hudPill({ marginTop: '0.3rem', color: C('warning') }) }, shown(hint.blocker))),
+            // A shop's buy list as a small panel: rows with the key, the item and its price.
+            shop && h('div', { style: hudCard({ position: 'absolute', right: '1rem', bottom: '5.4rem', width: '19rem', padding: '0.5rem 0.7rem',
+                pointerEvents: 'auto' }) },
+                h('div', { style: { fontWeight: 'bold', marginBottom: '0.3rem' } }, 'Kaufen'),
+                list(shop.items).map((it) => h('div', { key: 'buy' + it.n, onClick: () => request('buy', String(it.n)),
+                    style: { display: 'flex', alignItems: 'center', padding: '0.15rem 0' } },
+                    keyCap(String(it.n)),
+                    h('div', { style: { flexGrow: 1, flexShrink: 1, minWidth: 0 } }, (it.name && shown(it.name)) || it.fallback),
+                    h('div', { style: { marginLeft: '0.6rem', color: C('accentButtonLight') } }, it.price)))));
+    }
+}
+
+// The rides of the park (TP-27): a panel on the left like the multiplayer window, F or its X
+// closes it. While it is open the mouse is free (visitor.lua), so its buttons can be clicked.
+class VisitorRides extends StateComponent {
+    state = { picked: null, stars: {}, draft: '' };
+    render(props, state) {
+        const coop = state.coop || {};
+        const visitor = coop.visitor;
+        if (!visitor || !visitor.active || !visitor.list || coop.context === 'menu' || coop.open) return null;
         const rides = list(visitor.rides);
         const picked = rides.find((r) => r.key === state.picked);
-        const panel = visitor.list && h('div', { style: { width: '50rem', marginTop: '0.4rem', borderRadius: '0.6rem', overflow: 'hidden',
-            backgroundColor: C('panel'), color: C('accentText'), fontSize: '0.9rem' } },
-            h('div', { style: { height: '2.2rem', lineHeight: '2.2rem', padding: '0 0.9rem', backgroundColor: C('accent'), color: C('whiteColor'), fontSize: '1rem' } },
-                'Fahrgeschäfte im Park - nächstes zuerst'),
-            box(picked && coop.role ? 330 : 400, rides.length === 0
-                ? h('div', { style: { padding: '0.9rem', color: C('accentButtonDesaturatedDark') } }, 'Noch keine Fahrgeschäfte im Park.')
-                : rides.map((r) => {
-                    const mine = state.stars[r.key] || r.mine;
-                    const stats = typeof r.e === 'number'
-                        ? 'Spaß ' + one(r.e) + '  ·  Angst ' + one(r.f) + '  ·  Übelkeit ' + one(r.n)
-                        : 'noch nicht getestet';
-                    const extra = [r.dist !== false ? r.dist + ' m' : null, typeof r.queue === 'number' ? Math.round(r.queue) + ' in der Schlange' : null,
-                        r.trains ? r.trains + ' Züge' : null].filter(Boolean).join('  ·  ');
-                    return h('div', { key: r.key, style: { padding: '0.4rem 0.9rem', borderBottom: '0.05rem solid ' + ACCENT_A(0.15),
-                        backgroundColor: state.picked === r.key ? C('area') : 'transparent' } },
-                        h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
-                            h('div', { style: { width: '26rem' } },
-                                h('div', { style: { fontSize: '1rem' } }, r.name + '  ', h('span', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } }, r.kind)),
-                                h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } }, stats + (extra ? '  ·  ' + extra : '')),
-                                h('div', { style: { color: C('accent'), fontSize: '0.9rem' } },
-                                    r.count ? 'Bewertung ' + one(r.avg) + ' / 5 (' + r.count + ')' : 'noch keine Bewertung')),
-                            buttons([
-                                { label: 'Mitfahren', onSelect: () => request('ride', r.key) },
-                                ...(coop.role ? [1, 2, 3, 4, 5].map((n) => ({ label: (mine === n ? '(' + n + ')' : String(n)),
-                                    onSelect: () => {
-                                        this.setState({ picked: r.key, stars: { ...state.stars, [r.key]: n } });
-                                        request('rate', r.key + '|' + n + '|');
-                                    } })) : []),
-                            ])),
-                        list(r.comments).slice(-2).map((c, i) => h('div', { key: 'c' + i, style: { color: C('accentText'), fontSize: '0.9rem', marginTop: '0.15rem' } },
-                            c.who + ' (' + c.stars + '/5): ' + c.text)));
-                })),
-            picked && coop.role && h('div', { style: { padding: '0.5rem 0.9rem', backgroundColor: C('area') } },
-                h(InputField, { text: state.draft, promptText: literal('Vorschlag zu ' + picked.name), maxInputLength: 120,
-                    beginEditOnSelect: true, onChange: (e) => this.setState({ draft: (e && e.text) || '' }), onCommit: (e) => {
-                        const text = String((e && e.text) || '').trim().split('|').join(' ');
-                        this.setState({ draft: '' });
-                        const stars = state.stars[picked.key] || picked.mine;
-                        if (text && stars) request('rate', picked.key + '|' + stars + '|' + text);
-                    }, onCancel: () => this.setState({ draft: '' }) })));
-        return h('div', { style: { position: 'absolute', top: '2.6rem', left: '50%', width: '50rem', marginLeft: '-25rem',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'auto' } }, bar, panel);
+        const rows = rides.length === 0 ? muted('Noch keine Fahrgeschäfte im Park.', { padding: '0.4rem 0' })
+            : rides.map((r) => {
+                const mine = state.stars[r.key] || r.mine;
+                const stats = typeof r.e === 'number' ? 'Spaß ' + one(r.e) + ' · Angst ' + one(r.f) + ' · Übelkeit ' + one(r.n) : 'noch nicht getestet';
+                const extra = [r.dist !== false ? r.dist + ' m' : null, typeof r.queue === 'number' ? Math.round(r.queue) + ' warten' : null]
+                    .filter(Boolean).join(' · ');
+                return h('div', { key: r.key, style: { padding: '0.4rem 0', borderBottomWidth: '0.05rem', borderBottomStyle: 'solid',
+                    borderBottomColor: ACCENT_A(0.15), backgroundColor: state.picked === r.key ? C('area') : 'transparent' } },
+                    h('div', { style: { display: 'flex', alignItems: 'center' } },
+                        h('div', { style: { flexGrow: 1, flexShrink: 1, minWidth: 0 } },
+                            h('div', { style: { fontWeight: 'bold' } }, r.name),
+                            muted(r.kind + (extra ? ' · ' + extra : '')),
+                            muted(stats),
+                            h('div', { style: { color: C('accent'), fontSize: '0.9rem' } },
+                                r.count ? 'Bewertung ' + one(r.avg) + ' / 5 (' + r.count + ')' : 'noch keine Bewertung')),
+                        buttons([{ label: 'Mitfahren', onSelect: () => request('ride', r.key) }])),
+                    coop.role && h('div', { style: { display: 'flex', alignItems: 'center', marginTop: '0.2rem' } },
+                        muted('Deine Wertung', { marginRight: '0.4rem' }),
+                        buttons([1, 2, 3, 4, 5].map((n) => ({ label: (mine === n ? '(' + n + ')' : String(n)),
+                            onSelect: () => { this.setState({ picked: r.key, stars: { ...state.stars, [r.key]: n } }); request('rate', r.key + '|' + n + '|'); } })))),
+                    list(r.comments).slice(-2).map((c, i) => muted(c.who + ' (' + c.stars + '/5): ' + c.text, { key: 'c' + i, color: C('accentText') })));
+            });
+        return h('div', { style: { position: 'absolute', left: 0, top: rem(PANEL_TOP * 20), width: rem(PANEL_WIDTH * 20 * 1.3), pointerEvents: 'none',
+            color: C('accentText'), fontSize: '1rem' } },
+            h('div', { className: 'Panel_root' },
+                h('div', { className: 'Panel_panel', style: { borderTopLeftRadius: 0, borderBottomLeftRadius: 0, overflow: 'hidden' } },
+                    h('div', { className: 'Panel_titleBar', style: { borderTopLeftRadius: 0 } },
+                        glyph('img/icons/coaster.svg', '1.2rem', true, { marginRight: '0.4rem' }),
+                        h('div', { className: 'Panel_titleBarLabel', style: { flexGrow: 1, color: C('whiteColor') } }, 'Fahrgeschäfte – nächstes zuerst'),
+                        h(CloseButton, { rootClassName: 'Panel_titleBarCloseBtn', onSelect: () => request('visitorlist', '0'), focusable: false, hideInputIcon: true })),
+                    h('div', { className: 'Panel_content', style: { borderBottomLeftRadius: 0, borderBottomRightRadius: 0, height: rem(PANEL_CONTENT * 20),
+                        overflowY: 'auto', padding: '0.3rem 0.9rem 0.6rem' } }, rows),
+                    picked && coop.role && h('div', { style: { padding: '0.5rem 0.9rem', backgroundColor: C('area') } },
+                        h(InputField, { text: state.draft, promptText: literal('Vorschlag zu ' + picked.name), maxInputLength: 120,
+                            beginEditOnSelect: true, onChange: (e) => this.setState({ draft: (e && e.text) || '' }), onCommit: (e) => {
+                                const text = String((e && e.text) || '').trim().split('|').join(' ');
+                                this.setState({ draft: '' });
+                                const stars = state.stars[picked.key] || picked.mine;
+                                if (text && stars) request('rate', picked.key + '|' + stars + '|' + text);
+                            }, onCancel: () => this.setState({ draft: '' }) })))));
     }
+}
+
+// While visiting, the build bar and the game's build key hints go (as in the game's own walking
+// mode); on a ride they stay, the ride camera's buttons are among them.
+let visitHidden = false;
+function syncVisitHud() {
+    const v = currentState.visitor;
+    const hide = !!(v && v.active && !v.riding && currentState.context === 'park');
+    if (!hide && !visitHidden) return;
+    ['BrowserModule_root', 'HUD_promptsList'].forEach((name) => {
+        const all = document.getElementsByClassName(name);
+        for (let i = 0; i < all.length; i++) all[i].style.display = hide ? 'none' : '';
+    });
+    visitHidden = hide;
 }
 
 // Visitor mode: T held shows the emote wheel; the mouse (or 1-6) picks, letting go of T sends.
@@ -1684,7 +1717,8 @@ class CoopLayer extends preact.Component {
         return h('div', { style: { position: 'absolute', top: 0, left: 0, width: '100vw', height: '100vh', pointerEvents: 'none', zIndex: 10000,
             fontFamily: FONT } },
             h(PlayerBar, null),
-            h(VisitorBar, null),
+            h(VisitorHud, null),
+            h('div', { style: { pointerEvents: 'auto' } }, h(VisitorRides, null)),
             h(EmoteWheel, null),
             h(ConnectionPill, null),
             h(RequestCard, null),
