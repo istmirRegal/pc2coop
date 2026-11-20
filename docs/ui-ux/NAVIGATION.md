@@ -22,7 +22,7 @@ Start → `Rejoin`.
 Bauen ─ F7 / Reiter „Multiplayer“ (Bauleiste) / Pausemenü „Multiplayer“ ─► Fenster
           Reiter: Team · Besuchen · Planen · Verlauf · Sitzung   (Esc/„Schließen“ zurück)
 
-Bauen ─ Mittelklick kurz ─► Ping + Kontextmenü (einladen, mitfahren, Übernahme, Brett-Eintrag)
+Bauen ─ Mittelklick kurz ─► Markierung + Radialmenü (Testfahrt, mitfahren, Übernahme, Brett-Eintrag)
 Bauen ─ Klick auf Mitspieler oben rechts ─► folgen (nochmal klicken beendet)
 Bauen ─ F8 ─► Entwickler-Dialog (Seite „Entwickler“ ↔ „Zurueck“)
 ```

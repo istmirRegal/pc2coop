@@ -564,32 +564,63 @@ class ConnectionPill extends StateComponent {
 let mouseAt = null;
 try { document.addEventListener('mousemove', (e) => { mouseAt = { x: e.clientX, y: e.clientY }; }); } catch (e) { mouseAt = null; }
 
-// After an own ping (short middle click): what can be done at that spot.
+// After an own mark (short middle click): what can be done at that spot, as a radial menu around
+// the mouse in the look of the game's Alt radial menu (UX_OVERHAUL.md TP-15). The centre closes it.
+const MARK_ITEMS = { invite: ['collaborate', 'Testfahrt mit allen'], ride: ['rideRider', 'Mitfahren'], comment: ['Pinned', 'Kommentar'],
+    proposal: ['thumbsUp', 'Vorschlag'], area: ['pathArea', 'Baugebiet'], meet: ['marker', 'Treffpunkt'] };
 class ContextMenu extends StateComponent {
+    state = { hover: null };
     render(props, state) {
         const coop = state.coop || {};
         const ctx = coop.team && coop.team.context;
         if (!ctx || coop.open || (coop.visitor && coop.visitor.active)) { this.at = null; return null; }
         const key = ctx.x + ',' + ctx.z;
         if (!this.at || this.at.key !== key) {
-            const w = window.innerWidth || 1920, hgt = window.innerHeight || 1080;
+            // Screen pixels (mouse); keep the whole circle (about 10 rem around) on screen.
+            const w = window.innerWidth || 1920, hgt = window.innerHeight || 1080, margin = 11 * remPx();
             const m = mouseAt || { x: w / 2, y: hgt / 2 };
-            this.at = { key, x: Math.min(m.x + 18, w - 19 * remPx()), y: Math.min(Math.max(m.y - 20, 10), hgt - 21 * remPx()) };
+            this.at = { key, x: Math.min(Math.max(m.x, margin), w - margin), y: Math.min(Math.max(m.y, margin), hgt - margin) };
         }
-        const item = (label, arg, strong) => h('div', { key: arg, onClick: () => request('ctx', arg),
-            style: { padding: '0.45rem 0.7rem', fontSize: '0.9rem', cursor: 'pointer', borderTop: '1px solid rgba(255, 255, 255, 0.12)',
-                color: strong ? C('accentButtonLight') : C('whiteColor') } }, label);
-        return h('div', { style: { position: 'absolute', left: this.at.x + 'px', top: this.at.y + 'px', width: '18rem', borderRadius: '0.5rem',
-            backgroundColor: HUD_BG(0.94), color: C('whiteColor'), pointerEvents: 'auto', overflow: 'hidden' } },
-            h('div', { style: { padding: '0.4rem 0.7rem', fontSize: '0.9rem', color: C('accentButtonLight') } }, ctx.ride ? ctx.ride.name : 'Hier'),
-            ctx.ride && item('Team zur Testfahrt einladen', 'invite', true),
-            ctx.ride && item('Selbst mitfahren', 'ride'),
-            ...list(ctx.editors).map((e) => item('Übernahme bei ' + e.name + ' anfragen (' + e.label + ')', 'take|' + e.sid, true)),
-            item('Kommentar anheften', 'comment'),
-            item('Bauvorschlag machen', 'proposal'),
-            item('Hier bauen (Baugebiet)', 'area'),
-            item('Treffpunkt', 'meet'),
-            item('Schließen', 'close'));
+        const items = [];
+        if (ctx.ride) items.push(['invite', ...MARK_ITEMS.invite], ['ride', ...MARK_ITEMS.ride]);
+        list(ctx.editors).forEach((e) => items.push(['take|' + e.sid, 'crossedTools', 'Übernahme von ' + e.name]));
+        ['comment', 'proposal', 'area', 'meet'].forEach((k) => items.push([k, ...MARK_ITEMS[k]]));
+        const radius = 7;
+        return h('div', { style: { position: 'absolute', left: this.at.x + 'px', top: this.at.y + 'px', width: '0px', height: '0px' } },
+            h('div', { style: { position: 'absolute', left: '-10rem', top: '-12.2rem', width: '20rem', display: 'flex', justifyContent: 'center' } },
+                h('div', { style: { padding: '0.15rem 0.8rem', borderRadius: '0.5rem', backgroundColor: C('accent'), color: C('whiteColor'),
+                    fontSize: '1.1rem', boxShadow: '0 0.1rem 0.2rem rgba(0, 0, 0, 0.2)' } }, ctx.ride ? ctx.ride.name : 'Markierung')),
+            items.map(([arg, icon, label], i) => {
+                const angle = i * 2 * Math.PI / items.length;
+                const on = state.hover === arg;
+                return h('div', { key: arg, onClick: () => request('ctx', arg), onMouseEnter: () => this.setState({ hover: arg }),
+                    onMouseLeave: () => this.setState({ hover: null }),
+                    style: { position: 'absolute', left: (Math.sin(angle) * radius - 4.5) + 'rem', top: (-Math.cos(angle) * radius - 1.8) + 'rem',
+                        width: '9rem', display: 'flex', flexDirection: 'column', alignItems: 'center', pointerEvents: 'auto', cursor: 'pointer' } },
+                    h('div', { style: { width: '3.4rem', height: '3.4rem', borderRadius: '1.7rem', display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', backgroundColor: on ? C('accent') : HUD_BG(0.85), boxShadow: '0 0 0.5rem rgba(0, 0, 0, 0.3)',
+                        borderWidth: '0.15rem', borderStyle: 'solid', borderColor: on ? C('whiteColor') : 'rgba(255, 255, 255, 0.25)' } },
+                        glyph('img/icons/' + icon + '.svg', '1.7rem', true)),
+                    h('div', { style: { marginTop: '0.2rem', padding: '0.05rem 0.4rem', borderRadius: '0.35rem', backgroundColor: 'rgba(0, 0, 0, 0.45)',
+                        color: C('whiteColor'), fontSize: '0.9rem', textAlign: 'center' } }, label));
+            }),
+            h('div', { onClick: () => request('ctx', 'close'), style: { position: 'absolute', left: '-1.4rem', top: '-1.4rem', width: '2.8rem',
+                height: '2.8rem', borderRadius: '1.4rem', backgroundColor: HUD_BG(0.85), display: 'flex', alignItems: 'center',
+                justifyContent: 'center', pointerEvents: 'auto', cursor: 'pointer' } }, glyph('img/icons/slimClose.svg', '1.1rem', true)));
+    }
+}
+
+// Key hint like the game's input hints (bottom right, above the build bar): the mark is the way to
+// everything in the radial menu, so it is shown while playing in a session (TP-15, UX-C1).
+class MarkHint extends StateComponent {
+    render(props, state) {
+        const coop = state.coop || {};
+        if (!coop.role || coop.context !== 'park' || coop.open || (coop.visitor && coop.visitor.active) || (coop.team && coop.team.context)) return null;
+        return h('div', { style: { position: 'absolute', right: '1rem', bottom: '5.2rem', display: 'flex', alignItems: 'center',
+            padding: '0.3rem 0.4rem', borderRadius: '0.35rem', backgroundColor: 'rgba(0, 0, 0, 0.3)', color: C('whiteColor'), fontSize: '0.9rem' } },
+            h('div', { style: { padding: '0 0.3rem', marginRight: '0.4rem', borderRadius: '0.25rem', borderWidth: '0.1rem', borderStyle: 'solid',
+                borderColor: C('whiteColor') } }, 'Mittelklick'),
+            'Markieren');
     }
 }
 
@@ -1219,6 +1250,7 @@ class CoopLayer extends preact.Component {
             h(ConnectionPill, null),
             h(RequestCard, null),
             h(ContextMenu, null),
+            h(MarkHint, null),
             h(Toasts, null),
             h(JoinProgress, null),
             h(MiniLobby, null),

@@ -24,6 +24,8 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
   „Neu synchronisieren“ direkt daneben. Vorher stand das nur im Fenster oder als großer Kasten
   in der Bildmitte.
 - Icons sind sichtbar, z. B. die Krone des Hosts. Vorher waren sie unsichtbar.
+- Der kurze Mittelklick (Markieren) öffnet jetzt ein Radialmenü mit Icons statt einer Liste.
+  Unten rechts steht der Hinweis „Mittelklick Markieren“, damit man es findet.
 
 ## 1.13.0 – 2026-11-19
 

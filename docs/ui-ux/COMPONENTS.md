@@ -29,7 +29,8 @@ Wer ein Feld hinzufügt, trägt es hier ein.
 | `EmoteWheel` | Emote-Rad | visitor.wheel | FEAT-168 |
 | `RequestCard` (`pendingRequests`) | Anfrage-Karte: Beitritt, Abstimmung, Testfahrt, Bewerten | requests, team.vote, team.invitation, team.competition | FEAT-027, FEAT-141, FEAT-138, FEAT-147 |
 | `ConnectionPill` | Verbindung zum Host, Sync, Host im Hauptmenü | join, desync, role | FEAT-031, FEAT-033 |
-| `ContextMenu` | Mittelklick-Menü | team.context | FEAT-136 |
+| `ContextMenu` | Markieren-Radialmenü (`MARK_ITEMS`) | team.context | FEAT-136 |
+| `MarkHint` | Tastenhinweis „Mittelklick Markieren“ | role, context, visitor, team.context | FEAT-095 |
 | `Toasts` | Meldungen unten links (max. 5, 6 s) | toasts | FEAT-116 |
 | `Lobby` | Multiplayer-Fenster mit Reitern (`renderBody`, `renderVisit`, `renderPlan`, `renderHistory`, `renderSession`, `renderPlayers`, `renderChooser`, `renderPlace`, `renderChat`, `renderContent`, `renderFriends`) | fast alles | FEAT-110 |
 | `MiniLobby` | Lobby-Karte im Hauptmenü | role, players, open | FEAT-034 |

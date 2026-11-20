@@ -3,6 +3,21 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-20 – UX-Overhaul P1, Schritt 2: Markieren-Radialmenü, Tastenhinweis
+
+- `ContextMenu` ist ein Radialmenü:
+  - Einträge `MARK_ITEMS` auf einem Kreis (7 rem) um den Mauspunkt
+  - Titel in Akzentfarbe, Mitte schließt
+  - am Bildrand eingerückt (11 rem)
+- Die Bilder des Spiel-Radialmenüs (Segment-Grafiken) sind nicht nachgebaut, nur seine
+  Bildsprache übernommen.
+- `MarkHint`: Tastenhinweis im Stil von `InputHintsItem` über der Bauleiste rechts (UX-C1).
+- Test in der Testkopie (1080p):
+  - QA-Skript ruft `_onNet("key:mdown")` + `Session._MiddleUp(100, 0)` mit festem
+    `World.CursorPoint` auf (keine echte Maus).
+  - Radialmenü und Hinweis fotografiert.
+  - Ohne Mausbewegung öffnet das Menü in der Bildmitte.
+
 ## 2026-11-20 – UX-Overhaul P1, Schritt 1: Sitzungs-Cluster, Anfrage-Karte, Verbindungs-Pille
 
 - `VoteBanner`, `InviteBanner` und `CompBanner` sind entfernt. An ihre Stelle treten:
