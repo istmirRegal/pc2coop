@@ -128,6 +128,9 @@ Hauptcode: `probe/PC2CoopProbe/Main/pc2coop/session.lua` (Rolle, Nachrichten, Zu
 - **Funktion:** Öffnet der Host einen anderen Park, laden alle diesen.
 - **Technik:** `stage|lobby` bzw. `stage|park|<token>|<name>|<guard>`; `Session.Stage`,
   `Session._OnStage`; `parkToken` neu für jeden Park; `seenStage` verhindert Doppelaktionen.
+- **UI:** Geht der Host zurück ins Hauptmenü, sieht ein Mitspieler im Park den Dialog „Der Host
+  ist im Hauptmenü“ mit „Ins Hauptmenü“ und „Hier warten“ (der nächste Park lädt in beiden
+  Fällen); danach bleibt die Pille. Log `session:host-in-menu`.
 
 ### FEAT-034 – Mini-Lobby-Karte im Hauptmenü
 - **Status:** Implemented · **Seit:** 1.9.0
@@ -180,10 +183,13 @@ Hauptcode: `probe/PC2CoopProbe/Main/pc2coop/session.lua` (Rolle, Nachrichten, Zu
 
 ### FEAT-040 – Verbindungsabbruch erkennen
 - **Status:** Implemented · **Seit:** 1.6.1
-- **Funktion:** „Keine Verbindung zum Host – warte …“; kam etwas nicht an, lädt der Gast den
-  Park neu.
+- **Funktion:** Mitspieler sehen oben Mitte „Keine Verbindung zum Host“ mit der Zeit und
+  „Verlassen“; nach 30 s fragt ein Dialog „Warten“ oder „Verlassen“. Ist die Verbindung wieder
+  da, wird die Pille kurz grün (keine Meldungen mehr dazu). Kam etwas nicht an, lädt der Gast
+  den Park neu.
 - **Technik:** `lastHostFrame`/`hostSilent` (600 Frames); DLL `net:peer-stalled` →
-  `players[sid].stale`; Host schickt `resync`. Host-Absturz beendet die Sitzung.
+  `players[sid].stale`; Host schickt `resync`. Host-Absturz beendet die Sitzung. Zeit, Dialog
+  und grüner Moment in `CoopLayer.js` (`trackConnection`, `ConnectionPill`, `ConnectionDialog`).
 
 ### FEAT-041 – Neu synchronisieren
 - **Status:** Implemented · **Seit:** 1.5.0
@@ -194,7 +200,10 @@ Hauptcode: `probe/PC2CoopProbe/Main/pc2coop/session.lua` (Rolle, Nachrichten, Zu
 ### FEAT-042 – Sitzung verlassen oder beenden
 - **Status:** Implemented · **Seit:** 1.4.1
 - **Technik:** `Session.Leave` (UI-Aktion `leave`, F7 „Sitzung verlassen/beenden“);
-  DLL `leave` → `lobby:left`. Verlässt der Host, endet die Sitzung für alle.
+  DLL `leave` → `lobby:left`. Verlässt der Host, endet die Sitzung für alle: Mitspieler sehen
+  „Die Sitzung ist beendet“ (`JoinState` Phase `ended` aus `Session._ended`, bis
+  `Session.DismissEnded`, UI-Aktion `ended_ok`; ein neuer Beitritt löscht es). Ein Besuch endet
+  dabei, damit die Maus für den Dialog frei ist. Log `session:host-gone`.
 - **UI:** „Beenden“ (Host) und „Verlassen“ im Fuß des Fensters, mit Tooltip. Ist noch jemand in
   der Sitzung, fragt der Host-Knopf erst „Für alle beenden?“ (Dialog `EndConfirm`, TP-30).
 

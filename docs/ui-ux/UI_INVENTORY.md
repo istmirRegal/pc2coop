@@ -111,7 +111,7 @@ UI-Skalierung 1.0 verdeckte er die Icon-Knöpfe am Ende der Bauleiste des Spiels
 | Element | Ort | Wann | Bedienung | FEAT |
 |---|---|---|---|---|
 | Sitzungs-Cluster (`PlayerBar`): Avatar, Name, Krone, Zustands-Icon; Tätigkeit und „Klicken zum Folgen“ im Tooltip; einmal 5 s „Alle sind da“, wenn niemand mehr lädt; darunter die Wettbewerbs-Uhr | oben rechts, ab 4.2 rem | in Sitzung im Park; beim Mitfahren nur Avatare | Klick auf Mitspieler = folgen | FEAT-090, FEAT-096 |
-| Verbindungs-Pille (`ConnectionPill`): keine Verbindung zum Host / nicht synchron (+ „Neu synchronisieren“) / Host im Hauptmenü | oben Mitte, 5 rem | nur bei Problemen, Fenster zu | `resync` | FEAT-033, FEAT-031 |
+| Verbindungs-Pille (`ConnectionPill`): „Keine Verbindung zum Host · m:ss“ + „Verlassen“; „Verbindung wieder da“ (grün, 3 s); „Nicht synchron: …“ + „Neu synchronisieren“; „<Host> wählt im Hauptmenü einen Park“ + „Ins Hauptmenü“ | oben Mitte, 5 rem | nur bei Problemen (Mitspieler), Fenster zu | `leave`, `resync`, „Ins Hauptmenü“ = Spiel-Event `ExitToMainMenu` | FEAT-040, FEAT-041, FEAT-033 |
 | Namensschilder: nur der Name in der Spielerfarbe | über dem Blickpunkt der Mitspieler (Coaster-Labels des Spiels, Stil in `DebugToolImports.js`) | Mitspieler im Park, „Für dich“ an (Reiter Einstellungen) | – | FEAT-091 |
 | Bodenmarke, Sichtkegel, Geist, Sperr-Färbung, Figuren | in der Welt (`viz.lua`) | Mitspieler im Park | – | FEAT-092–094, FEAT-171 |
 | Ablehnung am Objekt: Schild „<Name> baut hier gerade“ / „war schneller“ / „hat das gerade geändert“, Objekt blinkt in der Farbe des Mitspielers | 4 m über dem Objekt (Coaster-Labels), Blinken über Sperr-Färbung | 5 s nach einer zurückgenommenen eigenen Änderung (Blinken 2 s); ohne Objekt als Karte im Chat-Bereich | – | FEAT-082 |
@@ -154,6 +154,9 @@ des Spiels (Alt springen, Strg ducken, L Lampe).
 | `JoinProgress` Karte | während des Beitritts | Text je Phase (joining, silent, asking, awaiting %, loading, lobby) | FEAT-031 |
 | `JoinFailed` | Beitritt gescheitert | „Erneut versuchen“ `retry_join`, „Abbrechen“/„Schließen“ `cancel_join` | FEAT-031 |
 | `Rejoin` „Du warst eben noch in der Sitzung von …“ | nach Absturz | „Wieder beitreten“ `rejoin`, „Nein“ `forget_rejoin` | FEAT-039 |
+| `ConnectionDialog` „Keine Verbindung zum Host“ | Mitspieler im Park, Host 30 s still (nicht im Besuch) | „Warten“ (schließt, Pille bleibt), „Verlassen“ `leave` | FEAT-040 |
+| `ConnectionDialog` „Der Host ist im Hauptmenü“ | Mitspieler im Park, Host zurück im Hauptmenü (nicht im Besuch) | „Ins Hauptmenü“ (`ExitToMainMenu`), „Hier warten“ (Pille bleibt) | FEAT-033 |
+| `SessionEnded` „Die Sitzung ist beendet“ | Host weg (Park oder Hauptmenü) | Park: „Weiterspielen“ `ended_ok`, „Hauptmenü“ `ended_ok` + `ExitToMainMenu`; Hauptmenü: „OK“ `ended_ok` | FEAT-042 |
 
 ## 6. F8-Dialog (`menu.lua`, Dialog des Spiels)
 
@@ -177,6 +180,7 @@ Entwickler-Seite: technische Werte und „API-Rekorder an/aus“, „Namensschil
 | `leave` | – | Sitzung verlassen/beenden | ja |
 | `resync`, `retry_join` | – | `Session.Resync` | ja |
 | `cancel_join`, `confirm_join` | – | Beitritt abbrechen/bestätigen | ja |
+| `ended_ok` | – | „Die Sitzung ist beendet“ schließen (`Session.DismissEnded`) | ja |
 | `approve`, `deny` | sid | Beitrittsanfrage | ja |
 | `rejoin`, `forget_rejoin` | – | Wiederbeitritt | ja |
 | `chat` | Text | Chat senden | ja |

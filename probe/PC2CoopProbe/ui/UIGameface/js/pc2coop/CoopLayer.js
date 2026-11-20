@@ -126,6 +126,10 @@ function poll() {
     if (polls % 10 === 1) reportDlc();
     // Accent colour, colour-blind mode: about once a second; a change redraws the layer at once
     // (before, the old colours stayed until the next state change).
+    // The time in the connection pill, its green moment and the question after 30 s.
+    if (polls % 3 === 0 && (conn.silentAt || Date.now() < conn.backUntil + 1000)) {
+        listeners.forEach((fn) => { try { fn(currentState); } catch (error) { log('connection update ' + error); } });
+    }
     if (polls % 3 === 1 && refreshPalette()) {
         listeners.forEach((fn) => { try { fn(currentState); } catch (error) { log('palette update ' + error); } });
     }
@@ -367,7 +371,9 @@ function statusOf(coop) {
     const host = hostOf(coop);
     if (!coop.available) return { text: 'Steam ist nicht verfügbar.', tone: 'warn' };
     if (join.phase === 'failed') return { text: join.reason, tone: 'warn' };
-    if (join.phase === 'hostlobby') return { text: (join.host || 'Der Host') + ' ist zurück im Hauptmenü und wählt einen Park. Geh auch ins Hauptmenü, um dabeizubleiben.', tone: 'wait' };
+    if (join.phase === 'hostlobby') return { text: (join.host || 'Der Host') + ' wählt im Hauptmenü einen Park.', tone: 'wait' };
+    if (join.phase === 'ended') return { text: (join.host || 'Der Host') + ' ist nicht mehr in der Sitzung.', tone: 'idle' };
+    if (join.phase === 'silent') return { text: joinText(join), tone: 'warn' };
     if (join.phase && ['live', 'lobby', 'rejoin'].indexOf(join.phase) < 0) return { text: joinText(join), tone: 'busy' };
     if (!coop.role) {
         return { text: coop.context === 'menu' ? 'Starte eine Sitzung oder tritt einem Freund bei.'
@@ -662,21 +668,50 @@ class RequestCard extends StateComponent {
     }
 }
 
+// The connection to the host as the joiner sees it (UX_OVERHAUL.md §5): since when the host is
+// silent, whether its question was answered, the green moment when it is back, whether the dialog
+// "Der Host ist im Hauptmenü" was put off. In time of this game (Lua only says "silent").
+const conn = { silentAt: 0, waited: false, backUntil: 0, lobbyLater: false };
+const SILENT_ASK_MS = 30000;
+const BACK_MS = 3000;
+function trackConnection(coop) {
+    const phase = (coop.join || {}).phase;
+    const now = Date.now();
+    if (phase === 'silent') {
+        if (!conn.silentAt) conn.silentAt = now;
+    } else if (conn.silentAt) {
+        conn.silentAt = 0;
+        conn.waited = false;
+        if (coop.role === 'client') conn.backUntil = now + BACK_MS;
+    }
+    if (phase !== 'hostlobby') conn.lobbyLater = false;
+}
+const clock = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return Math.floor(s / 60) + ':' + (s % 60 < 10 ? '0' : '') + (s % 60); };
+// As "Beenden" in the game's pause menu: back to the main menu, without saving (a joiner's park
+// is the host's).
+function exitToMenu() { try { Engine.sendEvent('ExitToMainMenu'); } catch (error) { log('exit ' + error); } }
+
 // The own connection to the host, only when something is wrong (UX_OVERHAUL.md TP-09): a pill at
-// the top centre like the game's online notifications.
+// the top centre like the game's online notifications. State and action (§7): "Keine Verbindung
+// zum Host" with the time and [Verlassen]; green for a moment when it is back.
 class ConnectionPill extends StateComponent {
     render(props, state) {
         const coop = state.coop || {};
+        trackConnection(coop);
         const join = coop.join || {};
+        const now = Date.now();
         let pill = null;
         if (join.phase === 'silent') {
-            pill = { icon: 'connectionStateDisconnected', tone: C('alert'), text: 'Keine Verbindung zum Host – warte …' };
+            pill = { icon: 'connectionStateDisconnected', tone: C('alert'), text: 'Keine Verbindung zum Host · ' + clock(now - conn.silentAt),
+                action: { label: 'Verlassen', tip: LEAVE_TIP, onSelect: () => request('leave') } };
         } else if (coop.desync && coop.role === 'client') {
             pill = { icon: 'warning', tone: C('warning'), text: 'Nicht synchron: ' + coop.desync,
                 action: { label: 'Neu synchronisieren', onSelect: () => request('resync') } };
         } else if (join.phase === 'hostlobby') {
-            pill = { icon: 'information', tone: C('accent'),
-                text: (join.host || 'Der Host') + ' ist im Hauptmenü und wählt einen Park. Geh auch ins Hauptmenü, um dabeizubleiben.' };
+            pill = { icon: 'information', tone: C('accent'), text: (join.host || 'Der Host') + ' wählt im Hauptmenü einen Park',
+                action: { label: 'Ins Hauptmenü', onSelect: exitToMenu } };
+        } else if (coop.role === 'client' && now < conn.backUntil) {
+            pill = { icon: 'connectionStateConnected', tone: C('positive'), text: 'Verbindung wieder da' };
         }
         if (!pill || coop.open) return null;
         return h('div', { style: { position: 'absolute', top: '5rem', left: '50%', width: '44rem', marginLeft: '-22rem',
@@ -687,6 +722,50 @@ class ConnectionPill extends StateComponent {
                 glyph('img/icons/' + pill.icon + '.svg', '1.2rem', true, { marginRight: '0.5rem' }),
                 h('div', { style: { marginRight: pill.action ? '0.6rem' : '0.3rem' } }, pill.text),
                 pill.action && buttons([pill.action])));
+    }
+}
+
+// Questions about the connection in the park (UX_OVERHAUL.md §5): the host has been silent for
+// 30 s; the host went back to the main menu. Not during a visit: the mouse belongs to the walk
+// then, the pill says it.
+class ConnectionDialog extends StateComponent {
+    render(props, state) {
+        const coop = state.coop || {};
+        trackConnection(coop);
+        const join = coop.join || {};
+        if (coop.role !== 'client' || coop.context !== 'park' || (coop.visitor && coop.visitor.active)) return null;
+        const host = join.host || 'Der Host';
+        const redraw = () => this.setState({ revision: (this.state.revision || 0) + 1 });
+        if (join.phase === 'silent' && conn.silentAt && !conn.waited && Date.now() - conn.silentAt >= SILENT_ASK_MS) {
+            return h(Dialog, { modifiers: 'dialogApp', title: literal('Keine Verbindung zum Host'),
+                description: literal(host + ' antwortet seit einer halben Minute nicht. Die Verbindung kann gleich wiederkommen.'),
+                buttons: [{ label: literal('Warten'), onSelect: () => { conn.waited = true; redraw(); }, inputName: 'UI_Cancel' },
+                    { label: literal('Verlassen'), onSelect: () => { conn.waited = true; request('leave'); } }] });
+        }
+        if (join.phase === 'hostlobby' && !conn.lobbyLater) {
+            return h(Dialog, { modifiers: 'dialogApp', title: literal('Der Host ist im Hauptmenü'),
+                description: literal(host + ' wählt einen Park, der dann auch bei dir lädt. Was du bis dahin hier baust, sehen die anderen nicht.'),
+                buttons: [{ label: literal('Ins Hauptmenü'), onSelect: exitToMenu },
+                    { label: literal('Hier warten'), onSelect: () => { conn.lobbyLater = true; redraw(); }, inputName: 'UI_Cancel' }] });
+        }
+        return null;
+    }
+}
+
+// The host is gone (UX_OVERHAUL.md §5 "Host hat beendet"): the session is over, a park stays open
+// here. In the main menu only the notice.
+class SessionEnded extends StateComponent {
+    render(props, state) {
+        const coop = state.coop || {};
+        const join = coop.join;
+        if (!join || join.phase !== 'ended') return null;
+        const host = join.host || 'Der Host';
+        const inPark = coop.context === 'park';
+        return h(Dialog, { modifiers: 'dialogApp', title: literal('Die Sitzung ist beendet'),
+            description: literal(host + ' ist nicht mehr in der Sitzung.' + (inPark ? ' Der Park bleibt bei dir offen, du kannst allein weiterspielen.' : '')),
+            buttons: inPark ? [{ label: literal('Weiterspielen'), onSelect: () => request('ended_ok'), inputName: 'UI_Cancel' },
+                { label: literal('Hauptmenü'), onSelect: () => { request('ended_ok'); exitToMenu(); } }]
+                : [{ label: literal('OK'), onSelect: () => request('ended_ok'), inputName: 'UI_Cancel' }] });
     }
 }
 
@@ -1661,7 +1740,7 @@ class MiniLobby extends StateComponent {
 function joinText(join) {
     const host = join.host ? ' von ' + join.host : '';
     if (join.phase === 'joining') return 'Trete der Sitzung bei …';
-    if (join.phase === 'silent') return 'Keine Verbindung zum Host - warte ...';
+    if (join.phase === 'silent') return 'Keine Verbindung zum Host';
     if (join.phase === 'asking') return 'Warte auf die Zustimmung' + host + ' ...';
     if (join.phase === 'confirm') return 'Beitritt' + (join.host ? ' bei ' + join.host : '') + ' wartet auf deine Bestätigung.';
     if (join.phase === 'awaiting') return 'Empfange den Park' + host + ' ... ' + Math.round((join.progress || 0) * 100) + ' %';
@@ -1747,7 +1826,9 @@ class CoopLayer extends preact.Component {
             h('div', { style: { pointerEvents: 'auto' } }, h(JoinFailed, null)),
             h('div', { style: { pointerEvents: 'auto' } }, h(JoinConfirm, null)),
             h('div', { style: { pointerEvents: 'auto' } }, h(EndConfirm, null)),
-            h('div', { style: { pointerEvents: 'auto' } }, h(Rejoin, null)));
+            h('div', { style: { pointerEvents: 'auto' } }, h(Rejoin, null)),
+            h('div', { style: { pointerEvents: 'auto' } }, h(ConnectionDialog, null)),
+            h('div', { style: { pointerEvents: 'auto' } }, h(SessionEnded, null)));
     }
 }
 

@@ -993,7 +993,7 @@ function Session.OnSyncLine(line)
     if kind == "desync" then
         local first = desync == nil
         desync = global.string.match(rest, "^[^|]*|(.*)$") or rest
-        if first then toast("Eine Änderung konnte hier nicht übernommen werden. Multiplayer-Fenster: \"Neu synchronisieren\".", "ff922b") end
+        if first and role ~= "client" then toast("Eine Änderung konnte hier nicht übernommen werden.", "ff922b") end
         if role == "client" and hostId then send(hostId, "desync|" .. global.string.sub(clean(desync), 1, 120)) end
         return
     end
@@ -1110,10 +1110,8 @@ local function onMessage(from, payload)
         end
     elseif from == hostId then
         lastHostFrame = frames
-        if hostSilent then
-            hostSilent = false
-            toast("Verbindung zum Host wieder da.", "51cf66")
-        end
+        -- The connection pill turns green for a moment (CoopLayer.js); no toast.
+        if hostSilent then hostSilent = false end
         if selfStalled and kind ~= "resync" then
             -- What we sent while the connection hung is lost: start from the host's park again.
             selfStalled = false
@@ -1304,7 +1302,7 @@ function Session._OnStage()
     elseif stage == "lobby" and seenStage ~= key then
         seenStage = key
         if context == "park" and memory.phase == "live" then
-            toast("Der Host ist zurück im Hauptmenü und wählt einen Park. Geh auch ins Hauptmenü, um dabeizubleiben.", "fcc419")
+            emit("session:host-in-menu")   -- the dialog with "Ins Hauptmenü" (JoinState "hostlobby")
         elseif context == "menu" and memory.phase ~= "lobby" then
             remember("phase", "lobby")
         end
@@ -1329,7 +1327,7 @@ local function onNet(event)
         -- Steam can report one entry twice; this module instance answers it once.
         if helloLobby == f[2] then return end
         lobbyId, hostId, helloLobby = f[2], f[3], f[2]
-        joining, hostName = false, clean(f[4] or "")
+        joining, hostName, Session._ended = false, clean(f[4] or ""), nil
         local phase = memory.lobby == lobbyId and memory.phase or nil
         if hostId ~= me and f[5] == "0" then
             Session._RefuseJoin("Der Host dieser Sitzung ist nicht in deiner Steam-Freundesliste. Beitritt abgebrochen.")
@@ -1424,8 +1422,15 @@ local function onNet(event)
         requests[f[2]] = nil
         if role == "host" then leave(f[2]) end
         if f[2] == hostId and role == "client" then
+            local name = hostName
             addFeed("Host hat die Sitzung beendet")
             Session.Leave()
+            Session._ended = {host = name}   -- a field: the main chunk is at Lua's 200 locals
+            emit("session:host-gone|" .. global.tostring(name))
+            global.pcall(function()
+                local Visitor = global.require("pc2coop.visitor")
+                if Visitor.Active() then Visitor.Stop() end
+            end)
         end
     elseif kind == "msg" then
         onMessage(f[2], global.string.sub(event, #f[1] + #f[2] + 3))
@@ -1435,7 +1440,7 @@ local function onNet(event)
             return
         end
         if role then Session.Leave() end
-        joining, progress, joinFailure = true, {}, nil
+        joining, progress, joinFailure, Session._ended = true, {}, nil, nil
         joinSource = f[4] == "launch" and "launch" or "invite"
         net.NetCommand("join|" .. f[2])
         emit("session:joining|" .. f[2])
@@ -1677,6 +1682,7 @@ end
 
 function Session.Host()
     if role or joining then return end
+    Session._ended = nil
     objects, tombstones, stats, players, order, counter, conflicts = {}, {}, {}, {}, {}, 0, 0
     rejoin = nil
     net.NetCommand("host")
@@ -1801,6 +1807,7 @@ function Session.JoinState()
     if offer then return {phase = "rejoin", host = offer.host} end
     if joinFailure then return {phase = "failed", reason = joinFailure, retry = role == "client" and hostId ~= nil, host = hostName} end
     if joining then return {phase = "joining", progress = 0} end
+    if Session._ended and not role then return {phase = "ended", host = Session._ended.host} end
     if role ~= "client" then return nil end
     if confirm then return {phase = "confirm", host = confirm.host} end
     local got, total = 0, 0
@@ -2523,6 +2530,9 @@ function Session.Resync()
     emit("session:resync")
 end
 
+-- Close the notice "Die Sitzung ist beendet".
+function Session.DismissEnded() Session._ended = nil end
+
 -- Close the "joining failed" notice; also leaves the lobby the failed join is still in.
 function Session.DismissJoin()
     local inLobby = role ~= nil
@@ -2625,8 +2635,7 @@ function Session.Tick()
     if role then global.pcall(shareLook) end
     checkMarks()
     if role == "client" and memory.phase == "live" and not hostSilent and lastHostFrame > 0 and frames - lastHostFrame > 600 then
-        hostSilent = true
-        toast("Keine Verbindung zum Host - warte ...", "ff922b")
+        hostSilent = true   -- the connection pill, after 30 s a question (CoopLayer.js)
     end
     if role == "host" and frames - lastRoster >= 30 then
         lastRoster = frames

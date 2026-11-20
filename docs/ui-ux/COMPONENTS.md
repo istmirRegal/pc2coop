@@ -33,7 +33,10 @@ Wer ein Feld hinzufügt, trägt es hier ein.
 | `syncVisitHud` (in `poll`) | blendet im Besuch `BrowserModule_root` und `HUD_promptsList` des Spiels aus | visitor | FEAT-160 |
 | `EmoteWheel` | Emote-Rad | visitor.wheel | FEAT-168 |
 | `RequestCard` (`pendingRequests`) | Anfrage-Karte: Beitritt, Abstimmung, Testfahrt, Bewerten | requests, team.vote, team.invitation, team.competition | FEAT-027, FEAT-141, FEAT-138, FEAT-147 |
-| `ConnectionPill` | Verbindung zum Host, Sync, Host im Hauptmenü | join, desync, role | FEAT-031, FEAT-033 |
+| `ConnectionPill` | Verbindung zum Host mit Zeit und „Verlassen“, grün wenn wieder da, Sync, Host im Hauptmenü mit „Ins Hauptmenü“ | join, desync, role, `conn` | FEAT-040, FEAT-041, FEAT-033 |
+| `ConnectionDialog` | Spiel-`Dialog`: Host 30 s still („Warten“/„Verlassen“), Host im Hauptmenü („Ins Hauptmenü“/„Hier warten“); nicht im Besuch | join, role, context, visitor, `conn` | FEAT-040, FEAT-033 |
+| `SessionEnded` | Spiel-`Dialog` „Die Sitzung ist beendet“ (Host weg) | join (`ended`), context | FEAT-042 |
+| `trackConnection`, `conn`, `exitToMenu` | seit wann der Host still ist, grüner Moment, aufgeschobene Dialoge; zurück ins Hauptmenü wie das Pausemenü (`ExitToMainMenu`) | join, role | FEAT-040 |
 | `ContextMenu` | Markieren-Radialmenü (`MARK_ITEMS`) | team.context | FEAT-136 |
 | `MarkHint` | Tastenhinweise „Enter Chat“, „Mittelklick Markieren“ (`keyCap`) | role, context, visitor, team.context | FEAT-095, FEAT-116 |
 | `ChatArea` | Chat, Ereignisse und Meldungen unten links, Chat-Eingabe per Enter | toasts (kind), chatKey, role, context, open | FEAT-116 |

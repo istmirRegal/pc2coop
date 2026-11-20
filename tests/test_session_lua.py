@@ -198,6 +198,26 @@ class SessionTests(unittest.TestCase):
         self.pump()
         self.assertIsNone(self.peers['200'].session.View()['role'])
 
+    def test_host_leaving_says_the_session_is_over_until_closed(self):
+        alex = self.peers['200']
+        alex.event('member:leave|100')
+        self.pump()
+        state = alex.lua.eval('session.JoinState()')
+        self.assertEqual((state['phase'], state['host']), ('ended', 'Host'))
+        alex.lua.execute('session.DismissEnded()')
+        self.assertIsNone(alex.lua.eval('session.JoinState()'))
+
+    def test_a_new_join_replaces_the_session_is_over(self):
+        alex = self.peers['200']
+        alex.event('member:leave|100')
+        self.pump()
+        alex.event('invite:accepted|L2|300|invite')
+        alex.tick()
+        self.assertEqual(alex.lua.eval('session.JoinState()')['phase'], 'joining')
+        alex.event('lobby:entered|L2|300|Sam|1')
+        alex.tick()
+        self.assertNotEqual(alex.lua.eval('(session.JoinState() or {}).phase'), 'ended')
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -5,6 +5,12 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
 
 ## Unveröffentlicht
 
+- Antwortet der Host nicht, steht oben „Keine Verbindung zum Host“ mit der Zeit und „Verlassen“;
+  nach einer halben Minute fragst du „Warten“ oder „Verlassen“. Kommt die Verbindung wieder,
+  wird die Anzeige kurz grün.
+- Geht der Host ins Hauptmenü, fragt ein Dialog, ob du mitkommst oder im Park wartest.
+- Ist der Host weg, sagt dir ein Dialog „Die Sitzung ist beendet“. Du kannst im Park allein
+  weiterspielen oder ins Hauptmenü gehen.
 - Das Emote-Rad sieht aus wie die Radialmenüs des Spiels, mit den Gast-Symbolen des Spiels.
 - Fahrgeschäfte: Die Bewertung steht als Sterne da; deine Wertung gibst du mit fünf Sternen statt
   mit den Knöpfen 1 bis 5.

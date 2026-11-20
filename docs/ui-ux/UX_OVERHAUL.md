@@ -472,6 +472,13 @@ Spiels (TP-26). Fahrgeschäfte: Bewertung als Spiel-`Stars`, eigene Wertung als 
 Klicken (TP-27). Im Spiel fotografiert (Rad mit Auswahl, Panel mit nachgestellter Bahn). Damit ist
 P4 gebaut. Nicht geprüft: echte Tasten T und F, Klicken mit der Maus.
 
+**P5 Schritt 1 (2026-11-21):** Verbindung im Park: Pille „Keine Verbindung zum Host · m:ss“ mit
+„Verlassen“, nach 30 s Dialog „Warten / Verlassen“, „Verbindung wieder da“ grün für 3 s (die
+Toasts dazu sind weg). „Host im Hauptmenü“ als Dialog mit „Ins Hauptmenü“ (Spiel-Event
+`ExitToMainMenu`, wie „Beenden“ im Pausemenü) und „Hier warten“. „Die Sitzung ist beendet“ als
+Dialog mit „Weiterspielen“/„Hauptmenü“. Klärung zu §8: Der Park bleibt beim Mitspieler offen,
+er spielt allein weiter. Im Besuch kein Dialog, nur die Pille (die Maus gehört dem Laufen).
+
 Prototypen zuerst (vor P2/P3/P4): `Panel` in unserer Ebene, Seite im Hauptmenü-Rahmen,
 Bauleiste im Besuch aus. Ergebnis entscheidet, ob Ziel oder Rückfall gebaut wird.
 

@@ -280,6 +280,8 @@ local actions = {
     resync = function() session.Resync() end,
     retry_join = function() session.Resync() end,
     cancel_join = function() session.DismissJoin() end,
+    -- "Die Sitzung ist beendet" closed (stay in the park or go to the main menu).
+    ended_ok = function() if session.DismissEnded then session.DismissEnded() end end,
     confirm_join = function() session.ConfirmJoin() end,
     approve = function(arg) session.Answer(arg, true) end,
     deny = function(arg) session.Answer(arg, false) end,

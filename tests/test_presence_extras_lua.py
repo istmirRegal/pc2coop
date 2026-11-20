@@ -167,7 +167,8 @@ package.loaded["pc2coop.world"].Camera = function() return cam[1], cam[2], cam[3
         self.assertEqual(sam.lua.eval('session.JoinState()')['phase'], 'silent')
         self.pump(40)
         self.assertEqual(sam.lua.eval('session.JoinState()')['phase'], 'live')
-        self.assertTrue(any('wieder da' in t for t in self.toasts('300')))
+        # The connection pill says both (it turns green when it is back); no toasts.
+        self.assertFalse(any('Verbindung zum Host' in t for t in self.toasts('300')), self.toasts('300'))
 
     def test_rejoin_is_offered_in_the_menu_after_a_crash(self):
         alex = self.peers['200']

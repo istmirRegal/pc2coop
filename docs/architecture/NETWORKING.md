@@ -165,5 +165,6 @@ Steuerzeilen ohne Nummer: `S|<name>` (Synchronisation starten), `X` (stoppen), `
 `session:init`, `net-ready`, `lobby`, `lobby-created`, `member`, `hosting`, `joining`,
 `joined`, `join-request`, `join-confirm`, `join-refused`, `join-failed`, `awaiting-park`,
 `loading-park`, `park-sent`, `park-note`, `peer-stalled`, `rejected-version`,
-`content-refused`, `ride-refused`, `resync`, `feed`, `error`, `task-error` – Diagnose im Log
+`content-refused`, `ride-refused`, `resync`, `host-gone`, `host-in-menu`, `feed`, `error`,
+`task-error` – Diagnose im Log
 (FEAT-216), werden von QA-Werkzeugen als erwartete Zeilen benutzt.

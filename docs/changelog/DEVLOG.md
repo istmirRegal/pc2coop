@@ -3,6 +3,17 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-21 – UX-Overhaul P5, Schritt 1: Verbindung und Sitzungsende
+
+- `ConnectionPill` mit Zeit (`trackConnection`, Uhr in JS: Lua sagt nur `silent`), „Verlassen“,
+  grüner Moment; `ConnectionDialog` nach 30 s und für „Host im Hauptmenü“; `SessionEnded`.
+- `session.lua`: Phase `ended` (`Session._ended` als Feld: der Hauptteil hatte die 200 lokalen
+  Variablen von Lua erreicht), `Session.DismissEnded`, UI-Aktion `ended_ok`; Toasts „Keine
+  Verbindung …“, „… wieder da“, „Host ist zurück im Hauptmenü …“ entfallen; der Desync-Toast
+  nur noch beim Host (Mitspieler haben die Pille mit dem Knopf). Logzeilen `host-gone`,
+  `host-in-menu`.
+- Zurück ins Hauptmenü über `Engine.sendEvent('ExitToMainMenu')` wie im Pausemenü des Spiels.
+
 ## 2026-11-20 – UX-Overhaul P4, Schritt 2: Emote-Rad und Sterne
 
 - `EmoteWheel` wie `ContextMenu`: Kreise auf einem Ring (7 rem), Icons
