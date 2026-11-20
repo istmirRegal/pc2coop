@@ -1238,10 +1238,10 @@ local function onMessage(from, payload)
             emit("session:rejected-version|" .. hostVersion .. "|" .. hostGame)
             if hostVersion ~= Session.VERSION then
                 Session._RefuseJoin("Der Host hat PC2Coop " .. hostVersion .. ", du " .. Session.VERSION
-                    .. ". Bitte UPDATE.cmd ausfuehren (Spiel vorher beenden).")
+                    .. ". Beende das Spiel und führe UPDATE.cmd aus.")
             else
                 Session._RefuseJoin("Der Host hat Spielversion " .. hostGame .. ", du " .. gameVersion
-                    .. ". Bitte beide Planet Coaster 2 in Steam aktualisieren.")
+                    .. ". Aktualisiert beide Planet Coaster 2 in Steam.")
             end
         elseif kind == "stage" then
             local f = split(payload, "|")
@@ -1326,8 +1326,13 @@ local function onNet(event)
     elseif kind == "lobby:entered" then
         -- Steam can report one entry twice; this module instance answers it once.
         if helloLobby == f[2] then return end
+        if Session._dropLobby == f[2] then
+            net.NetCommand("leave")
+            emit("session:join-cancelled|" .. f[2])
+            return
+        end
         lobbyId, hostId, helloLobby = f[2], f[3], f[2]
-        joining, hostName, Session._ended = false, clean(f[4] or ""), nil
+        joining, hostName, Session._ended, Session._starting = false, clean(f[4] or ""), nil, nil
         local phase = memory.lobby == lobbyId and memory.phase or nil
         if hostId ~= me and f[5] == "0" then
             Session._RefuseJoin("Der Host dieser Sitzung ist nicht in deiner Steam-Freundesliste. Beitritt abgebrochen.")
@@ -1413,7 +1418,7 @@ local function onNet(event)
     elseif kind == "lobby:join-failed" then
         joining = false
         local code = global.tonumber(f[2]) or 0
-        local reasons = {[2] = "Diese Einladung ist abgelaufen: die Sitzung gibt es nicht mehr. Lass dich neu einladen.",
+        local reasons = {[2] = "Diese Einladung ist abgelaufen, die Sitzung gibt es nicht mehr. Lass dich neu einladen.",
             [4] = "Die Sitzung ist voll.", [6] = "Die Sitzung ist nur für Steam-Freunde des Hosts."}
         failJoin(reasons[code] or ("Beitritt nicht möglich (Steam-Code " .. code .. "). Lass dich neu einladen."), false)
     elseif kind == "member:join" then
@@ -1441,6 +1446,7 @@ local function onNet(event)
         end
         if role then Session.Leave() end
         joining, progress, joinFailure, Session._ended = true, {}, nil, nil
+        Session._joinLobby, Session._dropLobby = f[2], nil
         joinSource = f[4] == "launch" and "launch" or "invite"
         net.NetCommand("join|" .. f[2])
         emit("session:joining|" .. f[2])
@@ -1578,6 +1584,12 @@ local function onNet(event)
         local who = players[f[2]] and players[f[2]].name or "Ein Mitspieler"
         addFeed("Verbindung zu " .. who .. " hängt - bitte neu beitreten")
         emit("session:peer-stalled|" .. f[2] .. "|" .. global.tostring(f[3]))
+    elseif kind == "lobby:error" then
+        emit("session:" .. event)
+        if f[2] == "create-failed" and Session._starting then
+            Session._starting = nil
+            failJoin("Die Sitzung konnte nicht erstellt werden (Steam-Code " .. global.tostring(f[3] or "?") .. ").", false)
+        end
     elseif kind == "lobby:created" then
         emit("session:lobby-created|" .. f[2])
     elseif kind == "lobby:left" then
@@ -1685,6 +1697,7 @@ function Session.Host()
     Session._ended = nil
     objects, tombstones, stats, players, order, counter, conflicts = {}, {}, {}, {}, {}, 0, 0
     rejoin = nil
+    Session._starting, Session._dropLobby = frames, nil
     net.NetCommand("host")
 end
 
@@ -1807,6 +1820,7 @@ function Session.JoinState()
     if offer then return {phase = "rejoin", host = offer.host} end
     if joinFailure then return {phase = "failed", reason = joinFailure, retry = role == "client" and hostId ~= nil, host = hostName} end
     if joining then return {phase = "joining", progress = 0} end
+    if Session._starting and not role then return {phase = "starting"} end
     if Session._ended and not role then return {phase = "ended", host = Session._ended.host} end
     if role ~= "client" then return nil end
     if confirm then return {phase = "confirm", host = confirm.host} end
@@ -2451,6 +2465,7 @@ function Session.Rejoin()
     if not offer then return end
     rejoin = nil
     joining, progress, joinFailure, joinSource = true, {}, nil, "invite"
+    Session._joinLobby, Session._dropLobby = offer.lobby, nil
     net.NetCommand("join|" .. offer.lobby)
 end
 
@@ -2536,6 +2551,9 @@ function Session.DismissEnded() Session._ended = nil end
 -- Close the "joining failed" notice; also leaves the lobby the failed join is still in.
 function Session.DismissJoin()
     local inLobby = role ~= nil
+    if joining then
+        Session._dropLobby = Session._joinLobby   -- Steam may still enter it: lobby:entered leaves
+    end
     joinFailure, joining = nil, false
     if inLobby then Session.Leave() end
 end
@@ -2551,6 +2569,7 @@ function Session.Leave()
     end
     flushAuthors()
     joining, progress, desync, joinFailure, helloLobby = false, {}, nil, nil, nil
+    Session._starting = nil
     invited, approved, requests, confirm, waiting, joinSource = {}, {}, {}, nil, false, nil
     pings, following, whoCache, hostSilent, selfStalled, authorsFile, dirtyAuthors = {}, nil, {}, false, false, nil, {}
     ratingsFile = nil
@@ -2616,6 +2635,10 @@ function Session.Tick()
     firstUseHint()
     if comp and comp.phase == "build" and frames % 30 == 0 then net.NetCommand("now") end
     frames = frames + 1
+    if Session._starting and not role and frames - Session._starting > 1800 then
+        Session._starting = nil
+        failJoin("Steam hat nicht geantwortet. Versuch es noch einmal.", false)
+    end
     if not Session.Available() then return end
     for _ = 1, 64 do
         local event = net.NetPoll()

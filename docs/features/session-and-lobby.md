@@ -14,7 +14,10 @@ Hauptcode: `probe/PC2CoopProbe/Main/pc2coop/session.lua` (Rolle, Nachrichten, Zu
   (Besitzer = Host). Die Lobby ist nur für Steam-Freunde sichtbar und hat höchstens 8 Plätze
   (DLL `CreateLobby`, `SLOTS = 8` in der Oberfläche).
 - **UI:** Lobby-Fenster „Lobby erstellen“, Pausemenü „Diesen Park hosten“, F7-Menü
-  „Raum hosten“ (`menu.lua`). UI-Aktion `host`.
+  „Raum hosten“ (`menu.lua`). UI-Aktion `host`. Bis Steam antwortet, ist „Sitzung starten“
+  gesperrt („Startet …“, `JoinState` Phase `starting` aus `Session._starting`). Kann Steam die
+  Lobby nicht erstellen (`lobby:error|create-failed`) oder antwortet 1800 Frames lang nicht,
+  sagt `JoinFailed` es.
 - **Besonderheiten:** Spielerfarben aus `COLORS` (FEAT-043).
 
 ### FEAT-021 – Lobby im Hauptmenü
@@ -41,6 +44,8 @@ Hauptcode: `probe/PC2CoopProbe/Main/pc2coop/session.lua` (Rolle, Nachrichten, Zu
   `invite` (Overlay). Ereignisse `invite:sent` (merkt `invited[sid]`) und `invite:failed`.
   Ein Knopf bleibt `INVITE_FRAMES` (~25 s) „Eingeladen“.
 - **UI:** Knopf „Einladen“ pro Freund, „Steam-Overlay“; UI-Aktionen `invite`, `invite_overlay`.
+  Auf der Multiplayer-Seite wartet ein Eingeladener blass in einem Platz (`asked` = Frame der
+  Einladung), nach 2 Minuten „keine Antwort“ mit „Noch einmal einladen“.
 
 ### FEAT-024 – Freundesliste
 - **Status:** Implemented · **Seit:** 1.8.0
@@ -107,7 +112,10 @@ Hauptcode: `probe/PC2CoopProbe/Main/pc2coop/session.lua` (Rolle, Nachrichten, Zu
 - **Technik:** `Session.JoinState` (Phasen inkl. `failed`, `confirm`, `rejoin`);
   `joinFailure`; `loadfailed` an den Host.
 - **UI:** `JoinProgress`, `JoinFailed` („Erneut versuchen“ = `retry_join`, „Abbrechen“ = `cancel_join`).
-  Texte z. B. „Einladung abgelaufen“, „Park konnte nicht geladen werden“.
+  Texte z. B. „Einladung abgelaufen“, „Park konnte nicht geladen werden“. Seit UX-Overhaul P5
+  vier Schritte mit dem `ProgressSteps` des Spiels (Verbinden, Zustimmung, Park kommt, Park
+  lädt) und „Abbrechen“. Bricht der Spieler ab, während Steam noch beitritt, verlässt die Mod
+  die Lobby, sobald sie kommt (`Session._dropLobby`, Log `session:join-cancelled`).
 
 ### FEAT-032 – Park-Auswahl in der Lobby
 - **Status:** Replaced (durch FEAT-119: Park über die Seiten des Spiels; Lua bleibt, ohne Knopf)

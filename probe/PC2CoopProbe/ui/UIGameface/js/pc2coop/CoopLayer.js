@@ -22,6 +22,8 @@ import { AnchorLocation, TargetLine } from '/js/common/components/Constraint.js'
 import { ToggleRow } from '/js/project/components/ToggleRow.js';
 import { ListStepperRow } from '/js/project/components/ListStepperRow.js';
 import { Stars } from '/js/project/components/Stars.js';
+import { ProgressSteps } from '/js/project/components/ProgressSteps.js';
+import { LoadingSpinner } from '/js/project/components/LoadingSpinner.js';
 
 // The window in a park uses the classes of the game's Panel and TabBar (TP-11). Their style sheets
 // come with those components; the components themselves are not used (focus handling).
@@ -126,6 +128,10 @@ function poll() {
     if (polls % 10 === 1) reportDlc();
     // Accent colour, colour-blind mode: about once a second; a change redraws the layer at once
     // (before, the old colours stayed until the next state change).
+    // An invitation that waits for an answer turns into "keine Antwort" after 2 minutes.
+    if (polls % 10 === 5 && Object.keys(invitesSeen).length > 0) {
+        listeners.forEach((fn) => { try { fn(currentState); } catch (error) { log('invite update ' + error); } });
+    }
     // The time in the connection pill, its green moment and the question after 30 s.
     if (polls % 3 === 0 && (conn.silentAt || Date.now() < conn.backUntil + 1000)) {
         listeners.forEach((fn) => { try { fn(currentState); } catch (error) { log('connection update ' + error); } });
@@ -371,6 +377,7 @@ function statusOf(coop) {
     const host = hostOf(coop);
     if (!coop.available) return { text: 'Steam ist nicht verfügbar.', tone: 'warn' };
     if (join.phase === 'failed') return { text: join.reason, tone: 'warn' };
+    if (join.phase === 'starting') return { text: 'Die Sitzung wird erstellt …', tone: 'busy' };
     if (join.phase === 'hostlobby') return { text: (join.host || 'Der Host') + ' wählt im Hauptmenü einen Park.', tone: 'wait' };
     if (join.phase === 'ended') return { text: (join.host || 'Der Host') + ' ist nicht mehr in der Sitzung.', tone: 'idle' };
     if (join.phase === 'silent') return { text: joinText(join), tone: 'warn' };
@@ -1114,7 +1121,7 @@ class Lobby extends StateComponent {
         if (!coop.available) {
             // Nothing to do without Steam.
         } else if (!coop.role) {
-            footer.push({ label: 'Sitzung starten', onSelect: () => request('host'), disabled: !coop.canHost });
+            footer.push(hostButton(coop));
         } else {
             if (coop.desync && coop.role === 'client') footer.push({ label: 'Neu synchronisieren', onSelect: () => request('resync') });
             footer.push({ label: 'Steam-Overlay', onSelect: () => request('invite_overlay') });
@@ -1201,7 +1208,7 @@ class Lobby extends StateComponent {
         if (!coop.role) {
             return [section('Spieler'),
                 muted('Noch keine Sitzung. Starte eine, um diesen Park mit Freunden zu teilen.', { marginBottom: '0.5rem' }),
-                buttons([{ label: 'Sitzung starten', onSelect: () => request('host'), disabled: !coop.canHost }])];
+                buttons([hostButton(coop)])];
         }
         const requests = coop.role === 'host' ? list(coop.requests) : [];
         const out = [];
@@ -1591,7 +1598,9 @@ class MultiplayerPage extends StateComponent {
         const host = hostOf(coop);
         const isHost = coop.role === 'host';
         const status = statusOf(coop);
-        const desc = !coop.role ? 'Baut live zusammen im selben Park. Deine Steam-Freunde treten deiner Sitzung bei.'
+        const joiningNow = !!JOIN_STEP[(coop.join || {}).phase];
+        const desc = joiningNow ? 'Du trittst der Sitzung' + ((coop.join || {}).host ? ' von ' + coop.join.host : '') + ' bei.'
+            : !coop.role ? 'Baut live zusammen im selben Park. Deine Steam-Freunde treten deiner Sitzung bei.'
             : coop.stage !== 'lobby' ? 'Die Sitzung ist im Park ' + (coop.parkTitle || '') + '.'
             : isHost ? 'Öffne einen Park – alle kommen mit.'
             : (host ? host.name : 'Der Host') + ' wählt den Park. Er lädt bei dir von selbst.';
@@ -1599,14 +1608,17 @@ class MultiplayerPage extends StateComponent {
         if (!coop.available) {
             // Nothing to do without Steam.
         } else if (!coop.role) {
-            footer.push({ label: 'Sitzung starten', onSelect: () => request('host'), disabled: !coop.canHost });
+            footer.push(hostButton(coop));
         } else {
             footer.push({ label: 'Steam-Overlay', onSelect: () => request('invite_overlay') });
             footer.push({ label: isHost ? 'Beenden' : 'Verlassen', tip: isHost ? END_TIP : LEAVE_TIP, onSelect: () => endOrAsk(coop) });
         }
+        const steps = JOIN_STEP[(coop.join || {}).phase];
+        if (steps) footer.length = 0;   // the steps have their own "Abbrechen"
         const statusLine = h('div', { style: { display: 'flex', alignItems: 'center', fontSize: '0.9rem', marginBottom: '0.3rem' } },
-            h('div', { style: { width: '0.6rem', height: '0.6rem', borderRadius: '0.3rem', backgroundColor: TONE[status.tone] || TONE.idle,
-                marginRight: '0.5rem', flexShrink: 0 } }),
+            status.tone === 'busy' ? spinner(1.2, { marginRight: '0.4rem' })
+                : h('div', { style: { width: '0.6rem', height: '0.6rem', borderRadius: '0.3rem', backgroundColor: TONE[status.tone] || TONE.idle,
+                    marginRight: '0.5rem', flexShrink: 0 } }),
             h('div', { style: { flexGrow: 1, flexShrink: 1, minWidth: 0 } }, status.text));
         const picking = !!coop.role && !!state.picking;
         const right = !coop.role ? pagePanel('Steam-Freunde', 26, this.friendRows(coop))
@@ -1617,8 +1629,9 @@ class MultiplayerPage extends StateComponent {
             h('div', { style: { color: C('whiteColor'), fontSize: '1.6rem', fontWeight: 'bold', lineHeight: '2.48rem' } }, 'Multiplayer'),
             h('div', { style: { color: C('whiteColor'), maxWidth: '38rem', margin: '0.5rem 0 1.5rem' } }, desc),
             h('div', { style: { display: 'flex', alignItems: 'flex-start' } },
-                pagePanel('Spieler' + (coop.role ? '  ' + list(coop.players).length + ' / ' + SLOTS : ''), 30, this.places(coop),
-                    [statusLine, footer.length > 0 && h('div', { key: 'f' }, buttons(footer))]),
+                pagePanel('Spieler' + (coop.role && !steps ? '  ' + list(coop.players).length + ' / ' + SLOTS : ''), 30,
+                    steps ? joinSteps(coop.join, 0.8) : this.places(coop),
+                    steps ? null : [statusLine, footer.length > 0 && h('div', { key: 'f' }, buttons(footer))]),
                 right,
                 isHost && coop.stage === 'lobby' && this.parkTiles()));
     }
@@ -1632,7 +1645,8 @@ class MultiplayerPage extends StateComponent {
             out.push(muted('Noch keine Sitzung.', { padding: '0.3rem 0' }));
             return out;
         }
-        const invited = sortedFriends(coop).filter((f) => f.invited);
+        const invited = sortedFriends(coop).filter((f) => f.asked && !players.some((p) => p.sid === f.sid));
+        forgetInvites(invited);
         const card = (key, children, extra, onClick) => h('div', { key, onClick, style: Object.assign({ width: '12.9rem', height: '3.6rem', margin: '0.3rem',
             display: 'flex', alignItems: 'center', padding: '0 0.5rem', borderRadius: '0.5rem', backgroundColor: C('whiteColor'),
             borderWidth: '0.05rem', borderStyle: 'solid', borderColor: ACCENT_A(0.18), pointerEvents: 'auto' }, extra || {}) }, children);
@@ -1654,8 +1668,13 @@ class MultiplayerPage extends StateComponent {
             iconButton('close', 'Ablehnen', () => request('deny', r.sid))],
             // A light accent ground: the dashed border alone did not show in Gameface (test copy).
             { backgroundColor: C('accentFaint'), borderColor: C('accent') })));
-        invited.slice(0, Math.max(0, SLOTS - cards.length)).forEach((f) => cards.push(card('i' + f.sid, [
-            h('div', { key: 't', style: { marginLeft: '0.3rem' } }, h('div', null, f.name), muted('eingeladen'))], { opacity: 0.55 })));
+        invited.slice(0, Math.max(0, SLOTS - cards.length)).forEach((f) => {
+            const late = inviteLate(f);
+            cards.push(card('i' + f.sid, [
+                h('div', { key: 't', style: { flexGrow: 1, flexShrink: 1, minWidth: 0, marginLeft: '0.3rem' } }, h('div', null, f.name),
+                    muted(late ? 'keine Antwort' : 'eingeladen', late ? { color: C('warningDark') } : undefined)),
+                late && iconButton('redo', 'Noch einmal einladen', () => request('invite', f.sid))], { opacity: late ? 0.85 : 0.55 }));
+        });
         for (let i = cards.length; i < SLOTS; i++) {
             cards.push(card('e' + i, h('div', { style: { width: '100%', textAlign: 'center', color: C('accent') } }, '+ Einladen'),
                 { backgroundColor: C('area'), borderStyle: 'dashed', borderColor: ACCENT_A(0.45) }, () => this.setState({ picking: true })));
@@ -1737,14 +1756,65 @@ class MiniLobby extends StateComponent {
     }
 }
 
+// Joining in four steps (UX_OVERHAUL.md §5): the game's ProgressSteps, the park's transfer as a
+// bar (the game's progress bar drew nothing in our layer, test copy), "Abbrechen" until the park
+// loads. On the page and as a card.
+const JOIN_STEPS = ['Verbinden', 'Zustimmung', 'Park kommt', 'Park lädt'];
+const JOIN_STEP = { joining: 1, asking: 2, awaiting: 3, loading: 4 };
+// scale: the game's steps are 31 rem wide; in the page's 30 rem panel they are drawn smaller.
+function joinSteps(join, scale) {
+    const step = JOIN_STEP[join.phase] || 1;
+    const k = scale || 1;
+    return h('div', { style: hudCard({ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0.9rem 1rem 0.8rem',
+        borderRadius: '0.7rem', fontSize: '1rem', textAlign: 'center' }, 0.92) },
+        h('div', { style: { fontSize: '1.1rem' } }, 'Sitzung' + (join.host ? ' von ' + join.host : '')),
+        // Absolute: in a narrower box Gameface centred the wider steps and they ran out on the left.
+        h('div', { style: { position: 'relative', width: (31.1 * k).toFixed(2) + 'rem', height: (4.9 * k).toFixed(2) + 'rem' } },
+            h('div', { style: { position: 'absolute', left: 0, top: 0, width: '31.1rem', paddingTop: '1.4rem',
+                transform: 'scale(' + k + ')', transformOrigin: '0 0' } },
+                ProgressSteps ? h(ProgressSteps, { step, steps: JOIN_STEPS.map(literal), hideLabels: true }) : 'Schritt ' + step + ' von 4')),
+        h('div', { style: { fontSize: '0.9rem', color: C('accentButtonLight'), margin: '0.2rem 0 0.4rem' } }, joinText(join)),
+        join.phase === 'awaiting' && h('div', { style: { width: '20rem', height: '0.5rem', marginBottom: '0.6rem', borderRadius: '0.25rem',
+            backgroundColor: 'rgba(255, 255, 255, 0.15)' } },
+            h('div', { style: { height: '0.5rem', borderRadius: '0.25rem', backgroundColor: C('highlight'),
+                width: Math.round(Math.max(0, Math.min(1, join.progress || 0)) * 100) + '%' } })),
+        step < 4 && buttons([{ label: 'Abbrechen', onSelect: () => request('cancel_join') }]));
+}
+
+// The game's loading spinner, small (its own size is 8.4 rem), e.g. while the session starts.
+const spinner = (size, extra) => h('div', { style: Object.assign({ width: size + 'rem', height: size + 'rem', flexShrink: 0, overflow: 'hidden' }, extra || {}) },
+    LoadingSpinner && h('div', { style: { width: '8.4rem', height: '8.4rem', transform: 'scale(' + (size / 8.4).toFixed(3) + ')', transformOrigin: '0 0' } },
+        h(LoadingSpinner, { modifiers: 'show accent' })));
+
+// "Sitzung starten" (§5 Loading): locked, with "Startet …", until Steam answered.
+function hostButton(coop) {
+    const starting = (coop.join || {}).phase === 'starting';
+    return { label: starting ? 'Startet …' : 'Sitzung starten', onSelect: () => request('host'), disabled: !coop.canHost || starting };
+}
+
+// Invitations that wait for an answer (§5 Waiting): since when this game sees each one; after two
+// minutes the place says "keine Antwort". Keyed by the frame Lua sent it in (a new one starts anew).
+const invitesSeen = {};
+const INVITE_LATE_MS = 120000;
+function inviteLate(f) {
+    const key = f.sid + '|' + f.asked;
+    if (!invitesSeen[key]) invitesSeen[key] = Date.now();
+    return Date.now() - invitesSeen[key] >= INVITE_LATE_MS;
+}
+function forgetInvites(waiting) {
+    const keep = {};
+    waiting.forEach((f) => { keep[f.sid + '|' + f.asked] = true; });
+    Object.keys(invitesSeen).forEach((key) => { if (!keep[key]) delete invitesSeen[key]; });
+}
+
 function joinText(join) {
     const host = join.host ? ' von ' + join.host : '';
-    if (join.phase === 'joining') return 'Trete der Sitzung bei …';
+    if (join.phase === 'joining') return 'Verbinde mit der Sitzung' + host + ' …';
     if (join.phase === 'silent') return 'Keine Verbindung zum Host';
-    if (join.phase === 'asking') return 'Warte auf die Zustimmung' + host + ' ...';
+    if (join.phase === 'asking') return 'Warte auf die Zustimmung' + host + ' …';
     if (join.phase === 'confirm') return 'Beitritt' + (join.host ? ' bei ' + join.host : '') + ' wartet auf deine Bestätigung.';
-    if (join.phase === 'awaiting') return 'Empfange den Park' + host + ' ... ' + Math.round((join.progress || 0) * 100) + ' %';
-    if (join.phase === 'loading') return 'Lade den Park' + host + ' ...';
+    if (join.phase === 'awaiting') return 'Empfange den Park' + host + ' … ' + Math.round((join.progress || 0) * 100) + ' %';
+    if (join.phase === 'loading') return 'Lade den Park' + host + ' …';
     if (join.phase === 'lobby') return 'In der Sitzung' + host + '.';
     return 'Verbunden' + host + '.';
 }
@@ -1755,14 +1825,9 @@ class JoinProgress extends StateComponent {
         const coop = state.coop || {};
         const join = coop.join;
         // A lost connection in the park ('silent') is the connection pill, not this card.
-        if (!join || ['joining', 'asking', 'awaiting', 'loading'].indexOf(join.phase) < 0 || coop.open) return null;
-        const share = join.phase === 'awaiting' ? (join.progress || 0) : join.phase === 'loading' ? 1 : 0.02;
-        return h('div', { style: hudCard({ position: 'absolute', left: '50%', top: '42%', width: '26rem', marginLeft: '-13rem',
-            padding: '1.1rem 1.4rem', borderRadius: '0.7rem', fontSize: '1rem', textAlign: 'center' }, 0.9) },
-            h('div', { style: { fontSize: '1.1rem', marginBottom: '0.3rem' } }, 'Multiplayer'),
-            h('div', { style: { fontSize: '0.9rem', color: C('accentButtonLight'), marginBottom: '0.7rem' } }, joinText(join)),
-            h('div', { style: { height: '0.4rem', borderRadius: '0.2rem', backgroundColor: 'rgba(255, 255, 255, 0.15)' } },
-                h('div', { style: { height: '0.4rem', borderRadius: '0.2rem', backgroundColor: C('accentLight'), width: Math.round(share * 100) + '%' } })));
+        if (!join || !JOIN_STEP[join.phase] || coop.open) return null;
+        return h('div', { style: { position: 'absolute', left: '50%', top: '40%', width: '36rem', marginLeft: '-18rem', pointerEvents: 'auto' } },
+            joinSteps(join));
     }
 }
 
@@ -1798,7 +1863,7 @@ class JoinFailed extends StateComponent {
     render(props, state) {
         const coop = state.coop || {};
         const join = coop.join;
-        if (!join || join.phase !== 'failed' || coop.open) return null;
+        if (!join || join.phase !== 'failed' || (coop.open && coop.context !== 'menu')) return null;
         const buttons = [];
         if (join.retry) buttons.push({ label: literal('Erneut versuchen'), onSelect: () => request('retry_join') });
         buttons.push({ label: literal(join.retry ? 'Abbrechen' : 'Schließen'), onSelect: () => request('cancel_join'), inputName: 'UI_Cancel' });

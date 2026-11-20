@@ -5,6 +5,11 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
 
 ## Unveröffentlicht
 
+- Beitreten zeigt vier Schritte (Verbinden, Zustimmung, Park kommt, Park lädt) mit
+  Fortschritt, und du kannst bis zum Laden abbrechen.
+- „Sitzung starten“ ist gesperrt, bis Steam antwortet. Klappt es nicht, siehst du warum.
+- Eine Einladung ohne Antwort zeigt nach 2 Minuten „keine Antwort“; du kannst noch einmal
+  einladen.
 - Antwortet der Host nicht, steht oben „Keine Verbindung zum Host“ mit der Zeit und „Verlassen“;
   nach einer halben Minute fragst du „Warten“ oder „Verlassen“. Kommt die Verbindung wieder,
   wird die Anzeige kurz grün.

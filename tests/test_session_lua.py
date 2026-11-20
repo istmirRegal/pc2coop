@@ -424,6 +424,45 @@ class JoinRobustnessTests(SessionTests):
         new.lua.execute('session.DismissJoin()')
         self.assertIsNone(self.join_state(new))
 
+    def test_cancel_while_steam_joins_leaves_the_lobby_when_it_comes(self):
+        new = Peer('830', 'Vici')
+        new.event('invite:accepted|L9|100|invite')
+        new.tick()
+        self.assertEqual(self.join_state(new)['phase'], 'joining')
+        new.commands()
+        new.lua.execute('session.DismissJoin()')
+        self.assertIsNone(self.join_state(new))
+        new.event('lobby:entered|L9|100|Host|1')
+        new.tick()
+        self.assertIn('leave', new.commands())
+        self.assertIsNone(new.lua.eval('session.View().role'))
+        self.assertIsNone(self.join_state(new))
+
+    def test_starting_a_session_waits_for_steam(self):
+        new = Peer('840', 'Vici')
+        new.lua.execute('session.SetContext("menu"); session.Host()')
+        self.assertEqual(self.join_state(new)['phase'], 'starting')
+        new.event('lobby:entered|L7|840|Vici|1')
+        new.tick()
+        self.assertEqual(new.lua.eval('session.View().role'), 'host')
+        self.assertIsNone(self.join_state(new))
+
+    def test_a_session_steam_cannot_create_says_so(self):
+        new = Peer('850', 'Vici')
+        new.lua.execute('session.Host()')
+        new.event('lobby:error|create-failed|2')
+        new.tick()
+        state = self.join_state(new)
+        self.assertEqual((state['phase'], state['retry']), ('failed', False))
+        self.assertIn('Steam-Code 2', state['reason'])
+
+    def test_a_session_steam_never_answers_frees_the_button(self):
+        new = Peer('860', 'Vici')
+        new.lua.execute('session.Host(); for i = 1, 1810 do session.Tick() end')
+        state = self.join_state(new)
+        self.assertEqual(state['phase'], 'failed')
+        self.assertIn('nicht geantwortet', state['reason'])
+
     def test_invited_wears_off_and_clears_when_the_friend_joins(self):
         host = self.peers['100']
         for event in ('friends:begin|2', 'friend|900|Bob|1|1', 'friend|901|Cleo|1|0', 'friends:end', 'invite:sent|900', 'invite:sent|901'):

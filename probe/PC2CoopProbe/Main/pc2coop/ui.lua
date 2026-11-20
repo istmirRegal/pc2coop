@@ -242,7 +242,9 @@ local function buildState()
     global.table.sort(players, function(a, b) return (a.host and 0 or 1) < (b.host and 0 or 1) end)
     local friends = {}
     for _, f in global.ipairs(session.Friends()) do
-        friends[#friends+1] = {sid = f.sid, name = f.name, state = f.state, pc2 = f.pc2, invited = f.invited, lobby = f.lobby ~= nil}
+        -- asked: the invitation is out and not answered (its frame, so a new one is a new key in JS)
+        friends[#friends+1] = {sid = f.sid, name = f.name, state = f.state, pc2 = f.pc2, invited = f.invited, lobby = f.lobby ~= nil,
+            asked = f.invitedAt or false}
     end
     local franchise = false
     if menu and menu.FranchiseInfo then

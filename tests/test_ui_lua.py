@@ -118,6 +118,12 @@ class UiTests(unittest.TestCase):
         self.ui._QaLook('4|-1|0.7')
         self.assertEqual(self.state()['qaLook'], '4|-1|0.7|1')
 
+    def test_an_unanswered_invitation_is_sent_with_its_frame(self):
+        self.lua.execute('session.Friends = function() return {{sid = "7", name = "Vici", state = 1, pc2 = true, invited = false, invitedAt = 120},'
+                         ' {sid = "8", name = "Kim", state = 1, pc2 = false, invited = false}} end')
+        friends = {f['name']: f for f in self.state()['friends']}
+        self.assertEqual((friends['Vici']['asked'], friends['Kim']['asked']), (120, False))
+
     def open_close_open(self):
         self.lua.execute('ui.SetOpen(true)')
         self.assertTrue(self.state()['open'])

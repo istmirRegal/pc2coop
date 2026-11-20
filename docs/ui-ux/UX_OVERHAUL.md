@@ -479,6 +479,15 @@ Toasts dazu sind weg). „Host im Hauptmenü“ als Dialog mit „Ins Hauptmenü
 Dialog mit „Weiterspielen“/„Hauptmenü“. Klärung zu §8: Der Park bleibt beim Mitspieler offen,
 er spielt allein weiter. Im Besuch kein Dialog, nur die Pille (die Maus gehört dem Laufen).
 
+**P5 Schritt 2 (2026-11-21):** Beitritt in vier Schritten mit dem `ProgressSteps` des Spiels
+(Verbinden, Zustimmung, Park kommt mit Balken, Park lädt) und „Abbrechen“, auf der Seite
+statt der Plätze, sonst als Karte. Abweichung: Die `ProgressBar` des Spiels zeichnete in unserer
+Ebene nichts (Testkopie); der Balken ist eigener Code im selben Look. „Sitzung starten“ gesperrt als „Startet …“ mit dem
+`LoadingSpinner` des Spiels in der Statuszeile; scheitert die Lobby oder antwortet Steam 30 s
+nicht, sagt ein Dialog es (vorher nur eine Logzeile). Einladungen warten blass im Platz, nach
+2 Minuten „keine Antwort“ mit „Noch einmal einladen“. Fehlertexte ohne Doppelpunkt, mit Umlauten,
+ohne „Bitte“.
+
 Prototypen zuerst (vor P2/P3/P4): `Panel` in unserer Ebene, Seite im Hauptmenü-Rahmen,
 Bauleiste im Besuch aus. Ergebnis entscheidet, ob Ziel oder Rückfall gebaut wird.
 

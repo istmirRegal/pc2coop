@@ -70,7 +70,7 @@ Esc zurück, schließt das Fenster). Titel, ein Satz, zwei bis drei Spalten:
 
 | Spalte | Elemente | Aktionen | FEAT |
 |---|---|---|---|
-| „Spieler n / 8“ | acht Plätze: Spieler (Profilbild, Name, Krone, Tätigkeit oder fehlende Inhalte), Beitrittsanfragen als wartende Karte „<Name> möchte beitreten“ mit Icon-Knöpfen Haken (Zulassen) und X (Ablehnen), eingeladene Freunde blass, freie Plätze „+ Einladen“; Fuß: Zustand, „Sitzung starten“ bzw. „Steam-Overlay“, „Beenden“/„Verlassen“ | `approve`, `deny`, `host`, `invite_overlay`, `leave` | FEAT-119, FEAT-027 |
+| „Spieler n / 8“ | acht Plätze: Spieler (Profilbild, Name, Krone, Tätigkeit oder fehlende Inhalte), Beitrittsanfragen als wartende Karte „<Name> möchte beitreten“ mit Icon-Knöpfen Haken (Zulassen) und X (Ablehnen), eingeladene Freunde blass „eingeladen“, nach 2 Minuten „keine Antwort“ mit Icon-Knopf „Noch einmal einladen“, freie Plätze „+ Einladen“; Fuß: Zustand (dreht sich, solange etwas läuft), „Sitzung starten“ (bis Steam antwortet gesperrt als „Startet …“) bzw. „Steam-Overlay“, „Beenden“/„Verlassen“. Während eines Beitritts stehen hier die vier Schritte (`joinSteps`) | `approve`, `deny`, `host`, `invite`, `invite_overlay`, `leave`, `cancel_join` | FEAT-119, FEAT-027, FEAT-023, FEAT-031 |
 | rechts | ohne Sitzung „Steam-Freunde“ (Sitzung zuerst, dann PC2, online; „Beitreten“); nach „+ Einladen“ „Freund einladen“ mit „Einladen“/„Eingeladen“, „Steam-Overlay“, „Fertig“; sonst „Chat“ mit Eingabe „Nachricht“ | `join_friend`, `invite`, `invite_overlay`, `chat` | FEAT-024, FEAT-023, FEAT-035 |
 | Host in der Lobby | Kacheln des Spiels (`FrontEndTileButton`) „Sandbox“ (öffnet die Sandbox-Seite des Spiels) und „Franchise“ (wie die Kachel des Spiels) | `choose` (franchise) | FEAT-119 |
 
@@ -151,8 +151,8 @@ des Spiels (Alt springen, Strg ducken, L Lampe).
 | Element | Wann | Knöpfe | FEAT |
 |---|---|---|---|
 | `JoinConfirm` „Der Sitzung von … beitreten?“ | Einladung angenommen, Nachfrage an | „Beitreten“ `confirm_join`, „Abbrechen“ `cancel_join` | FEAT-028 |
-| `JoinProgress` Karte | während des Beitritts | Text je Phase (joining, silent, asking, awaiting %, loading, lobby) | FEAT-031 |
-| `JoinFailed` | Beitritt gescheitert | „Erneut versuchen“ `retry_join`, „Abbrechen“/„Schließen“ `cancel_join` | FEAT-031 |
+| `JoinProgress` Karte (im Hauptmenü auf der Seite statt der Plätze) | während des Beitritts | `ProgressSteps` des Spiels: Verbinden, Zustimmung, Park kommt (mit Balken und %), Park lädt; „Abbrechen“ `cancel_join` bis der Park lädt | FEAT-031 |
+| `JoinFailed` | Beitritt gescheitert, auch: Steam konnte keine Sitzung erstellen oder hat 30 s nicht geantwortet (im Hauptmenü auch über der Seite) | „Erneut versuchen“ `retry_join`, „Abbrechen“/„Schließen“ `cancel_join` | FEAT-031, FEAT-020 |
 | `Rejoin` „Du warst eben noch in der Sitzung von …“ | nach Absturz | „Wieder beitreten“ `rejoin`, „Nein“ `forget_rejoin` | FEAT-039 |
 | `ConnectionDialog` „Keine Verbindung zum Host“ | Mitspieler im Park, Host 30 s still (nicht im Besuch) | „Warten“ (schließt, Pille bleibt), „Verlassen“ `leave` | FEAT-040 |
 | `ConnectionDialog` „Der Host ist im Hauptmenü“ | Mitspieler im Park, Host zurück im Hauptmenü (nicht im Besuch) | „Ins Hauptmenü“ (`ExitToMainMenu`), „Hier warten“ (Pille bleibt) | FEAT-033 |

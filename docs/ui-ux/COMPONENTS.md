@@ -44,7 +44,10 @@ Wer ein Feld hinzufügt, trägt es hier ein.
 | `MiniLobby` | Sitzungsleiste im Hauptmenü oben rechts (TP-04) | role, players, open | FEAT-034 |
 | `MultiplayerPage` | Seite „Multiplayer“ im Hauptmenü (TP-03): `places` (acht Plätze), `friendRows`, `chatBody`, `parkTiles` (Spiel-`FrontEndTileButton`); `pagePanel` baut die Spalten aus den `Panel_*`-Klassen | fast alles im Hauptmenü | FEAT-119 |
 | `pageReady`, `openPage`, `pageShown`, `openGamePage`, `sortedFriends` | Seite in `FrontEndNavData.screens` eintragen und öffnen, Spielseiten öffnen, Freunde sortieren | nav, currentState | FEAT-119 |
-| `JoinProgress` | Beitrittsfortschritt | join | FEAT-031 |
+| `JoinProgress` | Beitrittsfortschritt als Karte (`joinSteps`) | join | FEAT-031 |
+| `joinSteps`, `JOIN_STEPS`, `JOIN_STEP` | vier Schritte mit Spiel-`ProgressSteps` (auf der Seite per `scale` verkleinert, absolut gesetzt), eigener Balken für den Park (die `ProgressBar` des Spiels zeichnete in unserer Ebene nichts), „Abbrechen“ | join | FEAT-031 |
+| `hostButton`, `spinner` | „Sitzung starten“ / gesperrt „Startet …“; Spiel-`LoadingSpinner` verkleinert (Statuszeile der Seite) | join, canHost | FEAT-020 |
+| `inviteLate`, `forgetInvites`, `invitesSeen` | seit wann eine Einladung wartet; nach 2 Minuten „keine Antwort“ | friends (`asked`) | FEAT-023 |
 | `Rejoin` | Wiederbeitritts-Dialog | join | FEAT-039 |
 | `JoinConfirm` | Beitritts-Nachfrage | join | FEAT-028 |
 | `JoinFailed` | Beitrittsfehler | join | FEAT-031 |

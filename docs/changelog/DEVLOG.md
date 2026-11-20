@@ -3,6 +3,18 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-21 – UX-Overhaul P5, Schritt 2: Beitritt, Start, Einladungen
+
+- `joinSteps` mit Spiel-`ProgressSteps` (`hideLabels`; auf der Seite `scale(0.8)` und absolut
+  gesetzt, sonst lief es links aus dem Kasten) und eigenem Balken (die Spiel-`ProgressBar` zeichnete
+  nichts); auf der Seite statt der Plätze, sonst `JoinProgress`. „Abbrechen“ → `cancel_join`; `Session.DismissJoin` merkt die
+  Lobby (`Session._dropLobby`), ein späteres `lobby:entered` dafür wird verlassen.
+- `Session._starting` (Phase `starting`), gelöscht bei `lobby:entered`; `lobby:error|create-failed`
+  und 1800 Frames ohne Antwort → `failJoin`. `hostButton`, `spinner` (Spiel-`LoadingSpinner`,
+  per `transform: scale` verkleinert).
+- Freunde tragen `asked` (Frame der Einladung); JS merkt die Zeit (`invitesSeen`), nach 2 Minuten
+  „keine Antwort“. Fehlertexte ohne Doppelpunkt, mit Umlauten.
+
 ## 2026-11-21 – UX-Overhaul P5, Schritt 1: Verbindung und Sitzungsende
 
 - `ConnectionPill` mit Zeit (`trackConnection`, Uhr in JS: Lua sagt nur `silent`), „Verlassen“,
