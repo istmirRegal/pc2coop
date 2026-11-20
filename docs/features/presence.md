@@ -7,17 +7,24 @@ Was ein Spieler von den anderen sieht. Code: `probe/PC2CoopProbe/Main/pc2coop/vi
 
 ### FEAT-090 – Spielerleiste oben rechts
 - **Status:** Implemented · **Seit:** 1.9.1
-- **Funktion:** Runde Chips aller Spieler mit Name und Tätigkeit; Klick folgt der Kamera
-  (FEAT-096).
-- **Technik:** `CoopLayer.js` Klasse `PlayerBar`, `playerActivity`, `activityText`.
-- **UI:** Immer sichtbar in einem Park mit Sitzung; Folgen-Ziel gelb umrandet.
+- **Funktion:** Runde Chips aller Spieler mit Avatar, Name, Krone und Zustands-Icon; die
+  Tätigkeit steht im Tooltip („Vici – hält Rock 04 · Klicken zum Folgen“, TP-13). Klick folgt
+  der Kamera (FEAT-096).
+- **Technik:** `CoopLayer.js` Klasse `PlayerBar`, `stateIcon`, `HoverTip` (Spiel-`TooltipContainer`),
+  `playerActivity`, `activityText`.
+- **UI:** Immer sichtbar in einem Park mit Sitzung. Icons des Spiels: `building` baut, `camera`
+  schaut zu, `move` hält etwas, `downloadArrow` empfängt den Park, `clock` lädt oder im
+  Hauptmenü, `eye` Folgen-Ziel (dazu gelb umrandet).
 
 ### FEAT-091 – Namensschilder über dem Blickpunkt
 - **Status:** Implemented · **Seit:** 1.6.0
-- **Funktion:** „<Name> – <Tätigkeit>“ schwebt über der Stelle, auf die ein Mitspieler schaut
-  (oder über seinem gehaltenen Objekt). Auch Urheber-Schild (FEAT-098) und Park-Meldungen.
-- **Technik:** `Labels.Init`, `Labels.Show`, `Labels.Pin`, `Labels.Clear` über das
-  Billboard-Widget des Spiels (UIBillboardWidgetsManager, „coaster labels“).
+- **Funktion:** Der Name in der Spielerfarbe schwebt über der Stelle, auf die ein Mitspieler
+  schaut (oder über seinem gehaltenen Objekt). Die Tätigkeit steht im Tooltip der
+  Spielerleiste (TP-14); das Schild in der Welt hat keine Maus-Eingabe. Andere Schilder behalten
+  ihr Wort: Ping „<Name> – hier!“ (Spielerfarbe), Brett, Park-Meldungen, Urheber (FEAT-098).
+- **Technik:** `Labels.Init`, `Labels.Show`, `Labels._Text`, `Labels.Pin`, `Labels.Clear` über das
+  Billboard-Widget des Spiels (UIBillboardWidgetsManager, „coaster labels“). Text
+  „•#rrggbb Name“; `DebugToolImports.js` nimmt Punkt und Farbe ab und färbt den Text.
 - **Besonderheiten:** Abschaltbar im Multiplayer-Fenster, Reiter „Einstellungen“, Abschnitt „Für dich“:
   „Mitspieler in der Welt zeigen“ (UI-Aktion `labels`, `Menu.labelsEnabled`, nur auf diesem PC,
   nicht gespeichert). Aus blendet Schilder, Bodenmarke, Sichtkegel, Geist und Sperr-Färbung aus;

@@ -3,6 +3,28 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-20 – UX-Overhaul P2, Schritt 2: Spielerleiste und Namensschilder
+
+- TP-13: `PlayerBar` zeigt `stateIcon` (Spiel-Icons `building`, `camera`, `move`,
+  `downloadArrow`, `clock`, `eye`) statt der abgeschnittenen Tätigkeit. Die Tätigkeit und
+  „Klicken zum Folgen“ stehen im Tooltip: neue Klasse `HoverTip` mit dem `TooltipContainer` des
+  Spiels, Anker links neben der Pille (`TIP_LEFT`), Modifikator `wide` wie bei den Reitern des
+  Spiels. Der Standard-Anker (oben, mittig) lief in der Ecke über den rechten Rand. Die Pillen sind
+  gleich breit (`alignItems: stretch`): Gameface zeichnet unsere Ebene über die Tooltip-Ebene, ein
+  Tooltip neben einer schmalen Pille lag sonst unter der breiteren darüber. Kein Doppelpunkt im
+  Tooltip: `literal()` macht daraus einen Strich.
+- TP-14: Spieler-Schilder sind nur der Name in der Spielerfarbe. `labels.lua` schreibt
+  „•#rrggbb Name“ (`Labels._Text`), `DebugToolImports.js` nimmt Punkt und Farbe ab, ändert dafür
+  nur `nodeValue` des Textknotens (die Ansicht des Spiels besitzt ihn) und merkt sich den Text.
+  Ping und Ablehnung am Objekt tragen jetzt auch die Spielerfarbe.
+- Abweichung: Tätigkeit beim Darüberfahren am Schild selbst geht nicht, die Coaster-Labels haben
+  keine Maus-Eingabe.
+- QA: `_QaLook` hat ein 5. Feld (1–8 Spieler im Cluster, 9 erster Reiter): löst `mouseenter`
+  aus. Für Spiel-Komponenten (`Tab`) wirkt das nicht, `ButtonBehaviour` prüft die
+  Eingabemethode (ohne echte Maus nicht „Maus und Tastatur“).
+- Prüfung: `tests/test_labels_lua.py`; Node-Rendertest der Spielerleiste; Testkopie: Schilder
+  und Tooltip fotografiert.
+
 ## 2026-11-20 – UX-Overhaul P2, Schritt 1: Fenster im Park links
 
 - Prototyp: Die Komponente `Panel` des Spiels ist fokussierbar und legt Eingabe-Kontexte an (Tab,

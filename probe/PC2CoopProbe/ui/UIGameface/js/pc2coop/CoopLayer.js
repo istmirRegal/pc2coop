@@ -17,6 +17,8 @@ import { InputField } from '/js/project/components/InputField.js';
 import { Tab } from '/js/common/components/Tab.js';
 import { loadCSS } from '/js/common/util/CSSUtil.js';
 import { CloseButton } from '/js/project/components/CloseButton.js';
+import { TooltipContainer } from '/js/project/components/Tooltip.js';
+import { AnchorLocation, TargetLine } from '/js/common/components/Constraint.js';
 
 // The window in a park uses the classes of the game's Panel and TabBar (TP-11). Their style sheets
 // come with those components; the components themselves are not used (focus handling).
@@ -381,9 +383,39 @@ function playerActivity(coop, p) {
     return activityText(p.act, p.hold);
 }
 
-// Session cluster, top right (UX_OVERHAUL.md §6): players with avatar, name, crown and activity,
-// the competition clock below. The same place in building, visiting and riding; on a ride only
-// the avatars, because the game's ride camera panel shares the corner.
+// A box that shows the game's tooltip while the mouse is over it (as Button does with tooltipOnHover).
+class HoverTip extends preact.Component {
+    render(props, state) {
+        return h('div', { className: props.className, style: props.style, onClick: props.onClick,
+            onMouseEnter: this.enter, onMouseLeave: this.leave },
+            props.children,
+            state.hover && props.tip && h(TooltipContainer, { target: this, tooltip: literal(props.tip), anchor: props.anchor, modifiers: 'wide' }));
+    }
+    enter = () => this.setState({ hover: true });
+    leave = () => this.setState({ hover: false });
+}
+
+// Tooltip left of the box, centred on it (as the game's AtmosphereDropdown): above, the game's
+// default, it ran over the right screen edge in the top right corner.
+const TIP_LEFT = [{ location: AnchorLocation.Left, line: TargetLine.End }, { location: AnchorLocation.CenterV, line: TargetLine.Center }];
+
+// State of a player as a game icon (TP-13); the words are in the tooltip.
+function stateIcon(coop, p, following) {
+    const act = String(p.act || '-');
+    if (following) return 'eye';
+    if (act === 'lobby' || coop.stage === 'lobby' || act === 'laedt' || act === '-') return 'clock';
+    if (/^holt/.test(act) || act === 'empfaengt') return 'downloadArrow';
+    if (coop.visitor && coop.visitor.emotes && coop.visitor.emotes[p.sid]) return null;
+    if (p.hold) return 'move';
+    if (act === 'baut') return 'building';
+    if (act === 'schaut') return 'camera';
+    return null;
+}
+
+// Session cluster, top right (UX_OVERHAUL.md §6): players with avatar, name, crown and a state
+// icon; what they do is in the tooltip (TP-13), not cut off in the line. The competition clock
+// below. The same place in building, visiting and riding; on a ride only the avatars, because
+// the game's ride camera panel shares the corner.
 class PlayerBar extends StateComponent {
     render(props, state) {
         const coop = state.coop || {};
@@ -391,21 +423,24 @@ class PlayerBar extends StateComponent {
         const compact = !!(coop.visitor && coop.visitor.riding);
         const comp = coop.team && coop.team.competition;
         const s = comp ? (comp.left || 0) : 0;
+        // stretch: all pills as wide as the widest, so a tooltip left of one is not under another.
         return h('div', { style: { position: 'absolute', top: '4.2rem', right: '1rem', display: 'flex', flexDirection: 'column',
-            alignItems: 'flex-end' } },
+            alignItems: 'stretch' } },
             list(coop.players).map((p) => {
                 const following = coop.following === p.sid;
-                const activity = following ? 'du folgst – Klick beendet'
-                    : ((coop.visitor && coop.visitor.emotes && coop.visitor.emotes[p.sid]) || playerActivity(coop, p));
-                return h('div', { key: p.sid, onClick: p.me ? undefined : () => request('follow', p.sid),
-                    style: { display: 'flex', alignItems: 'center', margin: '0.15rem 0', pointerEvents: p.me ? 'none' : 'auto',
+                const activity = (coop.visitor && coop.visitor.emotes && coop.visitor.emotes[p.sid]) || playerActivity(coop, p);
+                const icon = stateIcon(coop, p, following);
+                // No colon: literal() turns it into a dash.
+                const tip = p.name + ' – ' + activity + (p.me ? '' : following ? ' · Klicken beendet das Folgen' : ' · Klicken zum Folgen');
+                return h(HoverTip, { key: p.sid, className: 'pc2coopTip', tip, anchor: TIP_LEFT, onClick: p.me ? undefined : () => request('follow', p.sid),
+                    style: { display: 'flex', alignItems: 'center', margin: '0.15rem 0', pointerEvents: 'auto',
                     padding: compact ? '0.2rem' : '0.2rem 0.6rem 0.2rem 0.2rem', borderRadius: '1rem', backgroundColor: HUD_BG(0.72),
                     borderWidth: '0.1rem', borderStyle: 'solid', borderColor: following ? C('highlight') : 'transparent' } },
                     h(Avatar, { player: p, size: 28, pic: avatars[p.sid] }),
                     !compact && h('div', { style: { color: C('whiteColor'), fontSize: '0.9rem', marginLeft: '0.45rem' } }, p.name + (p.me ? ' (du)' : '')),
                     !compact && p.host && glyph('img/icons/crown.svg', '0.9rem', true, { marginLeft: '0.35rem' }),
-                    !compact && h('div', { style: { color: following ? C('highlight') : C('accentButtonLight'), fontSize: '0.9rem', marginLeft: '0.45rem',
-                        maxWidth: '12rem', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' } }, activity));
+                    !compact && icon && glyph('img/icons/' + icon + '.svg', '0.9rem', true, { marginLeft: '0.4rem',
+                        opacity: following ? 1 : 0.75 }));
             }),
             comp && comp.phase === 'build' && !compact && h('div', { style: hudPill({ marginTop: '0.3rem' }) },
                 glyph('img/icons/clock.svg', '0.9rem', true, { marginRight: '0.4rem' }),
@@ -1665,7 +1700,12 @@ export function start(logger) {
         listeners.add((s) => {
             if (!s.qaLook || s.qaLook === qaLooks) return;
             qaLooks = s.qaLook;
-            const [accent, theme, scale, tab] = String(s.qaLook).split('|').map(Number);
+            const [accent, theme, scale, tab, tip] = String(s.qaLook).split('|').map(Number);
+            // tip 1-8: that player in the cluster, 9: the first tab of the window - as if the mouse were on it.
+            const hovered = tip >= 1 && tip <= 8 ? document.querySelectorAll('.pc2coopTip')[tip - 1]
+                : tip === 9 ? document.querySelector('.pc2coopPanel .Tab_root') : null;
+            if (hovered) hovered.dispatchEvent(new MouseEvent('mouseenter', { bubbles: false }));
+            if (tip > 0) report('qa hover ' + (hovered ? 'found' : 'missing'));
             // tab 0: our build bar tab hidden (does the game's bar fit without it?)
             document.querySelectorAll('.pc2coopTabBar').forEach((el) => { el.style.display = tab === 0 ? 'none' : ''; });
             Promise.all([import('/js/config/ThemeConfig.js'), import('/js/common/core/UIScale.js')]).then(([themes, ui]) => {

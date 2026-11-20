@@ -424,6 +424,12 @@ Spiel-`Tab` und `CloseButton`. Abweichung von TP-23: „Besuchen“ steht im Fu�
 in der Bauleiste (dort verdeckte ein zweiter Reiter bei UI-Skalierung 1.0 die Icons des Spiels).
 Nicht geprüft: Bauen mit echter Maus bei offenem Fenster, Tooltips der Reiter (Maus nötig).
 
+**P2 Schritt 2 (2026-11-20):** Spielerleiste (TP-13): Zustands-Icon des Spiels statt Text, die
+Tätigkeit und „Klicken zum Folgen“ im Tooltip (`HoverTip`). Namensschilder (TP-14): nur der Name
+in der Spielerfarbe. Abweichung von TP-14: Die Tätigkeit erscheint nicht beim Darüberfahren am
+Schild selbst; die Schilder der Coaster-Labels haben keine Maus-Eingabe. Sie steht im Tooltip
+der Spielerleiste und im Fenster. Tooltips per QA-Hover fotografiert (`_QaLook`, 5. Feld).
+
 Prototypen zuerst (vor P2/P3/P4): `Panel` in unserer Ebene, Seite im Hauptmenü-Rahmen,
 Bauleiste im Besuch aus. Ergebnis entscheidet, ob Ziel oder Rückfall gebaut wird.
 

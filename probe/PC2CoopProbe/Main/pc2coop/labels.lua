@@ -1,6 +1,7 @@
 -- Original MIT code. Floating name tags for other players, drawn by the game's own
 -- in-world label system (the "coaster labels" billboard widget of UIBillboardWidgetsManager).
--- Each tag floats above the spot the other player looks at and reads "<name> - <activity>".
+-- Each tag floats above the spot the other player looks at. A player's tag is only the name in
+-- the player's colour (TP-14); board entries, park events and pings add a word ("<name> - <what>").
 local global = _G
 local Labels = {}
 
@@ -46,7 +47,18 @@ end
 local pinned
 function Labels.Pin(tags) pinned = tags end
 
--- tags: list of {key, name, activity, x, y, z}; dt: seconds since the last call
+-- The text of one tag. A colour travels as "#rrggbb " after the bullet; the label view
+-- (DebugToolImports.js) takes it off and paints the text with it.
+function Labels._Text(tag)
+    local activity = ACTIVITY[tag.activity or "-"] or tag.activity or ""
+    local color = global.string.match(global.tostring(tag.color or ""), "^%x%x%x%x%x%x$")
+    -- The leading bullet marks the tag as the mod's (quieter look, see DebugToolImports.js).
+    local text = "\226\128\162" .. (color and ("#" .. color .. " ") or " ") .. global.tostring(tag.name or "")
+        .. (activity ~= "" and (" - " .. activity) or "")
+    return (global.string.gsub(text, "[|%[%]]", ""))
+end
+
+-- tags: list of {key, name, activity, color, x, y, z}; dt: seconds since the last call
 function Labels.Show(tags, dt)
     if failed then return end
     if pinned then
@@ -79,10 +91,7 @@ function Labels.Show(tags, dt)
         for i, tag in global.ipairs(tags) do
             -- The label UI translates text; literal text uses the game's STRING_LITERAL form.
             -- No value: the label then shows only this text (CoasterLabelItem.js).
-            local activity = ACTIVITY[tag.activity or "-"] or tag.activity or ""
-            -- The leading bullet marks the tag as the mod's (quieter look, see DebugToolImports.js).
-            local text = "\226\128\162 " .. tag.name .. (activity ~= "" and (" - " .. activity) or "")
-            text = global.string.gsub(text, "[|%[%]]", "")
+            local text = Labels._Text(tag)
             if shown[i] ~= text then
                 manager:SetBillboardWidgetUIInfo(widgetType(), i, {sLabel = "[STRING_LITERAL:Value=|" .. text .. "|]",
                     sValueType = "Distance", nOpacity = 0.85})

@@ -71,9 +71,9 @@ Manager.Advance=function(self,delta)
                 if p.sid~=view.me and (p.fx or p.x) and not joining then
                     local hold=p.hold
                     local at=hold and hold.items and hold.items[1]
-                    -- "AQ_Rock_04" reads better as "Rock 04"
-                    local what=hold and global.string.gsub(global.string.gsub(hold.label,"^%w+_",""),"_"," ")
-                    tags[#tags+1]={key=p.sid,name=p.name,activity=hold and ("h\195\164lt " .. what) or act,
+                    -- Only the name in the player's colour (TP-14); what they do is in the
+                    -- player bar's tooltip and in the window.
+                    tags[#tags+1]={key=p.sid,name=p.name,activity="",color=p.color,
                         x=at and at.x or p.fx or p.x,y=(at and at.y or p.fy or p.y)+3,z=at and at.z or p.fz or p.z}
                     remote[#remote+1]=p
                     colour=colour==nil and p.color or "ffa94d"
@@ -92,7 +92,7 @@ Manager.Advance=function(self,delta)
                 local who=names[ping.sid]
                 if who then
                     pings[#pings+1]=ping
-                    tags[#tags+1]={key="ping:" .. ping.sid,name=who.name,activity="hier!",x=ping.x,y=ping.y+11,z=ping.z}
+                    tags[#tags+1]={key="ping:" .. ping.sid,name=who.name,activity="hier!",color=who.color,x=ping.x,y=ping.y+11,z=ping.z}
                     colour=colour or who.color
                 end
             end
@@ -154,7 +154,7 @@ Manager.Advance=function(self,delta)
                 local entity=self.sync.GidToEntity(c.gid)
                 if entity then
                     local at=global.api.transform.CalculateWorldPosition(entity)
-                    tags[#tags+1]={key="conflict:" .. c.gid,name=c.text,activity="",x=at:GetX(),y=at:GetY()+4,z=at:GetZ()}
+                    tags[#tags+1]={key="conflict:" .. c.gid,name=c.text,activity="",color=c.color,x=at:GetX(),y=at:GetY()+4,z=at:GetZ()}
                     if c.age<0.4 then
                         locked[entity]=global.math.floor(c.age*20)%2==0 or nil
                         colour=c.color or "ff922b"

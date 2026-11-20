@@ -5,6 +5,10 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
 
 ## Unveröffentlicht
 
+- Namensschilder im Park zeigen nur noch den Namen, in der Farbe des Mitspielers. Was er gerade
+  tut, siehst du, wenn du mit der Maus auf seinen Namen oben rechts fährst.
+- Die Spieler oben rechts zeigen statt abgeschnittenem Text ein Icon (baut, schaut zu, hält
+  etwas, lädt). Der Tooltip sagt, was er tut, und dass ein Klick ihm folgt.
 - Das Multiplayer-Fenster im Park ist jetzt ein Fenster wie die des Spiels am linken Rand. Du
   kannst weiterbauen, während es offen ist. Vier Reiter: Spieler, Planen, Verlauf, Einstellungen.
   Freunde lädst du über „+ Einladen“ ein. Der Chat rückt bei offenem Fenster daneben.

@@ -57,11 +57,13 @@ gleiches Steam-Konto; geprüft 2026-11-20):
 - Die Testkopie schreibt dorthin auch `Saves\player` und Autosaves des Testparks (`*.prkauto2`).
   Der Eigner ist damit einverstanden (2026-11-20); löschen oder ändern dürfen wir dort nichts.
 - In der Testkopie deshalb **keine Einstellungen ändern**. Für Bilder in anderer Akzentfarbe,
-  Farbenblind-Modus oder UI-Skalierung: `require("pc2coop.ui")._QaLook("akzent|thema|skalierung|reiter")`
+  Farbenblind-Modus oder UI-Skalierung: `require("pc2coop.ui")._QaLook("akzent|thema|skalierung|reiter|hover")`
   in einem QA-Skript. Akzent 0–8 und Thema 0–3 (0 Standard, 1 Protanopie, 2 Deuteranopie,
   3 Tritanopie) wie `ThemeConfig.js`, Skalierung 0.7–1.0 wie im Optionsmenü, Reiter 0 blendet
-  unseren Bauleisten-Reiter aus, -1 lässt einen Wert. Das ändert nur die laufende HUD-Ansicht
-  und speichert nichts.
+  unseren Bauleisten-Reiter aus, -1 lässt einen Wert. Hover 1–8 zeigt den Tooltip dieses
+  Spielers oben rechts, 9 den des ersten Fenster-Reiters (wirkt nur bei unseren Kästen, nicht
+  bei Spiel-Komponenten ohne echte Maus). Das ändert nur die laufende HUD-Ansicht und speichert
+  nichts.
 - 1440p und 4K gehen hier nicht (Bildschirm 1080p, randlos). Die Mod-Oberfläche ist ganz in
   `rem` gebaut (außer Mauskoordinaten) und skaliert wie das Spiel mit `min(B/1920, H/1080)`.
 

@@ -24,7 +24,8 @@ Wer ein Feld hinzufügt, trägt es hier ein.
 | Komponente | Zeigt | Liest | FEAT |
 |---|---|---|---|
 | `CoopLayer` | Wurzel, stapelt alles | – | FEAT-110 |
-| `PlayerBar` | Sitzungs-Cluster oben rechts: Spieler, Wettbewerbs-Uhr | players, following, visitor, team.competition | FEAT-090, FEAT-145 |
+| `PlayerBar` | Sitzungs-Cluster oben rechts: Spieler mit Zustands-Icon (`stateIcon`), Tätigkeit im Tooltip, Wettbewerbs-Uhr | players, following, visitor, team.competition | FEAT-090, FEAT-145 |
+| `HoverTip` | Kasten mit Spiel-Tooltip beim Darüberfahren (`TooltipContainer`, wie `Button` mit `tooltipOnHover`) | tip, onClick, style | FEAT-090 |
 | `VisitorBar` | Besucher-Leiste, Kaufliste, Fahrgeschäfte-Liste, Bewertung | visitor, role | FEAT-160–169 |
 | `EmoteWheel` | Emote-Rad | visitor.wheel | FEAT-168 |
 | `RequestCard` (`pendingRequests`) | Anfrage-Karte: Beitritt, Abstimmung, Testfahrt, Bewerten | requests, team.vote, team.invitation, team.competition | FEAT-027, FEAT-141, FEAT-138, FEAT-147 |
@@ -72,7 +73,7 @@ Wer ein Feld hinzufügt, trägt es hier ein.
 | `patchBuildBar` | `/js/project/modules/browser/components/Browser.js`, `BrowserTab.js` | Reiter „Multiplayer“ neben der Bauleiste | ADR-007 |
 | `patchPauseMenu` / `patchMenuClass` | `/js/project/modules/gameMenu/components/GameMenuModule.js` | Eintrag im Pausemenü | – |
 | `patchStartTabClass` | `/js/project/modules/frontEnd/views/mainMenu/menuTabs/FrontEndStartMenuTab.js`, `FrontEndTileButton.js` | Kachel im Hauptmenü | – |
-| `DebugToolImports.js` | ersetzt `/js/common/debug/DebugToolImports.js` | startet die Ebene, Stil der Namensschilder (`•`-Präfix) | ADR-001 |
+| `DebugToolImports.js` | ersetzt `/js/common/debug/DebugToolImports.js` | startet die Ebene, Stil der Namensschilder (`•`-Präfix, `•#rrggbb` färbt den Namen) | ADR-001 |
 
 Jeder Eingriff ist in `try/catch`, markiert die Klasse mit `__pc2coop` und schreibt bei
 Fehlern ins Log (`PC2Coop_Log`). Nach Spiel-Updates zuerst diese Stellen prüfen.
