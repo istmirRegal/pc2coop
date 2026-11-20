@@ -3,6 +3,26 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-20 – UX-Overhaul P0: Abnahme-Bilder
+
+- Fund: Einstellungen und Spielstände der Testkopie sind die des Eigners (Windows-Profil, Steam
+  Cloud). Nicht umgestellt; stattdessen `Ui._QaLook` (ruft `ThemeConfig.setAccentIndex`,
+  `setThemeIndex`, `UIScale.setUserScale` des Spiels nur in der HUD-Ansicht). Danach geprüft:
+  die Config-Dateien des Eigners sind unverändert (zuletzt 18.11.).
+- Fund: Die Testkopie schreibt `Saves\player` und Autosaves (`*.prkauto2`) in den Spielstand-
+  Ordner des Eigners (heute 12:34 und 13:55). Nicht angefasst; Frage an den Eigner.
+- Bilder: Akzent Standard, Orange, Lila; Protanopie, Tritanopie; UI-Skalierung 0.7 und 1.0,
+  je HUD und Fenster. Behoben:
+  - `refreshPalette` lief nur alle 10 Abfragen (3 s) und löste kein Neuzeichnen aus. Direkt nach
+    dem Klassenwechsel liefert `getComputedStyle` noch die alten Werte. Jetzt alle 3 Abfragen,
+    Neuzeichnen bei Änderung.
+  - Meldungsstreifen: feste Lua-Farben → `noticeColor`.
+  - Krone im Fenster: weißes SVG auf weißer Karte → `filter` mit `--accentText-filter` wie im Spiel.
+  - Spieler-Karte: „Hinbringen“/„Folgen“ in eigener Zeile (liefen aus der Spalte).
+- 25 `px`-Linien und -Abstände → `rem`. 1440p/4K nicht fotografierbar (Bildschirm 1080p).
+- Bauleiste bei UI-Skalierung 1.0: „Ebene Fahrgeschäfte“ bricht um, auch ohne unseren Reiter.
+- Tests: `test_ui_lua.py` (1 neu).
+
 ## 2026-11-20 – UX-Overhaul P0, Schritt 3: Akzentfarbe, Bausteine, Lobby-Texte, F8
 
 - JS: `HUD_BG` liest `--accentPanelBackground-triplet`, neu `ACCENT_A` für

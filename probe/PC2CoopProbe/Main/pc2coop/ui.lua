@@ -223,6 +223,11 @@ end
 -- QA (dev flag scripts only): the UI presses the build bar tab like a mouse would.
 local qaClick = 0
 function Ui._QaClickTab() qaClick = qaClick + 1; lastState = nil end
+-- QA (dev flag scripts only): accent colour, colour-blind mode and UI scale of the HUD view for
+-- screenshots, "accent|theme|scale|tab" (-1 keeps one; tab 0 hides our build bar tab). Only that
+-- view changes; nothing is saved.
+local qaLook, qaLooks = false, 0
+function Ui._QaLook(text) qaLooks = qaLooks + 1; qaLook = global.tostring(text) .. "|" .. qaLooks; lastState = nil end
 
 local function buildState()
     local view = session.View()
@@ -243,7 +248,7 @@ local function buildState()
         franchise = ok and info ~= nil
     end
     return {
-        available = session.Available() == true, role = view.role or false, me = view.me, open = open, qaClickTab = qaClick,
+        available = session.Available() == true, role = view.role or false, me = view.me, open = open, qaClickTab = qaClick, qaLook = qaLook,
         canHost = canHost, franchise = franchise, players = players, friends = friends,
         join = session.JoinState and session.JoinState() or false,
         desync = session.Desync and session.Desync() or false,

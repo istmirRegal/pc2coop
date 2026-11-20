@@ -28,8 +28,18 @@ Icons des Spiels (`docs/ui-ux/NATIVE_UI.md`) und erfindet nur, was das Spiel nic
 - Lua-Meldungen sagen „Sitzung“ statt „Lobby“.
 - F8-Dialog nur mit Dev-Flag (TP-31); „Für dich“ im Reiter Sitzung (Anfang TP-32).
 
-**Noch nicht geprüft:** 1440p, 4K, UI-Skalierung klein/groß, Farbenblind-Modus, andere
-Akzentfarbe (die Einstellungen der Testkopie wurden nicht umgestellt).
+**Abnahme-Bilder (P0, 2026-11-20, Testkopie 1080p, umgestellt mit `Ui._QaLook`, nichts gespeichert):**
+- Akzent Standard, Orange, Lila; Protanopie, Tritanopie; UI-Skalierung 0.7 und 1.0: Fenster und
+  HUD folgen. Dabei behoben:
+  - die Mod las die Farben nur alle 3 s und zeichnete danach nicht neu (alte Farben bis zur
+    nächsten Zustandsänderung)
+  - Streifen der Meldungskarten mit festen Lua-Farben (`noticeColor`)
+  - Krone im Fenster unsichtbar (weißes Icon auf weißer Karte)
+  - „Hinbringen“/„Folgen“ liefen aus der Spieler-Karte
+- Letzte `px`-Linien in `rem` umgestellt; übrig sind nur 0-Werte und Mauskoordinaten.
+- 1440p und 4K nicht fotografierbar (Bildschirm 1080p); durch `rem` proportional wie das Spiel.
+- Bei UI-Skalierung 1.0 bricht im Spiel „Ebene Fahrgeschäfte“ in der Bauleiste um, auch ohne
+  unseren Reiter (geprüft mit ausgeblendetem Reiter): Verhalten des Spiels.
 
 Der Ist-Teil B beschreibt bei Farben und Maßen den Stand **vor** diesem Schritt.
 

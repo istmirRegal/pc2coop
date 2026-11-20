@@ -409,8 +409,9 @@ NAVIGATION, Registry) und Screenshots aus der Testkopie.
 **Stand (2026-11-20):** P0 Schritte 1 und 2 erledigt: Farben, Einheiten, Schriftskala, Texte,
 Lua-Umlaute (`docs/ui-ux/DESIGN_SYSTEM.md`). P0 Schritt 3 erledigt: HUD-Grund und Linien in
 Akzentfarbe, Bausteine (`hudPill`, `hudCard`, `keyHint`), „Sitzung“ in den Lua-Meldungen, F8 nur
-mit Dev-Flag, „Für dich“ im Reiter Sitzung. Offen in P0: Abnahme-Bilder bei 1440p/4K,
-UI-Skalierung, Farbenblind-Modus, anderer Akzentfarbe. P1 Schritt 1 erledigt: Sitzungs-Cluster, Anfrage-Karte,
+mit Dev-Flag, „Für dich“ im Reiter Sitzung. P0-Abnahme: Akzentfarben, Farbenblind-Modi und
+UI-Skalierung fotografiert, vier Fehler dabei behoben (`DESIGN_SYSTEM.md`); 1440p/4K hier nicht
+fotografierbar. P1 Schritt 1 erledigt: Sitzungs-Cluster, Anfrage-Karte,
 Verbindungs-Pille. P1 Schritt 2 erledigt: Markieren-Radialmenü und Tastenhinweis. P1 Schritt 3
 erledigt: Chat-Bereich unten links, Enter öffnet die Eingabe (DLL `key:chat`). P1 Schritt 4
 erledigt: Konflikt-Meldung am Objekt (TP-16, FEAT-082). Damit ist P1 gebaut; die Abnahme

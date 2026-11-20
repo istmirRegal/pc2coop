@@ -44,7 +44,8 @@ Wer ein Feld hinzufügt, trägt es hier ein.
 
 | Funktion | Zweck |
 |---|---|
-| `C(name)` | Farbe aus den CSS-Variablen des Spiels (`--name`), gelesen in `refreshPalette()` alle 10 Abfragen; Rückfall `PALETTE_DEFAULT` (ADR-020) |
+| `C(name)` | Farbe aus den CSS-Variablen des Spiels (`--name`), gelesen in `refreshPalette()` alle 3 Abfragen (etwa 1 s); ändert sich eine, zeichnet die Ebene neu. Rückfall `PALETTE_DEFAULT` (ADR-020) |
+| `noticeColor(hex)` | Streifen einer Meldungskarte: Lua-Farben mit Bedeutung (Warnung, Warten, Hinweis) werden zu Spielfarben (`warning`, `highlight`, `accentLight`) |
 | `rem(px)` | Größe in rem (`px / 20`, Entwurf bei 1080p) |
 | `glyph(src, size, white, extra)` | Spiel-Icon aus `/img/icons/` mit fester Größe; das `Icon` des Spiels ignoriert `style` (Größe 0) |
 | `remPx()` | aktuelle Pixel pro rem (für Mauskoordinaten) |

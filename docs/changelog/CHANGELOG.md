@@ -5,6 +5,10 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
 
 ## Unveröffentlicht
 
+- Änderst du Akzentfarbe oder Farbenblind-Modus, folgt die Mod-Oberfläche nach etwa einer
+  Sekunde, auch die farbigen Streifen der Meldungen.
+- Die Krone des Hosts ist in der Spielerliste des Fensters wieder zu sehen.
+- „Hinbringen“ und „Folgen“ stehen in der Spieler-Karte in einer eigenen Zeile und passen wieder.
 - F8 öffnet kein Entwickler-Menü mehr. Sitzung starten, einladen und verlassen geht im
   Multiplayer-Fenster (F7).
 - Neu im Multiplayer-Fenster, Reiter „Sitzung“: „Für dich“ mit dem Schalter „Mitspieler in der

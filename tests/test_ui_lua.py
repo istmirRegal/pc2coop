@@ -103,6 +103,11 @@ class UiTests(unittest.TestCase):
         self.ui._Request('72|labels|1')
         self.assertTrue(self.lua.eval('mymenu.labelsEnabled'))
 
+    def test_qa_look_is_off_unless_a_dev_script_sets_it(self):
+        self.assertFalse(self.state()['qaLook'])
+        self.ui._QaLook('4|-1|0.7')
+        self.assertEqual(self.state()['qaLook'], '4|-1|0.7|1')
+
     def open_close_open(self):
         self.lua.execute('ui.SetOpen(true)')
         self.assertTrue(self.state()['open'])

@@ -20,7 +20,9 @@ Code: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js`,
   `BrowserTab` (onToggle → `open`), absolut positioniert rechts, **außerhalb** der TabBar
   des Spiels (ADR-007). `report()` schreibt verzögert ins Log („build bar tab shown“).
 - **Besonderheiten:** In der TabBar gehört Reiter i zu Abschnitt i – ein zusätzlicher Reiter
-  darin sperrte die Oberfläche (Fehler in 1.12.1, behoben 1.12.2). QA: `Ui._QaClickTab`.
+  darin sperrte die Oberfläche (Fehler in 1.12.1, behoben 1.12.2). QA: `Ui._QaClickTab`;
+  `Ui._QaLook` stellt für Bilder Akzentfarbe, Farbenblind-Modus und UI-Skalierung der HUD-Ansicht
+  um (nur Dev-Skripte, nichts gespeichert, `docs/development/TESTING.md`).
 
 ### FEAT-112 – „Multiplayer“ im Pausemenü
 - **Status:** Implemented · **Seit:** 1.4.1
