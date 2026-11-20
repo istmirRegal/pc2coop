@@ -417,6 +417,13 @@ erledigt: Chat-Bereich unten links, Enter öffnet die Eingabe (DLL `key:chat`). 
 erledigt: Konflikt-Meldung am Objekt (TP-16, FEAT-082). Damit ist P1 gebaut; die Abnahme
 mit echter Tastatur (Enter, Esc) steht noch aus.
 
+**P2 Schritt 1 (2026-11-20):** Fenster im Park links im Look des Spiel-Panels, nicht modal, Reiter
+Spieler/Planen/Verlauf/Einstellungen, Besuchen-Reiter weg. Prototyp-Ergebnis: Die Komponente `Panel`
+übernimmt Fokus und Eingabe-Kontexte (Tab, Esc); gebaut wird deshalb aus ihren CSS-Klassen mit
+Spiel-`Tab` und `CloseButton`. Abweichung von TP-23: „Besuchen“ steht im Fuß des Fensters, nicht
+in der Bauleiste (dort verdeckte ein zweiter Reiter bei UI-Skalierung 1.0 die Icons des Spiels).
+Nicht geprüft: Bauen mit echter Maus bei offenem Fenster, Tooltips der Reiter (Maus nötig).
+
 Prototypen zuerst (vor P2/P3/P4): `Panel` in unserer Ebene, Seite im Hauptmenü-Rahmen,
 Bauleiste im Besuch aus. Ergebnis entscheidet, ob Ziel oder Rückfall gebaut wird.
 

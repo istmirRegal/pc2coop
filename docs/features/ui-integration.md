@@ -5,13 +5,19 @@ Fenster und Zustände steht in `docs/ui-ux/UI_INVENTORY.md`.
 Code: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js`,
 `probe/PC2CoopProbe/Main/pc2coop/ui.lua`, `probe/PC2CoopProbe/Main/pc2coop/menu.lua`.
 
-### FEAT-110 – Multiplayer-Fenster
-- **Status:** Implemented · **Seit:** 1.8.0 (fünf Reiter seit 1.12.0)
-- **Funktion:** Im Hauptmenü die Lobby (drei Spalten); im Park mit Sitzung fünf Reiter:
-  Team, Besuchen, Planen, Verlauf, Sitzung.
-- **Technik:** Klasse `Lobby` in `CoopLayer.js` (`PANEL_TABS`); `ui.lua` `TABS`,
-  UI-Aktionen `open`, `close`, `paneltab`; `Ui.SetOpen`, `Ui.Toggle`.
-- **Besonderheiten:** Feste Größen (Gameface schrumpft Flexboxen nicht).
+### FEAT-110 – Multiplayer-Fenster (Park: links, vier Reiter; Hauptmenü: Lobby)
+- **Status:** Implemented · **Seit:** 1.8.0 (Reiter seit 1.12.0, Fenster links seit UX-Overhaul P2)
+- **Funktion:** Im Park ein Fenster im Look der Spiel-Fenster am linken Rand, nicht modal (Bauen
+  geht weiter), mit vier Symbol-Reitern: Spieler, Planen, Verlauf, Einstellungen. „Besuchen“ ist
+  ein Knopf im Fuß. Im Hauptmenü die Lobby in drei Spalten (bis P3).
+- **Technik:** Klasse `Lobby` in `CoopLayer.js`: `renderParkPanel` (Park, `PARK_TABS`) baut aus den
+  CSS-Klassen von `Panel` und `TabBar` des Spiels, dem Spiel-`Tab` und `CloseButton`; die
+  Komponente `Panel` selbst ist nicht benutzt, weil sie Fokus und Eingabe-Kontexte übernimmt.
+  `renderBody` (Hauptmenü). `ui.lua` `TABS`, UI-Aktionen `open`, `close`, `paneltab`;
+  `Ui.SetOpen`, `Ui.Toggle`.
+- **Besonderheiten:** Gameface bricht Knopfreihen in schmalen Spalten unzuverlässig um; lange
+  Knöpfe stehen deshalb untereinander (`buttons(items, wide)`, Schnellwahl). Breite 23.5 rem wie
+  die Info-Fenster des Spiels; Abstand oben 7.6 rem unter dessen runden Knöpfen.
 
 ### FEAT-111 – Reiter „Multiplayer“ in der Bauleiste
 - **Status:** Implemented · **Seit:** 1.12.0 (beschriftet 1.12.1, außerhalb der TabBar 1.12.2)

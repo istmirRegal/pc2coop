@@ -32,7 +32,7 @@ Wer ein Feld hinzufügt, trägt es hier ein.
 | `ContextMenu` | Markieren-Radialmenü (`MARK_ITEMS`) | team.context | FEAT-136 |
 | `MarkHint` | Tastenhinweise „Enter Chat“, „Mittelklick Markieren“ (`keyCap`) | role, context, visitor, team.context | FEAT-095, FEAT-116 |
 | `ChatArea` | Chat, Ereignisse und Meldungen unten links, Chat-Eingabe per Enter | toasts (kind), chatKey, role, context, open | FEAT-116 |
-| `Lobby` | Multiplayer-Fenster mit Reitern (`renderBody`, `renderVisit`, `renderPlan`, `renderHistory`, `renderSession`, `renderPlayers`, `renderChooser`, `renderPlace`, `renderChat`, `renderContent`, `renderFriends`) | fast alles | FEAT-110 |
+| `Lobby` | Multiplayer-Fenster. Park: `renderParkPanel` (links, Klassen des Spiel-Panels) mit `renderPanelPlayers`, `renderPanelFriends`, `renderPlan`, `renderHistory`, `renderSession`, `renderContentSetting`, `renderCompetition`. Hauptmenü: `renderBody` mit `renderPlayers`, `renderChooser`, `renderPlace`, `renderChat`, `renderContent`, `renderFriends` | fast alles | FEAT-110 |
 | `MiniLobby` | Lobby-Karte im Hauptmenü | role, players, open | FEAT-034 |
 | `JoinProgress` | Beitrittsfortschritt | join | FEAT-031 |
 | `Rejoin` | Wiederbeitritts-Dialog | join | FEAT-039 |
@@ -58,7 +58,9 @@ Wer ein Feld hinzufügt, trägt es hier ein.
 | `shown(text)` | Lokalisierungs-Schlüssel übersetzen, sonst Text |
 | `section(title, extra)` | Abschnittstitel |
 | `row(children, key)` | Zeile mit Trennlinie |
-| `buttons(items)` | Knopfreihe (`{label, onSelect, disabled, inputName}`) |
+| `buttons(items, wide)` | Knopfreihe (`{label, onSelect, disabled, inputName}`); `wide`: über die ganze Zeile (schmales Fenster) |
+| `iconButton(icon, tip, onSelect, toggled)` | runder Icon-Knopf mit Tooltip wie in den Info-Fenstern des Spiels |
+| `muted(text, extra)` | Nebentext (0.9 rem, `accentButtonDesaturatedDark`) |
 | `box(height, children)` | feste Höhe mit Scrollen |
 | `statusOf`, `playerActivity`, `activityText`, `contentLine`, `joinText` | Texte aus dem Zustand |
 | `openScreen(mode)` | Spielbildschirm im Hauptmenü öffnen (Park laden, Franchise, Sandbox) |

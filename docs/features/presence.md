@@ -18,7 +18,7 @@ Was ein Spieler von den anderen sieht. Code: `probe/PC2CoopProbe/Main/pc2coop/vi
   (oder über seinem gehaltenen Objekt). Auch Urheber-Schild (FEAT-098) und Park-Meldungen.
 - **Technik:** `Labels.Init`, `Labels.Show`, `Labels.Pin`, `Labels.Clear` über das
   Billboard-Widget des Spiels (UIBillboardWidgetsManager, „coaster labels“).
-- **Besonderheiten:** Abschaltbar im Multiplayer-Fenster, Reiter „Sitzung“, Abschnitt „Für dich“:
+- **Besonderheiten:** Abschaltbar im Multiplayer-Fenster, Reiter „Einstellungen“, Abschnitt „Für dich“:
   „Mitspieler in der Welt zeigen“ (UI-Aktion `labels`, `Menu.labelsEnabled`, nur auf diesem PC,
   nicht gespeichert). Aus blendet Schilder, Bodenmarke, Sichtkegel, Geist und Sperr-Färbung aus;
   die Meldung am Objekt (FEAT-082) bleibt. Vorher nur im Entwickler-Menü (F8).

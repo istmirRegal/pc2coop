@@ -14,6 +14,13 @@ import * as preact from '/js/common/lib/preact.js';
 import { Button } from '/js/project/components/Button.js';
 import { Dialog } from '/js/project/components/Dialog.js';
 import { InputField } from '/js/project/components/InputField.js';
+import { Tab } from '/js/common/components/Tab.js';
+import { loadCSS } from '/js/common/util/CSSUtil.js';
+import { CloseButton } from '/js/project/components/CloseButton.js';
+
+// The window in a park uses the classes of the game's Panel and TabBar (TP-11). Their style sheets
+// come with those components; the components themselves are not used (focus handling).
+try { loadCSS('project/components/panel/Panel'); loadCSS('project/components/TabBar'); } catch (error) { /* look only */ }
 
 const CONTEXT = ['pc2coop'];
 let requestCounter = 0;
@@ -754,7 +761,10 @@ class ChatArea extends StateComponent {
         const { notices, typing } = state;
         const lines = typing ? this._history.slice(-12) : state.lines;
         if (!typing && notices.length === 0 && lines.length === 0) return null;
-        return h('div', { style: { position: 'absolute', bottom: '6rem', left: '1.2rem', width: '26rem', display: 'flex', flexDirection: 'column',
+        const coop = state.coop || {};
+        // Right of the multiplayer window while it is open on the left edge (TP-11).
+        const left = coop.open && coop.context === 'park' ? rem((PANEL_WIDTH + 1.2) * 20) : '1.2rem';
+        return h('div', { style: { position: 'absolute', bottom: '6rem', left, width: '26rem', display: 'flex', flexDirection: 'column',
             alignItems: 'flex-start' } },
             notices.map((t) => h('div', { key: 'n' + t.id, style: hudCard({ margin: '0.2rem 0', padding: '0.5rem 0.8rem', maxWidth: '26rem',
                 borderLeftWidth: '0.25rem', borderLeftStyle: 'solid', borderLeftColor: noticeColor(t.color) }, 0.82) },
@@ -801,8 +811,11 @@ const section = (title, extra) => h('div', { style: { display: 'flex', alignItem
 const row = (children, key) => h('div', { key, style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     flexWrap: 'wrap', padding: '0.25rem 0', borderBottom: '0.05rem solid ' + ACCENT_A(0.15) } }, children);
 
-const buttons = (items) => h('div', { style: { display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '100%' } },
-    items.filter(Boolean).map((b, i) => h('div', { key: 'b' + i, style: { margin: '0.1rem 0 0.1rem 0.3rem', maxWidth: '100%' } },
+// wide: the group takes the whole row (narrow window: Gameface gave it too little width, the labels broke).
+const buttons = (items, wide) => h('div', { style: { display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '100%',
+    width: wide ? '100%' : 'auto' } },
+    // flexShrink 0: in a narrow column a button moves to the next line instead of squeezing its text.
+    items.filter(Boolean).map((b, i) => h('div', { key: 'b' + i, style: { margin: '0.1rem 0 0.1rem 0.3rem', maxWidth: '100%', flexShrink: 0 } },
         h(Button, { label: literal(b.label), onSelect: b.onSelect, disabled: b.disabled, inputName: b.inputName, modifiers: b.modifiers }))));
 
 // The lobby: the same panel in the main menu and in a park. Three columns: players, where
@@ -811,7 +824,18 @@ const BIOMES = [['Temperate', 'Gemäßigt'], ['Mediterranean', 'Mediterran'], ['
 const box = (height, children, extra) => h('div', { style: Object.assign({ height: rem(height), overflowY: 'auto' }, extra || {}) }, children);
 
 // Tabs of the multiplayer window in a park (docs/KONZEPT.md).
-const PANEL_TABS = [['team', 'Team'], ['visit', 'Besuchen'], ['plan', 'Planen'], ['history', 'Verlauf'], ['session', 'Sitzung']];
+// Tabs of the window in a park (TP-11): key (as in ui.lua), tooltip, game icon. Visiting is a
+// button in the build bar (TP-23), not a tab.
+const PARK_TABS = [['team', 'Spieler', 'footerGuests'], ['plan', 'Planen', 'clipboard'], ['history', 'Verlauf', 'history'],
+    ['session', 'Einstellungen', 'cog']];
+const PANEL_WIDTH = 23.5;      // rem, like the game's info and tool panels
+const PANEL_CONTENT = 26;      // rem, scrolls inside
+const PANEL_TOP = 7.6;         // rem, below the game's round buttons top left (objectives, notifications)
+const muted = (text, extra) => h('div', { style: Object.assign({ color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' }, extra || {}) }, text);
+// Round icon button with tooltip, as in the game's info panels (LinkedObjectRow).
+const iconButton = (icon, tip, onSelect, toggled) => h('div', { style: { marginLeft: '0.3rem', flexShrink: 0 } },
+    h(Button, { icon: 'img/icons/' + icon + '.svg', modifiers: 'round centered mediumRound', tooltip: literal(tip), tooltipOnHover: true,
+        toggled: !!toggled, onSelect }));
 const BOARD_KINDS = [['task', 'Aufgabe'], ['area', 'Baugebiet'], ['proposal', 'Vorschlag'], ['comment', 'Kommentar'], ['meet', 'Treffpunkt']];
 const BOARD_WORD = { task: 'Aufgabe', area: 'Baugebiet', proposal: 'Vorschlag', comment: 'Kommentar', meet: 'Treffpunkt' };
 const RULES = [
@@ -825,6 +849,7 @@ class Lobby extends StateComponent {
     render(props, state) {
         const coop = state.coop || {};
         if (!coop.open) return null;
+        if (coop.context === 'park') return this.renderParkPanel(coop, state);
         const status = statusOf(coop);
         const host = hostOf(coop);
         const title = !coop.role ? 'Multiplayer'
@@ -861,74 +886,125 @@ class Lobby extends StateComponent {
     }
 
     // In a park with a session: five tabs; everywhere else the lobby as before.
+    // Main menu: the lobby in three columns (the park has its own panel, renderParkPanel).
     renderBody(coop, state, column) {
+        return h('div', { style: { height: '31.8rem' } },
+            h('div', { style: { display: 'flex', height: rem(636) } },
+                column(360, this.renderPlayers(coop)),
+                column(540, [this.renderPlace(coop, state), this.renderContent(coop)]),
+                column(420, [this.renderChat(coop, state), this.renderFriends(coop)], true)));
+    }
+
+    // The window in a park (TP-11): the game's panel look on the left edge, not modal - building
+    // goes on while it is open, and the game's info panels keep the right side.
+    renderParkPanel(coop, state) {
         const team = coop.team;
-        const inPark = coop.role && coop.context !== 'menu' && team;
-        const tab = inPark ? team.tab : 'team';
-        const bar = inPark && h('div', { style: { display: 'flex', height: '2.2rem', alignItems: 'center', padding: '0 0.9rem',
-            backgroundColor: C('area'), borderBottom: '0.05rem solid ' + ACCENT_A(0.2) } },
-            PANEL_TABS.map(([key, label]) => h('div', { key, onClick: () => request('paneltab', key),
-                style: { padding: '0.3rem 0.9rem', marginRight: '0.4rem', borderRadius: '0.8rem', fontSize: '1rem',
-                    backgroundColor: tab === key ? C('accent') : C('whiteColor'), color: tab === key ? C('whiteColor') : C('accentText'),
-                    border: '0.05rem solid ' + ACCENT_A(0.45) } }, label)));
-        const height = inPark ? 592 : 636;
+        const tab = team && PARK_TABS.some(([key]) => key === team.tab) ? team.tab : 'team';
+        const status = statusOf(coop);
+        const host = hostOf(coop);
+        const title = !coop.role ? 'Multiplayer' : coop.role === 'host' ? 'Deine Sitzung' : 'Sitzung von ' + (host ? host.name : 'Host');
         let body;
-        if (tab === 'visit') body = this.renderVisit(coop, height);
-        else if (tab === 'plan') body = this.renderPlan(coop, state, height);
-        else if (tab === 'history') body = this.renderHistory(coop, height);
-        else if (tab === 'session') body = this.renderSession(coop, height);
-        else body = h('div', { style: { display: 'flex', height: rem(height) } },
-            column(360, this.renderPlayers(coop)),
-            column(540, [this.renderPlace(coop, state), this.renderContent(coop)]),
-            column(420, [this.renderChat(coop, state), this.renderFriends(coop)], true));
-        return h('div', { style: { height: '31.8rem' } }, bar, body);
+        if (team && tab === 'plan') body = this.renderPlan(coop, state);
+        else if (team && tab === 'history') body = this.renderHistory(coop);
+        else if (team && tab === 'session') body = this.renderSession(coop);
+        else body = this.renderPanelPlayers(coop, state);
+        const footer = [];
+        // Visiting is an action (TP-23). In the build bar a second tab covered the game's own icons
+        // at UI scale 1.0, so it is here, on every tab.
+        if (!(coop.visitor && coop.visitor.active)) footer.push({ label: 'Besuchen', onSelect: () => request('visitor', '1') });
+        if (coop.role && coop.desync && coop.role === 'client') footer.push({ label: 'Neu synchronisieren', onSelect: () => request('resync') });
+        if (coop.role) footer.push({ label: coop.role === 'host' ? 'Beenden' : 'Verlassen', onSelect: () => request('leave') });
+        return h('div', { style: { position: 'absolute', left: 0, top: rem(PANEL_TOP * 20), width: rem(PANEL_WIDTH * 20), pointerEvents: 'none',
+            color: C('accentText'), fontSize: '1rem' } },
+            h('div', { className: 'Panel_root pc2coopPanel' },
+                h('div', { className: 'Panel_panel', style: { borderTopLeftRadius: 0, borderBottomLeftRadius: 0, overflow: 'hidden' } },
+                    h('div', { className: 'Panel_titleBar', style: { borderTopLeftRadius: 0 } },
+                        glyph('img/icons/collaborate.svg', '1.2rem', true, { marginRight: '0.4rem' }),
+                        h('div', { className: 'Panel_titleBarLabel', style: { flexGrow: 1, flexShrink: 1, minWidth: 0, color: C('whiteColor') } }, title),
+                        h(CloseButton, { rootClassName: 'Panel_titleBarCloseBtn', onSelect: () => request('close'), focusable: false, hideInputIcon: true })),
+                    team && h('div', { className: 'TabBar_root panel' },
+                        h('div', { className: 'TabBar_content panel' },
+                            PARK_TABS.map(([key, label, icon]) => h(Tab, { key, icon: 'img/icons/' + icon + '.svg', tooltip: literal(label),
+                                toggled: tab === key, onToggle: () => request('paneltab', key) })))),
+                    h('div', { className: 'Panel_content', style: { borderBottomLeftRadius: 0, borderBottomRightRadius: 0, height: rem(PANEL_CONTENT * 20),
+                        overflowY: 'auto', padding: '0.3rem 0.9rem 0.6rem' } }, body),
+                    h('div', { style: { display: 'flex', flexDirection: 'column', padding: '0.5rem 0.9rem', backgroundColor: C('area'),
+                        borderTopWidth: '0.05rem', borderTopStyle: 'solid', borderTopColor: ACCENT_A(0.2) } },
+                        h('div', { style: { display: 'flex', alignItems: 'center', fontSize: '0.9rem' } },
+                            h('div', { style: { width: '0.6rem', height: '0.6rem', borderRadius: '0.3rem', backgroundColor: TONE[status.tone] || TONE.idle,
+                                marginRight: '0.5rem', flexShrink: 0 } }),
+                            h('div', { style: { flexGrow: 1, flexShrink: 1, minWidth: 0 } }, status.text)),
+                        footer.length > 0 && h('div', { style: { marginTop: '0.3rem' } }, buttons(footer))))));
     }
 
-    renderVisit(coop, height) {
-        const visitor = coop.visitor || {};
-        const rules = (coop.team && coop.team.rules) || {};
-        const blocked = coop.role === 'client' && rules.visitors === '0';
-        return h('div', { style: { display: 'flex', height: rem(height) } },
-            h('div', { style: { width: '21rem', padding: '0 0.9rem', borderRight: '0.05rem solid ' + ACCENT_A(0.18) } },
-                section('Als Besucher im Park'),
-                h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem', marginBottom: '0.4rem' } }, blocked
-                    ? 'Der Host hat den Besucher-Modus für diese Sitzung ausgeschaltet.'
-                    : 'Lauf durch euren Park, fahr mit, bewerte die Fahrgeschäfte. Die anderen sehen dich dort, wo du stehst.'),
-                buttons([
-                    !blocked && !visitor.active && { label: 'Als Besucher losgehen', onSelect: () => request('visitor', '1') },
-                    visitor.active && { label: 'Zurück zum Bauen', onSelect: () => request('visitor', '0') },
-                    !blocked && { label: 'Ich-Sicht', onSelect: () => { request('visitor', '1'); request('guest', '1'); } },
-                ]),
-                section('Steuerung'),
-                h('div', { style: { fontSize: '0.9rem', lineHeight: '1.2rem' } },
-                    'WASD laufen, Shift schneller', h('br'), 'Maus: umsehen', h('br'),
-                    'T halten: Emotes  ·  E: einsteigen', h('br'), 'Tab: zurück zum Bauen'),
-                section('Gemeinsam'),
-                h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } },
-                    'Testfahrt mit allen: in der Liste rechts "Mitfahren" - jeder kann einsteigen. Führung: Mitspieler oben rechts anklicken, um zu folgen.')),
-            h('div', { style: { width: '45rem', padding: '0 0.9rem' } },
-                section('Fahrgeschäfte', h('span', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem', textTransform: 'none' } }, 'das nächste zuerst')),
-                box(height - 60, list(visitor.rides).length === 0
-                    ? h('div', { style: { color: C('accentButtonDesaturatedDark'), padding: '0.4rem 0' } }, 'Noch keine Fahrgeschäfte im Park.')
-                    : list(visitor.rides).map((r) => row([
-                        h('div', { style: { width: '23.5rem' } },
-                            h('div', { style: { fontSize: '1rem' } }, r.name + '  ', h('span', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } }, r.kind)),
-                            h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } }, (typeof r.e === 'number'
-                                ? 'Spaß ' + one(r.e) + '  ·  Angst ' + one(r.f) + '  ·  Übelkeit ' + one(r.n) : 'noch nicht getestet')
-                                + (r.dist !== false ? '  ·  ' + r.dist + ' m' : '')),
-                            h('div', { style: { color: C('accent'), fontSize: '0.9rem' } }, r.count ? 'Bewertung ' + one(r.avg) + ' / 5 (' + r.count + ')'
-                                + (list(r.comments).length ? ' - "' + list(r.comments)[list(r.comments).length - 1].text + '"' : '') : 'noch keine Bewertung')),
-                        buttons([{ label: 'Mitfahren', onSelect: () => { request('visitor', '1'); request('ride', r.key); } },
-                            coop.role && { label: 'Alle einladen', onSelect: () => request('invite_ride', r.key + '|' + r.name) }]),
-                    ], 'r' + r.key)))));
+    // Tab "Spieler" (TP-12): join requests, players with icon buttons, "+ Einladen" for free places.
+    renderPanelPlayers(coop, state) {
+        const players = list(coop.players);
+        if (!coop.role) {
+            return [section('Spieler'),
+                muted('Noch keine Sitzung. Starte eine, um diesen Park mit Freunden zu teilen.', { marginBottom: '0.5rem' }),
+                buttons([{ label: 'Sitzung starten', onSelect: () => request('host'), disabled: !coop.canHost }])];
+        }
+        const requests = coop.role === 'host' ? list(coop.requests) : [];
+        const out = [];
+        if (requests.length > 0) {
+            out.push(section('Möchte beitreten'));
+            requests.forEach((r) => out.push(row([h('div', null, r.name), buttons([
+                { label: 'Zulassen', onSelect: () => request('approve', r.sid) },
+                { label: 'Ablehnen', onSelect: () => request('deny', r.sid) }])], 'r' + r.sid)));
+        }
+        out.push(section('Spieler', muted(players.length + ' / ' + SLOTS)));
+        players.forEach((p) => {
+            const content = contentLine(coop, p);
+            const canLook = coop.stage === 'park' && !p.me && p.x !== undefined && p.act !== 'lobby';
+            const following = coop.following === p.sid;
+            out.push(h('div', { key: 'p' + p.sid, style: { display: 'flex', alignItems: 'center', padding: '0.35rem 0',
+                borderBottomWidth: '0.05rem', borderBottomStyle: 'solid', borderBottomColor: ACCENT_A(0.15) } },
+                h(Avatar, { player: p, size: 32, pic: avatars[p.sid] }),
+                h('div', { style: { flexGrow: 1, flexShrink: 1, minWidth: 0, marginLeft: '0.5rem' } },
+                    h('div', { style: { display: 'flex', alignItems: 'center', fontWeight: 'bold' } },
+                        p.name + (p.me ? ' (du)' : ''),
+                        // The crown is white: tinted like the game's icons on light ground.
+                        p.host && glyph('img/icons/crown.svg', '0.8rem', false, { marginLeft: '0.3rem', filter: C('accentText-filter') })),
+                    muted(following ? 'du folgst' : playerActivity(coop, p)),
+                    content && content.warn && muted(content.text, { color: C('warningDark') })),
+                canLook && iconButton('takemeto', 'Hinbringen', () => request('jump', p.sid)),
+                canLook && iconButton('eye', following ? 'Nicht mehr folgen' : 'Folgen', () => request('follow', p.sid), following)));
+        });
+        const free = SLOTS - players.length;
+        if (free > 0) {
+            out.push(h('div', { key: 'invite', style: { marginTop: '0.4rem' } }, buttons([{ label: (state.inviting ? '− ' : '+ ') + 'Einladen',
+                onSelect: () => this.setState({ inviting: !state.inviting }) }])));
+            if (state.inviting) out.push(...this.renderPanelFriends(coop));
+        }
+        return out;
     }
 
-    renderPlan(coop, state, height) {
+    // Friends to invite (TP-05 in short: the free places' "+ Einladen" unfolds them).
+    renderPanelFriends(coop) {
+        const inSession = {};
+        list(coop.players).forEach((p) => { inSession[p.sid] = true; });
+        const friends = list(coop.friends).filter((f) => !inSession[f.sid]).slice(0, 60);
+        return [section('Freunde einladen'),
+            friends.length === 0 ? muted(coop.available ? 'Lade Freundesliste …' : 'Steam ist nicht bereit.')
+                : h('div', { key: 'friends' }, friends.map((f) => row([
+                    h('div', { style: { flexGrow: 1, flexShrink: 1, minWidth: 0 } },
+                        h('div', null, f.name),
+                        muted(f.lobby ? 'hat eine offene Sitzung' : f.pc2 ? 'spielt Planet Coaster 2' : (FRIEND_STATE[f.state] || ''),
+                            f.lobby || f.pc2 ? { color: C('positiveDark') } : undefined)),
+                    buttons([{ label: f.invited ? 'Eingeladen' : 'Einladen', disabled: f.invited, onSelect: () => request('invite', f.sid) }])], 'f' + f.sid))),
+            h('div', { key: 'overlay', style: { marginTop: '0.4rem' } }, buttons([{ label: 'Steam-Overlay', onSelect: () => request('invite_overlay') }]))];
+    }
+
+    // Tab "Planen" (TP-17): the board first, a new entry behind "+ Neuer Eintrag".
+    renderPlan(coop, state) {
         const team = coop.team || {};
         const items = list(team.board);
         const players = list(coop.players);
-        // A context action (ping menu) picks the kind once; after that the buttons here do.
-        const kind = team.planSeq && team.planSeq !== state.planSeq ? team.planKind : state.kind;
+        // A context action (ping menu) picks the kind once and opens the form; after that the buttons here do.
+        const fromContext = team.planSeq && team.planSeq !== state.planSeq;
+        const kind = fromContext ? team.planKind : state.kind;
+        const formOpen = state.planForm || fromContext;
         const needsPlace = kind !== 'task';
         const nextAssignee = () => {
             const names = ['', ...players.map((p) => p.name)];
@@ -938,73 +1014,72 @@ class Lobby extends StateComponent {
         const add = () => {
             const clip = (t) => String(t || '').split('|').join(' ').trim();
             request('board_add', [kind, clip(state.title), clip(state.text), clip(state.assignee), kind === 'area' ? state.radius : 0].join('|'));
-            this.setState({ title: '', text: '', kind, planSeq: team.planSeq });
+            this.setState({ title: '', text: '', kind, planSeq: team.planSeq, planForm: false });
         };
-        return h('div', { style: { display: 'flex', height: rem(height) } },
-            h('div', { style: { width: '23rem', padding: '0 0.9rem', borderRight: '0.05rem solid ' + ACCENT_A(0.18) } },
-                section('Neu'),
-                h('div', { style: { display: 'flex', flexWrap: 'wrap', marginBottom: '0.4rem' } },
-                    BOARD_KINDS.map(([key, label]) => h('div', { key, onClick: () => this.setState({ kind: key, planSeq: team.planSeq }),
-                        style: { padding: '0.3rem 0.7rem', margin: '0 0.3rem 0.3rem 0', borderRadius: '0.8rem', fontSize: '0.9rem',
-                            backgroundColor: kind === key ? C('accent') : C('whiteColor'), color: kind === key ? C('whiteColor') : C('accentText'),
-                            border: '0.05rem solid ' + ACCENT_A(0.45) } }, label))),
-                h('div', { style: { margin: '0.3rem 0' } }, h(InputField, { text: state.title, maxInputLength: 60, beginEditOnSelect: true,
-                    promptText: literal(kind === 'area' ? 'Name des Gebiets ("Wikingerland")' : kind === 'task' ? 'Was ist zu tun?'
-                        : kind === 'proposal' ? 'Idee ("Wildwasserbahn am See?")' : 'Titel'),
-                    onChange: (e) => this.setState({ title: (e && e.text) || '' }), onCommit: (e) => this.setState({ title: (e && e.text) || '' }) })),
-                h('div', { style: { margin: '0.3rem 0' } }, h(InputField, { text: state.text, maxInputLength: 160, beginEditOnSelect: true,
-                    promptText: literal(kind === 'area' ? 'Auftrag: "Familienattraktion, max. 15.000 €, Wikingerstil"' : 'Notiz (optional)'),
-                    onChange: (e) => this.setState({ text: (e && e.text) || '' }), onCommit: (e) => this.setState({ text: (e && e.text) || '' }) })),
-                (kind === 'task' || kind === 'area') && row([h('div', null, 'Zuständig: ' + (state.assignee || 'alle')),
-                    buttons([{ label: 'Wechseln', onSelect: nextAssignee }])], 'assignee'),
-                kind === 'area' && row([h('div', null, 'Größe: ' + state.radius + ' m Radius'), buttons([10, 20, 40].map((n) =>
-                    ({ label: n + ' m', onSelect: () => this.setState({ radius: n }) })))], 'radius'),
-                needsPlace && h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem', margin: '0.3rem 0' } },
-                    'Ort: dein letzter Ping (mittlere Maustaste) - sonst die Bildmitte.'),
-                buttons([{ label: 'Hinzufügen', onSelect: add }])),
-            h('div', { style: { width: '43rem', padding: '0 0.9rem' } },
-                section('Brett des Parks', h('span', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem', textTransform: 'none' } },
-                    'für alle sichtbar, auch als Marker im Park')),
-                box(height - 60, items.length === 0
-                    ? h('div', { style: { color: C('accentButtonDesaturatedDark'), padding: '0.4rem 0' } }, 'Noch nichts geplant. Links ein Baugebiet, eine Aufgabe, einen Kommentar oder einen Treffpunkt anlegen.')
-                    : items.map((item) => row([
-                        h('div', { style: { width: '26rem', opacity: item.done ? 0.55 : 1 } },
-                            h('div', { style: { fontSize: '1rem' } }, (item.done ? '✓ ' : '') + item.title + '  ',
-                                h('span', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } }, BOARD_WORD[item.kind] + ' · ' + item.by
-                                    + (item.assignee ? ' → ' + item.assignee : ''))),
-                            item.text && h('div', { style: { color: C('accentText'), fontSize: '0.9rem' } }, item.text)),
-                        buttons([
-                            item.kind === 'task' && { label: item.done ? 'Wieder offen' : 'Erledigt', onSelect: () => request('board_done', item.id + '|' + (item.done ? '0' : '1')) },
-                            item.kind === 'proposal' && { label: (item.myVote === '1' ? '✓ ' : '') + 'Dafür (' + item.yes + ')', onSelect: () => request('board_vote', item.id + '|1') },
-                            item.kind === 'proposal' && { label: (item.myVote === '0' ? '✓ ' : '') + 'Dagegen (' + item.no + ')', onSelect: () => request('board_vote', item.id + '|0') },
-                            item.x !== false && { label: 'Hinbringen', onSelect: () => request('goto', item.x + '|' + item.z) },
-                            { label: 'Löschen', onSelect: () => request('board_del', item.id) },
-                        ]),
-                    ], item.id)))));
+        const out = [section('Brett des Parks', muted('auch als Marker im Park'))];
+        if (items.length === 0) out.push(muted('Noch nichts geplant.', { padding: '0.2rem 0 0.4rem' }));
+        // Entries as rows with icon buttons (TP-17): tick, thumbs, take me there, delete.
+        items.forEach((item) => out.push(h('div', { key: item.id, style: { display: 'flex', alignItems: 'center', padding: '0.3rem 0',
+            borderBottomWidth: '0.05rem', borderBottomStyle: 'solid', borderBottomColor: ACCENT_A(0.15) } },
+            h('div', { style: { flexGrow: 1, flexShrink: 1, minWidth: 0, opacity: item.done ? 0.55 : 1 } },
+                h('div', null, (item.done ? '✓ ' : '') + item.title),
+                muted(BOARD_WORD[item.kind] + ' · ' + item.by + (item.assignee ? ' → ' + item.assignee : '')
+                    + (item.kind === 'proposal' ? ' · ' + item.yes + ' dafür, ' + item.no + ' dagegen' : '')),
+                item.text && h('div', { style: { fontSize: '0.9rem' } }, item.text)),
+            item.kind === 'task' && iconButton('tick', item.done ? 'Wieder offen' : 'Erledigt',
+                () => request('board_done', item.id + '|' + (item.done ? '0' : '1')), item.done),
+            item.kind === 'proposal' && iconButton('thumbsUp', 'Dafür', () => request('board_vote', item.id + '|1'), item.myVote === '1'),
+            item.kind === 'proposal' && iconButton('thumbsDown', 'Dagegen', () => request('board_vote', item.id + '|0'), item.myVote === '0'),
+            item.x !== false && iconButton('takemeto', 'Hinbringen', () => request('goto', item.x + '|' + item.z)),
+            iconButton('delete', 'Löschen', () => request('board_del', item.id)))));
+        if (!formOpen) {
+            out.push(h('div', { key: 'new', style: { marginTop: '0.5rem' } }, buttons([{ label: '+ Neuer Eintrag', onSelect: () => this.setState({ planForm: true }) }])));
+            return out;
+        }
+        out.push(section('Neuer Eintrag'),
+            h('div', { key: 'kinds', style: { display: 'flex', flexWrap: 'wrap', marginBottom: '0.3rem' } },
+                BOARD_KINDS.map(([key, label]) => h('div', { key, onClick: () => this.setState({ kind: key, planSeq: team.planSeq, planForm: true }),
+                    style: { padding: '0.25rem 0.6rem', margin: '0 0.3rem 0.3rem 0', borderRadius: '0.8rem', fontSize: '0.9rem', pointerEvents: 'auto',
+                        backgroundColor: kind === key ? C('accent') : C('whiteColor'), color: kind === key ? C('whiteColor') : C('accentText'),
+                        border: '0.05rem solid ' + ACCENT_A(0.45) } }, label))),
+            h('div', { key: 'title', style: { margin: '0.3rem 0' } }, h(InputField, { text: state.title, maxInputLength: 60, beginEditOnSelect: true,
+                promptText: literal(kind === 'area' ? 'Name des Gebiets ("Wikingerland")' : kind === 'task' ? 'Was ist zu tun?'
+                    : kind === 'proposal' ? 'Idee ("Wildwasserbahn am See?")' : 'Titel'),
+                onChange: (e) => this.setState({ title: (e && e.text) || '' }), onCommit: (e) => this.setState({ title: (e && e.text) || '' }) })),
+            h('div', { key: 'text', style: { margin: '0.3rem 0' } }, h(InputField, { text: state.text, maxInputLength: 160, beginEditOnSelect: true,
+                promptText: literal(kind === 'area' ? 'Auftrag ("Familienattraktion, Wikingerstil")' : 'Notiz (optional)'),
+                onChange: (e) => this.setState({ text: (e && e.text) || '' }), onCommit: (e) => this.setState({ text: (e && e.text) || '' }) })),
+            (kind === 'task' || kind === 'area') && row([h('div', null, 'Zuständig: ' + (state.assignee || 'alle')),
+                buttons([{ label: 'Wechseln', onSelect: nextAssignee }])], 'assignee'),
+            kind === 'area' && row([h('div', null, 'Größe: ' + state.radius + ' m'), buttons([10, 20, 40].map((n) =>
+                ({ label: n + ' m', onSelect: () => this.setState({ radius: n }) })))], 'radius'),
+            needsPlace && muted('Ort: deine letzte Markierung (Mittelklick), sonst die Bildmitte.', { margin: '0.3rem 0' }),
+            buttons([{ label: 'Hinzufügen', onSelect: add },
+                { label: 'Abbrechen', onSelect: () => this.setState({ planForm: false, planSeq: team.planSeq, title: '', text: '' }) }]));
+        return out;
     }
 
-    renderHistory(coop, height) {
+    // Tab "Verlauf" (TP-18): one column, the newest first.
+    renderHistory(coop) {
         const team = coop.team || {};
         const isHost = coop.role === 'host';
-        return h('div', { style: { display: 'flex', height: rem(height) } },
-            h('div', { style: { width: '32rem', padding: '0 0.9rem', borderRight: '0.05rem solid ' + ACCENT_A(0.18) } },
-                section('Seit deinem letzten Besuch'),
-                h('div', { style: { fontSize: '0.9rem', color: team.since ? C('accentText') : C('accentButtonDesaturatedDark') } }, team.since || 'Dein erster Besuch in diesem Park - oder es gibt noch nichts zu vergleichen.'),
-                section('Meldungen des Parks'),
-                list(team.events).length === 0 ? h('div', { style: { color: C('accentButtonDesaturatedDark') } }, 'Gerade keine Pannen oder Probleme.')
-                    : list(team.events).slice().reverse().map((e, i) => row([h('div', null, e.label),
-                        buttons([{ label: 'Hinbringen', onSelect: () => request('goto', e.x + '|' + e.z) }])], 'e' + i)),
-                section('Sicherungspunkte'),
-                h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem', marginBottom: '0.3rem' } },
-                    'Eine Kopie des Parks beim Host. Zurückholen betrifft alle und braucht die Zustimmung aller.'),
-                ...list(team.checkpoints).map((c) => row([h('div', null, c.label),
-                    isHost && buttons([{ label: 'Zurückholen…', onSelect: () => request('restore', String(c.n)) }])], 'c' + c.n)),
-                isHost && buttons([{ label: 'Sicherungspunkt erstellen', onSelect: () => request('checkpoint') }])),
-            h('div', { style: { width: '34rem', padding: '0 0.9rem' } },
-                section('Verlauf der Sitzung'),
-                box(height - 60, list(coop.log).length === 0 ? h('div', { style: { color: C('accentButtonDesaturatedDark') } }, 'Noch nichts passiert.')
-                    : list(coop.log).slice().reverse().map((line, i) => h('div', { key: 'l' + i, style: { fontSize: '0.9rem',
-                        padding: '0.2rem 0', borderBottom: '0.05rem solid ' + ACCENT_A(0.1) } }, shown(line))))));
+        return [
+            section('Seit deinem letzten Besuch'),
+            muted(team.since || 'Dein erster Besuch in diesem Park, oder es gibt noch nichts zu vergleichen.', team.since ? { color: C('accentText') } : undefined),
+            section('Meldungen des Parks'),
+            list(team.events).length === 0 ? muted('Gerade keine Pannen oder Probleme.')
+                : h('div', { key: 'events' }, list(team.events).slice().reverse().map((e, i) => row([h('div', { style: { flexGrow: 1, flexShrink: 1, minWidth: 0 } }, e.label),
+                    iconButton('takemeto', 'Hinbringen', () => request('goto', e.x + '|' + e.z))], 'e' + i))),
+            section('Sicherungspunkte'),
+            muted('Eine Kopie des Parks beim Host. Zurückholen betrifft alle und braucht die Zustimmung aller.', { marginBottom: '0.3rem' }),
+            h('div', { key: 'checkpoints' }, list(team.checkpoints).map((c) => row([h('div', null, c.label),
+                isHost && buttons([{ label: 'Zurückholen…', onSelect: () => request('restore', String(c.n)) }])], 'c' + c.n))),
+            isHost && h('div', { key: 'checkpoint', style: { marginTop: '0.3rem' } }, buttons([{ label: 'Sicherungspunkt erstellen', onSelect: () => request('checkpoint') }])),
+            section('Verlauf der Sitzung'),
+            list(coop.log).length === 0 ? muted('Noch nichts passiert.')
+                : h('div', { key: 'log' }, list(coop.log).slice().reverse().map((line, i) => h('div', { key: 'l' + i, style: { fontSize: '0.9rem',
+                    padding: '0.2rem 0', borderBottomWidth: '0.05rem', borderBottomStyle: 'solid', borderBottomColor: ACCENT_A(0.1) } }, shown(line)))),
+        ];
     }
 
     renderCompetition(coop) {
@@ -1013,18 +1088,17 @@ class Lobby extends StateComponent {
         const isHost = coop.role === 'host';
         const state = this.state;
         const areaOf = (name) => list(team.board).find((i) => i.kind === 'area' && i.assignee === name && i.x !== false);
-        const out = [section('Wettbewerb', h('span', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem', textTransform: 'none' } },
-            'ein Park, alle sehen dasselbe - die Spielziele des Parks (Szenario, Herausforderung) gelten für alle gemeinsam'))];
+        const out = [section('Wettbewerb'), muted('Ein Park, alle sehen dasselbe. Die Spielziele des Parks gelten für alle gemeinsam.')];
         if (!comp) {
             if (!isHost) { out.push(h('div', { style: { color: C('accentButtonDesaturatedDark') } }, 'Gerade kein Wettbewerb. Der Host kann einen starten.')); return out; }
-            out.push(h('div', { style: { margin: '0.3rem 0', width: '32rem' } }, h(InputField, { text: state.compTopic || '', maxInputLength: 60,
+            out.push(h('div', { style: { margin: '0.3rem 0', width: '100%' } }, h(InputField, { text: state.compTopic || '', maxInputLength: 60,
                 beginEditOnSelect: true, promptText: literal('Thema ("Wikinger", "Familienbahn bis 20.000 €")'),
                 onChange: (e) => this.setState({ compTopic: (e && e.text) || '' }), onCommit: (e) => this.setState({ compTopic: (e && e.text) || '' }) })));
             const topic = String(state.compTopic || '').split('|').join(' ');
-            out.push(row([h('div', { style: { width: '21rem' } }, 'Bauduell: jeder baut in seinem Baugebiet (Planen: Baugebiet mit Zuständigem), danach bewertet ihr Gestaltung und Technik getrennt'),
-                buttons([15, 30, 60].map((m) => ({ label: m + ' Min.', onSelect: () => request('comp_start', 'duel|' + m + '|' + topic) })))], 'duel'));
-            out.push(row([h('div', { style: { width: '21rem' } }, 'Koop gegen die Uhr: gemeinsam die Aufgaben vom Brett schaffen'),
-                buttons([15, 30, 60].map((m) => ({ label: m + ' Min.', onSelect: () => request('comp_start', 'timer|' + m + '|' + topic) })))], 'timer'));
+            out.push(row([h('div', { style: { width: '100%' } }, 'Bauduell: jeder baut in seinem Baugebiet (Planen: Baugebiet mit Zuständigem), danach bewertet ihr Gestaltung und Technik'),
+                buttons([15, 30, 60].map((m) => ({ label: m + ' Min.', onSelect: () => request('comp_start', 'duel|' + m + '|' + topic) })), true)], 'duel'));
+            out.push(row([h('div', { style: { width: '100%' } }, 'Koop gegen die Uhr: gemeinsam die Aufgaben vom Brett schaffen'),
+                buttons([15, 30, 60].map((m) => ({ label: m + ' Min.', onSelect: () => request('comp_start', 'timer|' + m + '|' + topic) })), true)], 'timer'));
             return out;
         }
         const clock = (s) => Math.floor(s / 60) + ':' + (s % 60 < 10 ? '0' : '') + (s % 60);
@@ -1055,44 +1129,54 @@ class Lobby extends StateComponent {
         return out;
     }
 
-    renderSession(coop, height) {
+    // Tab "Einstellungen" (TP-11, TP-32): for you, rules, contents, competition, explanations.
+    renderSession(coop) {
         const rules = (coop.team && coop.team.rules) || {};
         const isHost = coop.role === 'host';
-        return h('div', { style: { padding: '0 0.9rem', height: rem(height), overflowY: 'auto' } },
-            section('Für dich', h('span', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem', textTransform: 'none' } },
-                'nur auf deinem PC')),
-            row([h('div', { style: { width: '30rem', display: 'flex', flexDirection: 'column' } },
+        const label = (text) => h('div', { style: { width: '100%' } }, text);
+        return [
+            section('Für dich', muted('nur auf deinem PC')),
+            row([h('div', { style: { width: '100%', display: 'flex', flexDirection: 'column' } },
                 h('div', null, 'Mitspieler in der Welt zeigen'),
-                h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } },
-                    'Name, Blickrichtung, gehaltenes Objekt und Sperr-Färbung')),
+                muted('Name, Blickrichtung, gehaltenes Objekt und Sperr-Färbung')),
                 buttons([['1', 'An'], ['0', 'Aus']].map(([value, text]) => ({ label: ((coop.labels ? '1' : '0') === value ? '● ' : '') + text,
-                    onSelect: () => request('labels', value) })))], 'labels'),
-            section('Regeln dieser Sitzung', h('span', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem', textTransform: 'none' } },
-                isHost ? 'du bestimmst sie als Host' : 'nur der Host kann sie ändern')),
-            isHost && row([h('div', { style: { width: '21rem', color: C('accentButtonDesaturatedDark') } }, 'Schnell wählen'),
-                buttons([
-                    { label: 'Locker zusammen bauen', onSelect: () => request('rule_preset', 'relaxed') },
-                    { label: 'Geordnet', onSelect: () => request('rule_preset', 'ordered') },
-                    { label: 'Nur bauen', onSelect: () => request('rule_preset', 'build') },
-                ])], 'presets'),
-            ...RULES.map(([name, label, options]) => row([h('div', { style: { width: '21rem' } }, label),
-                isHost ? buttons(options.map(([value, text]) => ({ label: (rules[name] === value ? '● ' : '') + text,
-                    onSelect: () => request('rule', name + '|' + value) })))
+                    onSelect: () => request('labels', value) })), true)], 'labels'),
+            section('Regeln dieser Sitzung', muted(isHost ? 'du bestimmst sie' : 'nur der Host ändert sie')),
+            // One per line: wrapped button rows squeezed the labels in Gameface (acceptance pictures).
+            isHost && row([label('Schnell wählen'), h('div', { style: { width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' } },
+                buttons([{ label: 'Locker zusammen bauen', onSelect: () => request('rule_preset', 'relaxed') }]),
+                buttons([{ label: 'Geordnet', onSelect: () => request('rule_preset', 'ordered') }]),
+                buttons([{ label: 'Nur bauen', onSelect: () => request('rule_preset', 'build') }]))], 'presets'),
+            ...RULES.map(([name, text, options]) => row([h('div', { style: { width: isHost ? '100%' : '14rem' } }, text),
+                isHost ? buttons(options.map(([value, word]) => ({ label: (rules[name] === value ? '● ' : '') + word,
+                    onSelect: () => request('rule', name + '|' + value) })), true)
                     : h('div', { style: { color: C('accent') } }, (options.find((o) => o[0] === rules[name]) || ['', '-'])[1])], name)),
+            this.renderContentSetting(coop),
             this.renderCompetition(coop),
             section('Deine Rolle'),
-            h('div', { style: { fontSize: '0.9rem', color: C('accentText'), maxWidth: '55rem' } }, isHost
-                ? 'Host: der Park läuft bei dir. Du legst die Regeln fest, erstellst Sicherungspunkte und schlägst vor, zu einem zurückzukehren. '
-                  + 'Beitrittsanfragen bestätigst du im Tab Team.'
-                : 'Mitspieler: du baust frei mit. Was jemand anderes gerade bearbeitet, ist für dich gesperrt - Mittelklick darauf und "Übernahme anfragen". '
+            h('div', { style: { fontSize: '0.9rem' } }, isHost
+                ? 'Host: der Park läuft bei dir. Du legst die Regeln fest, bestätigst Beitrittsanfragen und erstellst Sicherungspunkte.'
+                : 'Mitspieler: du baust frei mit. Was jemand anderes gerade bearbeitet, ist für dich gesperrt; markiere es und frag nach der Übernahme. '
                   + 'Rückgängig betrifft nur deine eigenen Schritte.'),
             section('Abwesenheit'),
-            h('div', { style: { fontSize: '0.9rem', color: C('accentText'), maxWidth: '55rem' } },
-                'Der Park läuft beim Host. Verlässt der Host die Sitzung, endet sie für alle; beim nächsten Mal lädt er den Park und ihr steigt wieder ein. '
-                + 'Pausiert der Host, pausiert der Park für alle (je nach Regel "Spieltempo").'),
-            section('Beitritt'),
-            h('div', { style: { fontSize: '0.9rem', color: C('accentText') } },
-                'Nur Steam-Freunde des Hosts sehen die Sitzung. Beitrittsanfragen erscheinen im Reiter "Team".'));
+            h('div', { style: { fontSize: '0.9rem' } },
+                'Der Park läuft beim Host. Verlässt der Host die Sitzung, endet sie für alle; beim nächsten Mal lädt er den Park und ihr steigt wieder ein.'),
+        ];
+    }
+
+    // Contents (DLC) of everybody: only a line when they differ; the host switches the guard (TP-12).
+    renderContentSetting(coop) {
+        const players = list(coop.players);
+        if (!coop.role || players.length < 2) return null;
+        const known = players.filter((p) => p.dlc !== undefined);
+        const uneven = dlcPacks().filter((pack) => known.some((p) => owns(p.dlc, pack.id)) && known.some((p) => !owns(p.dlc, pack.id)));
+        const text = known.length < players.length ? 'Die Inhalte der Mitspieler werden geprüft …'
+            : uneven.length === 0 ? 'Alle haben dieselben Inhalte.'
+            : 'Nicht alle haben: ' + uneven.map(packName).join(', ') + (coop.guard ? '. Daraus wird nichts gebaut.' : '. Wird trotzdem gebaut.');
+        return h('div', { key: 'content' }, section('Inhalte'),
+            muted(text, uneven.length ? { color: C('warningDark') } : undefined),
+            coop.role === 'host' && uneven.length > 0 && h('div', { style: { marginTop: '0.3rem' } }, buttons([{ label: coop.guard ? 'Alle Inhalte erlauben' : 'Nur gemeinsame Inhalte',
+                onSelect: () => request('guard', coop.guard ? '0' : '1') }])));
     }
 
     renderPlayers(coop) {

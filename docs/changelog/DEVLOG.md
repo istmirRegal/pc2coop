@@ -3,6 +3,28 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-20 – UX-Overhaul P2, Schritt 1: Fenster im Park links
+
+- Prototyp: Die Komponente `Panel` des Spiels ist fokussierbar und legt Eingabe-Kontexte an (Tab,
+  Esc, mit `focusable: false` sogar global für die Reiter). Ohne echte Tastatur nicht prüfbar, ob
+  sie dem Bauen Tasten wegnimmt. Gebaut deshalb aus den CSS-Klassen (`Panel_*`, `TabBar_*`, per
+  `loadCSS`) mit Spiel-`Tab` und `CloseButton` (beide wie `Button`, den wir schon nutzen).
+- `renderParkPanel`: links, 23.5 rem, ab 7.6 rem (unter den runden Knöpfen des Spiels), Inhalt
+  26 rem. Kein Hintergrund mehr, `pointerEvents` nur auf dem Fenster. Chat rückt bei offenem
+  Fenster nach rechts.
+- Reiter Spieler (Anfragen, Spielerzeilen mit `iconButton`, „+ Einladen“ klappt Freunde auf),
+  Planen (Brett mit Icon-Knöpfen, Formular hinter „+ Neuer Eintrag“), Verlauf, Einstellungen
+  (Für dich, Regeln, Inhalte, Wettbewerb). Entfallen: Park des Hosts, Chat im Fenster, Reiter
+  Besuchen (Steuerungstext, „Ich-Sicht“, „Alle einladen“).
+- „Besuchen“ zuerst als zweiter Reiter in der Bauleiste: bei UI-Skalierung 1.0 verdeckte er die
+  Icon-Knöpfe am Ende der Bauleiste. Jetzt im Fuß des Fensters.
+- Gameface-Fund: Knopfreihen in schmalen Spalten quetschen ihren Text, statt umzubrechen. Abhilfe:
+  `flexShrink: 0` je Knopf, `buttons(items, wide)`, lange Knöpfe untereinander.
+- Prüfung: Node-Rendertest mit Platzhaltern für die Spiel-Module (alle Reiter, Host/Gast/ohne
+  Sitzung, Hauptmenü); Testkopie: alle Reiter fotografiert, eigene Skalierung und 1.0, Fenster zu.
+- Nicht geprüft: Bauen mit echter Maus bei offenem Fenster, Tooltips der Reiter, „+ Einladen“
+  aufgeklappt (braucht einen Klick).
+
 ## 2026-11-20 – UX-Overhaul P0: Abnahme-Bilder
 
 - Fund: Einstellungen und Spielstände der Testkopie sind die des Eigners (Windows-Profil, Steam

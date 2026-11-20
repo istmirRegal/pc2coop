@@ -19,8 +19,9 @@ Start → `Rejoin`.
 ## Im Park
 
 ```
-Bauen ─ F7 / Reiter „Multiplayer“ (Bauleiste) / Pausemenü „Multiplayer“ ─► Fenster
-          Reiter: Team · Besuchen · Planen · Verlauf · Sitzung   (Esc/„Schließen“ zurück)
+Bauen ─ F7 / Reiter „Multiplayer“ (Bauleiste) / Pausemenü „Multiplayer“ ─► Fenster links (nicht modal)
+          Reiter: Spieler · Planen · Verlauf · Einstellungen   (X/Esc zu; Bauen geht weiter)
+          Fuß: „Besuchen“ ─► Besuch (Tab zurück)
 
 Bauen ─ Mittelklick kurz ─► Markierung + Radialmenü (Testfahrt, mitfahren, Übernahme, Brett-Eintrag)
 Bauen/Besuch ─ Enter ─► Chat-Eingabe unten links ─ Enter senden / Esc ─► zurück

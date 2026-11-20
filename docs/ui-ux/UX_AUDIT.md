@@ -12,10 +12,10 @@ Berührungspunkte, Bewertung, Zielbild). Dort sind alle IDs dieser Datei einem B
 
 | ID | Befund | Ort |
 |---|---|---|
-| UX-A1 | Reiter „Besuchen“, Abschnitt „Steuerung“ ist veraltet: nennt „E: einsteigen“, aber nicht Läden, V (Ich-Sicht) oder Kaufen; die Besucher-Leiste sagt es anders | `Lobby.renderVisit` |
+| UX-A1 | Reiter „Besuchen“, Abschnitt „Steuerung“ ist veraltet: nennt „E: einsteigen“, aber nicht Läden, V (Ich-Sicht) oder Kaufen; die Besucher-Leiste sagt es anders (erledigt 2026-11-20: Reiter entfernt) | Reiter Besuchen (entfernt in P2) |
 | UX-A2 | Hilfezeile der Besucher-Leiste ist ein langer Satz mit 7–8 Tasten; schwer zu lesen im Laufen | `VisitorBar` |
-| UX-A3 | Zwei Namen für dieselbe Sache: „Ich-Sicht (Spiel)“ im Fenster, „Ich-Sicht“ in der Leiste; der Fensterknopf schickt zwei Anfragen (`visitor`, `guest`) | `Lobby.renderVisit` |
-| UX-A4 | „Führung: … dann folgst du ihm“ – feste männliche Form | `Lobby.renderVisit` |
+| UX-A3 | Zwei Namen für dieselbe Sache: „Ich-Sicht (Spiel)“ im Fenster, „Ich-Sicht“ in der Leiste; der Fensterknopf schickt zwei Anfragen (`visitor`, `guest`) | Reiter Besuchen (entfernt in P2) |
+| UX-A4 | „Führung: … dann folgst du ihm“ – feste männliche Form | Reiter Besuchen (entfernt in P2) |
 | UX-A5 | Wettbewerbs-Uhr sagt „Bewerten: Multiplayer > Sitzung“ – Weg statt Knopf | `CompBanner` |
 | UX-A6 | „Karriere · später“ und „Herausforderung – kommt später“ sind sichtbar, aber ohne Funktion | `renderChooser`, `MODES` |
 
@@ -41,7 +41,7 @@ Berührungspunkte, Bewertung, Zielbild). Dort sind alle IDs dieser Datei einem B
 
 | ID | Befund | Ort |
 |---|---|---|
-| UX-D1 | Fenster fest 1320 × 780 px, Liste 1000 px: bei kleiner Auflösung oder großer UI-Skalierung nicht geprüft | `Lobby`, `VisitorBar` |
+| UX-D1 | Fenster fest 1320 × 780 px, Liste 1000 px: bei kleiner Auflösung oder großer UI-Skalierung nicht geprüft (im Park erledigt 2026-11-20: Fenster links in rem, bei Skalierung 0.7–1.0 fotografiert) | `Lobby`, `VisitorBar` |
 | UX-D2 | Abstimmungs- und Einladungs-Banner liegen beide bei 140 px oben Mitte und können sich überdecken | `VoteBanner`, `InviteBanner` |
 | UX-D3 | Besucher-Leiste (52 px) und Wettbewerbs-Uhr (18 px) oben Mitte: Abstand zur Spiel-HUD oben nicht in allen Modi geprüft | `VisitorBar`, `CompBanner` |
 | UX-D4 | Spielerleiste verschwindet beim Mitfahren (Kamera-Leiste des Spiels) – gewollt, aber dann sieht man keine Mitspieler | `PlayerBar` |

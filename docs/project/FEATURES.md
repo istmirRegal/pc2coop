@@ -124,7 +124,7 @@ der Bereich nicht, die nächste freie Nummer ab 230.
 
 | ID | Funktion | Status | Seit |
 |---|---|---|---|
-| FEAT-110 | Multiplayer-Fenster (Lobby und fünf Reiter) | Implemented | 1.8.0 |
+| FEAT-110 | Multiplayer-Fenster (Park: links, vier Reiter; Hauptmenü: Lobby) | Implemented | 1.8.0 |
 | FEAT-111 | Reiter „Multiplayer“ in der Bauleiste | Implemented | 1.12.2 |
 | FEAT-112 | „Multiplayer“ im Pausemenü | Implemented | 1.4.1 |
 | FEAT-113 | Kachel „Multiplayer“ im Hauptmenü | Implemented | 1.8.0 |

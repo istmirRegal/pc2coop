@@ -9,7 +9,8 @@ Code: `probe/PC2CoopProbe/Main/pc2coop/visitor.lua`, `probe/PC2CoopProbe/Main/pc
 
 ### FEAT-160 – Besucher-Modus starten und beenden
 - **Status:** Implemented · **Seit:** 1.11.0 · **Hängt ab von:** FEAT-142
-- **Funktion:** „Als Besucher losgehen“ (Reiter Besuchen), Tab oder „Zurück zum Bauen“ beendet.
+- **Funktion:** „Besuchen“ im Fuß des Multiplayer-Fensters (bis P2: Reiter Besuchen), Tab oder
+  „Zurück zum Bauen“ beendet.
   Der Host kann den Modus per Regel abschalten.
 - **Technik:** `Visitor.Start(view)`, `Visitor.Stop`, `Visitor.Active`, `Visitor.Tick`
   (vom Manager jedes Frame); UI-Aktion `visitor`. Beginnt dort, wo man hinschaut

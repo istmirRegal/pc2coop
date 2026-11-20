@@ -22,66 +22,78 @@ Darstellung: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js` (Kompone
 | Tastatur | **Enter** öffnet die Chat-Eingabe unten links (`key:chat` → `Ui.ChatKey`) | im Park, Fenster zu, kein Textfeld des Spiels aktiv | `chatinput` | FEAT-116 |
 | Tastatur | **F8** Entwickler-Dialog (Spiel-Dialog, `menu.lua`) | nur mit Dev-Flag (`pc2coop-dev.flag`), im Park | – | FEAT-115 |
 
-## 2. Multiplayer-Fenster (`Lobby`, 1320 × 780 px, Mitte)
+## 2. Multiplayer-Fenster (`Lobby`)
 
-Kopf: Symbol, Titel („Multiplayer“ / „Deine Sitzung“ / „Sitzung von <Host>“), „n / 8 Spieler · <Park>“.
-Fuß: Status-Punkt (Farbe nach Zustand) + Statustext + Knöpfe:
+**Im Park** (UX-Overhaul P2, TP-11): Fenster im Look der Spiel-Fenster am **linken Rand**
+(`renderParkPanel`: Klassen `Panel_*`, `TabBar_*`, Spiel-`Tab` und `CloseButton`), 23.5 rem breit,
+ab 7.6 rem von oben, Inhalt 26 rem hoch mit Scrollen. **Nicht modal:** kein abgedunkelter Hintergrund,
+Bauen geht weiter; der Chat-Bereich rückt rechts daneben.
+- Kopf: Symbol, Titel („Multiplayer“ / „Deine Sitzung“ / „Sitzung von <Host>“), Schließen-X (`close`, Esc).
+- Reiter (`paneltab`, Symbol mit Tooltip): **Spieler · Planen · Verlauf · Einstellungen**; ohne Sitzung
+  nur „Spieler“ mit „Sitzung starten“ (`host`).
+- Fuß: Status-Punkt + Statustext, darunter:
 
 | Knopf | Wann | Aktion |
 |---|---|---|
-| „Sitzung starten“ | keine Sitzung, Steam da; gesperrt, wenn Hosten nicht geht | `host` |
+| „Besuchen“ | im Park, nicht im Besuch | `visitor` 1 |
 | „Neu synchronisieren“ | Gast mit Desync | `resync` |
-| „Steam-Overlay“ | in Sitzung | `invite_overlay` |
 | „Beenden“ (Host) / „Verlassen“ (Gast) | in Sitzung | `leave` |
-| „Schließen“ (auch Esc/UI_Cancel) | immer | `close` |
 
-Im Park mit Sitzung hat das Fenster fünf Reiter (`paneltab`): **Team · Besuchen · Planen ·
-Verlauf · Sitzung**. Im Hauptmenü und ohne Sitzung gibt es nur die Team-Ansicht.
+**Im Hauptmenü** (bis P3): zentrierter Kasten (66 × 39 rem) mit drei Spalten (2.1). Fuß: „Sitzung
+starten“ (`host`), „Steam-Overlay“ (`invite_overlay`), „Beenden“/„Verlassen“ (`leave`), „Schließen“
+(`close`, auch Esc).
 
-### 2.1 Team (drei Spalten)
+### 2.1 Spieler (Park)
+
+| Abschnitt | Elemente | Aktionen | FEAT |
+|---|---|---|---|
+| „Möchte beitreten“ | Name + „Zulassen“/„Ablehnen“ (nur Host, nur bei Anfragen) | `approve`, `deny` | FEAT-027 |
+| „Spieler n / 8“ | Zeile: Profilbild, Name, Krone (Host), Tätigkeit, Hinweis bei fehlenden Inhalten; runde Icon-Knöpfe „Hinbringen“ (`takemeto`) und „Folgen“ (`eye`, an = du folgst) | `jump`, `follow` | FEAT-043, FEAT-096, FEAT-097 |
+| „+ Einladen“ | klappt „Freunde einladen“ auf: Freunde mit Status, „Einladen“/„Eingeladen“; „Steam-Overlay“ | `invite`, `invite_overlay` | FEAT-023 |
+
+### 2.1a Hauptmenü (drei Spalten)
 
 | Spalte | Abschnitt | Elemente | Aktionen | FEAT |
 |---|---|---|---|---|
 | links | „Möchte beitreten“ | Name + „Zulassen“/„Ablehnen“ (nur Host, nur bei Anfragen) | `approve`, `deny` | FEAT-027 |
 | links | „Spieler“ | Profilbild, Name, Krone (Host), Aktivität, Farbe; „Hinbringen“, „Folgen“/„Nicht folgen“; freie Plätze bis 8 | `jump`, `follow` | FEAT-043, FEAT-096, FEAT-097 |
 | Mitte | „Wo spielen wir?“ (Menü) | Reiter Gespeichert/Neu/Franchise/Karriere·später; Parkliste („aktualisieren“), Biome + Kreativ/Budget, „Franchise-Menü öffnen“, „Park öffnen“ (Host) | `choose`, `parks`, `start` | FEAT-032, FEAT-046 |
-| Mitte | „Park des Hosts“ (Park) | Parkname, Zahlen, Verlauf | – | FEAT-079 |
 | Mitte | „Inhalte“ | DLC-Vergleich; Host: „Nur gemeinsame Inhalte“/„Alle Inhalte erlauben“ | `guard` | FEAT-037, FEAT-038 |
 | rechts | „Chat“ | Nachrichten, Eingabe „Nachricht an alle“ (Enter sendet) | `chat` | FEAT-035 |
 | rechts | „Freunde einladen“ / „Steam-Freunde“ | Freunde mit Status; „Einladen“/„Eingeladen“ (in Sitzung) oder „Beitreten“ (Freund hat Lobby) | `invite`, `join_friend` | FEAT-023, FEAT-024 |
 
-### 2.2 Besuchen
+### 2.2 Besuchen (Reiter entfallen, P2)
 
-| Bereich | Elemente | Aktionen | FEAT |
-|---|---|---|---|
-| links „Als Besucher im Park“ | Erklärung oder „Host hat den Besucher-Modus ausgeschaltet“; „Als Besucher losgehen“, „Zurück zum Bauen“, „Ich-Sicht“ | `visitor`, `guest` | FEAT-160, FEAT-164 |
-| links „Steuerung“, „Gemeinsam“ | Hilfetexte (siehe UX-Audit A1) | – | – |
-| rechts „Fahrgeschäfte“ | Liste nach Entfernung: Name, Art, Werte, Bewertung; „Mitfahren“, „Alle einladen“ | `visitor`+`ride`, `invite_ride` | FEAT-166, FEAT-138 |
+Besuchen ist eine Aktion (TP-23): Knopf „Besuchen“ im Fuß des Fensters. Die Fahrgeschäfte-Liste
+steht in der Besucher-Leiste (§4), „Testfahrt mit allen“ im Markieren-Radialmenü, die Ich-Sicht
+wechselt man im Besuch mit V. Der Knopf in der Bauleiste neben „Multiplayer“ wurde verworfen: Bei
+UI-Skalierung 1.0 verdeckte er die Icon-Knöpfe am Ende der Bauleiste des Spiels.
 
 ### 2.3 Planen
 
 | Bereich | Elemente | Aktionen | FEAT |
 |---|---|---|---|
-| links „Neu“ | Art (Aufgabe, Baugebiet, Vorschlag, Kommentar, Treffpunkt), Titel, Notiz, „Zuständig: … Wechseln“, Radius 10/20/40 m, „Hinzufügen“; Ort = letzter Ping oder Bildmitte | `board_add` | FEAT-130–134 |
-| rechts „Brett des Parks“ | Einträge; „Erledigt“/„Wieder offen“, „Dafür (n)“/„Dagegen (n)“, „Hinbringen“, „Löschen“ | `board_done`, `board_vote`, `goto`, `board_del` | FEAT-130–135 |
+| „Brett des Parks“ | Einträge als Zeilen (Titel, Art · von · → Zuständig, Stimmen, Notiz) mit runden Icon-Knöpfen: Haken (Erledigt/Wieder offen), Daumen hoch/runter, „Hinbringen“, Löschen | `board_done`, `board_vote`, `goto`, `board_del` | FEAT-130–135 |
+| „+ Neuer Eintrag“ → „Neuer Eintrag“ | Art (Aufgabe, Baugebiet, Vorschlag, Kommentar, Treffpunkt), Titel, Notiz, „Zuständig: … Wechseln“, Radius 10/20/40 m, „Hinzufügen“, „Abbrechen“; Ort = letzte Markierung oder Bildmitte; öffnet sich auch nach einer Brett-Aktion im Radialmenü | `board_add` | FEAT-130–134 |
 
 ### 2.4 Verlauf
 
 | Abschnitt | Elemente | Aktionen | FEAT |
 |---|---|---|---|
 | „Seit deinem letzten Besuch“ | Text | – | FEAT-139 |
-| „Meldungen des Parks“ | Pannen/Probleme mit „Hinbringen“ | `goto` | FEAT-140 |
+| „Meldungen des Parks“ | Pannen/Probleme mit Icon-Knopf „Hinbringen“ | `goto` | FEAT-140 |
 | „Sicherungspunkte“ | Liste; Host: „Zurückholen…“, „Sicherungspunkt erstellen“ | `restore`, `checkpoint` | FEAT-141 |
 | „Verlauf der Sitzung“ | Feed | – | FEAT-044 |
 
-### 2.5 Sitzung
+### 2.5 Einstellungen
 
 | Abschnitt | Elemente | Aktionen | FEAT |
 |---|---|---|---|
 | „Für dich“ (nur auf deinem PC) | „Mitspieler in der Welt zeigen“ An/Aus (Name, Blickrichtung, gehaltenes Objekt, Sperr-Färbung) | `labels` | FEAT-091 |
+| „Inhalte“ | nur mit Mitspielern: DLC-Vergleich; Host: „Nur gemeinsame Inhalte“/„Alle Inhalte erlauben“ | `guard` | FEAT-037, FEAT-038 |
 | „Wettbewerb“ | Host: Thema, Bauduell/Koop gegen die Uhr je 15/30/60 Min.; laufend: Uhr, Bewertung Gestaltung/Technik 1–5, Ergebnis; Host: „Zeit beenden, bewerten“/„Bewertung abschließen“/„Wettbewerb schließen“ | `comp_start`, `comp_rate`, `comp_next`, `goto` | FEAT-145–147 |
-| „Regeln dieser Sitzung“ | Host: Schnellwahl „Locker zusammen bauen“/„Geordnet“/„Nur bauen“; Spieltempo, Fremde Bauten, Besucher-Modus | `rule_preset`, `rule` | FEAT-142, FEAT-143 |
-| „Deine Rolle“, „Abwesenheit“, „Beitritt“ | Erklärtexte | – | FEAT-144 |
+| „Regeln dieser Sitzung“ | Host: Schnellwahl „Locker zusammen bauen“/„Geordnet“/„Nur bauen“ (untereinander); Spieltempo, Fremde Bauten, Besucher-Modus | `rule_preset`, `rule` | FEAT-142, FEAT-143 |
+| „Deine Rolle“, „Abwesenheit“ | Erklärtexte | – | FEAT-144 |
 
 ## 3. Im Park ohne Fenster (HUD-Ebene)
 
@@ -95,7 +107,7 @@ Verlauf · Sitzung**. Im Hauptmenü und ohne Sitzung gibt es nur die Team-Ansich
 | Markieren-Radialmenü (`ContextMenu`): Titel (Fahrgeschäft oder „Markierung“), Kreise mit Spiel-Icons „Testfahrt mit allen“, „Mitfahren“, „Übernahme von …“, „Kommentar“, „Vorschlag“, „Baugebiet“, „Treffpunkt“; Mitte = Schließen | um die Maus | nach eigener Markierung (kurzer Mittelklick), nicht im Besuch | `ctx` (invite, ride, take, comment, proposal, area, meet, close) | FEAT-136, FEAT-137 |
 | Tastenhinweise „[Enter] Chat“ und „[Mittelklick] Markieren“ (`MarkHint`) | unten rechts über der Bauleiste | in Sitzung im Park, Fenster zu, kein Besuch, kein Radialmenü offen | – | FEAT-095 |
 | Anfrage-Karte (`RequestCard`), eine zur Zeit mit Zähler „1 von n“: Beitrittsanfrage (Host) „Zulassen“/„Ablehnen“ → `approve`/`deny`; Abstimmung „Ja“/„Nein“ → `vote`; Testfahrt „Mitfahren“/„Später“ → `invitation`; nach einem Bauduell „Bewerten“ → `paneltab` + `open` | oben Mitte, 7.5 rem | etwas wartet auf eine Antwort, Fenster zu | siehe Spalte links | FEAT-027, FEAT-141, FEAT-138, FEAT-147 |
-| Chat-Bereich (`ChatArea`): Chat-Zeilen (Name in Spielerfarbe), Spieler-Ereignisse (hell), darüber Meldungs-Karten | unten links, ab 6 rem | Zeilen 10 s (max. 6), Karten 6 s (max. 3) | – | FEAT-044, FEAT-116 |
+| Chat-Bereich (`ChatArea`): Chat-Zeilen (Name in Spielerfarbe), Spieler-Ereignisse (hell), darüber Meldungs-Karten | unten links, ab 6 rem; bei offenem Fenster im Park rechts daneben | Zeilen 10 s (max. 6), Karten 6 s (max. 3) | – | FEAT-044, FEAT-116 |
 | Chat-Eingabe (`ChatArea`): letzte 12 Zeilen, Feld „Nachricht an alle“, Hinweise „[Enter] Senden“, „[Esc] Schließen“ | unten links | nach Enter im Park, Fenster zu | `chat`, `chatinput` | FEAT-035, FEAT-116 |
 | Park-Meldungen | Meldungen des Spiels beim Host (Pannen, Wartung, Proteste; `World.HookNotifications`) gehen als `note` an alle → Verlauf | in Sitzung | – | FEAT-140 |
 | Undo/Redo | Spielknopf und Strg+Z (`World.HookHUD`) | immer; gesperrt für fremde Schritte | – | FEAT-074 |
@@ -161,7 +173,7 @@ Entwickler-Seite: technische Werte und „API-Rekorder an/aus“, „Namensschil
 | `follow` | sid | folgen an/aus | ja |
 | `ping` | – | Ping unter dem Mauszeiger (`Session.Ping`) | **nein** (Ping kommt über Mittelklick) |
 | `visitor` | 1/0 | Besuch starten/beenden | ja |
-| `guest` | – | Laufmodus des Spiels (`Visitor.WatchGuest`) | ja („Ich-Sicht“) |
+| `guest` | – | Laufmodus des Spiels (`Visitor.WatchGuest`) | nein (seit P2; im Besuch V) |
 | `view` | – | Ich-Sicht ↔ von hinten | ja |
 | `ride` | Bahn-Key | mitfahren | ja |
 | `emote` | Art | Emote | ja |
@@ -169,9 +181,9 @@ Entwickler-Seite: technische Werte und „API-Rekorder an/aus“, „Namensschil
 | `shopclose` | – | Laden-Menü schließen | **nein** (E/Tab) |
 | `visitorlist` | 1/0 | Fahrgeschäfte-Liste | ja |
 | `rate` | key\|sterne\|text | bewerten | ja |
-| `invite_ride` | key\|name | Testfahrt-Einladung | ja |
+| `invite_ride` | key\|name | Testfahrt-Einladung | nein (seit P2; Radialmenü „Testfahrt mit allen“ über `ctx`) |
 | `invitation` | 1/0 | Einladung annehmen/später | ja |
-| `paneltab` | team/visit/plan/history/session | Reiter | ja |
+| `paneltab` | team/plan/history/session (visit veraltet, zeigt „Spieler“) | Reiter | ja |
 | `board_add` | art\|titel\|text\|zuständig\|radius | Brett-Eintrag | ja |
 | `board_vote` | id\|1/0 | Vorschlag abstimmen | ja |
 | `board_done` | id\|1/0 | Aufgabe erledigt | ja |

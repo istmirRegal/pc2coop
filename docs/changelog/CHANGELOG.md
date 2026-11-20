@@ -5,6 +5,13 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
 
 ## Unveröffentlicht
 
+- Das Multiplayer-Fenster im Park ist jetzt ein Fenster wie die des Spiels am linken Rand. Du
+  kannst weiterbauen, während es offen ist. Vier Reiter: Spieler, Planen, Verlauf, Einstellungen.
+  Freunde lädst du über „+ Einladen“ ein. Der Chat rückt bei offenem Fenster daneben.
+- „Besuchen“ ist ein Knopf im Fuß des Fensters statt eines eigenen Reiters. Die Fahrgeschäfte
+  findest du im Besuch in der Leiste oben, die Ich-Sicht mit V.
+- Einträge auf dem Brett haben Icon-Knöpfe (Haken, Daumen, Hinbringen, Löschen); ein neuer Eintrag
+  geht über „+ Neuer Eintrag“.
 - Änderst du Akzentfarbe oder Farbenblind-Modus, folgt die Mod-Oberfläche nach etwa einer
   Sekunde, auch die farbigen Streifen der Meldungen.
 - Die Krone des Hosts ist in der Spielerliste des Fensters wieder zu sehen.
