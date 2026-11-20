@@ -19,8 +19,13 @@ from pc2coop.alpha import (Controller, GameBridge, MAX_FRAME, ProtocolError,
 def wait_for(predicate, timeout=4):
     end = time.monotonic() + timeout
     while time.monotonic() < end:
-        if predicate():
-            return
+        # Windows: a file the bridge is writing at this moment cannot be opened (PermissionError);
+        # that is "not yet", not a failure (the test failed about one run in six).
+        try:
+            if predicate():
+                return
+        except PermissionError:
+            pass
         time.sleep(0.01)
     raise AssertionError("Condition timed out")
 

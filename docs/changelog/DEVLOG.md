@@ -3,6 +3,13 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-20 – Wackliger Test `test_alpha`
+
+- `BridgeTests.test_pid_bound_inbox_explicit_newpark_ack_and_error_stop` scheiterte etwa jeden
+  sechsten Lauf mit `PermissionError`: Unter Windows lässt sich die Inbox-Datei nicht öffnen, während
+  die Bridge sie schreibt. `wait_for` wertet das jetzt als „noch nicht“. Danach 10 Läufe
+  `test_alpha` und 6 volle Läufe grün.
+
 ## 2026-11-20 – UX-Overhaul P2, Schritt 4: Planen, Verlauf, Pausemenü
 
 - TP-17: `BOARD_ICON` je Art; `iconButton('footerGuests', …)` → `board_assign` reihum (die
