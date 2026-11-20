@@ -15,7 +15,7 @@ Darstellung: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js` (Kompone
 | Ort | Element | Wann sichtbar | Aktion | FEAT |
 |---|---|---|---|---|
 | Hauptmenü, Reiter „Spielen“ | Kachel „Multiplayer“ neben Karriere (`patchStartTabClass`) | immer | `open` | FEAT-113 |
-| Hauptmenü | Mini-Lobby-Karte (`MiniLobby`): „Lobby öffnen“, „Beenden“/„Verlassen“ | in einer Lobby, Fenster zu | `open`, `leave` | FEAT-034 |
+| Hauptmenü | Mini-Lobby-Karte (`MiniLobby`): „Sitzung öffnen“, „Beenden“/„Verlassen“ | in einer Lobby, Fenster zu | `open`, `leave` | FEAT-034 |
 | Park, Bauleiste unten | Reiter „Multiplayer“ rechts neben der Leiste, **nicht** in der TabBar (`patchBuildBar`, ADR-007) | im Park | `open` | FEAT-111 |
 | Park, Pausemenü (Esc) | Eintrag „Multiplayer“ (`patchMenuClass`) | im Park | `open` | FEAT-112 |
 | Tastatur | **F7** öffnet/schließt das Fenster (`key:menu` → `Ui.Toggle`) | überall | – | FEAT-114 |
@@ -23,12 +23,12 @@ Darstellung: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js` (Kompone
 
 ## 2. Multiplayer-Fenster (`Lobby`, 1320 × 780 px, Mitte)
 
-Kopf: Symbol, Titel („Multiplayer“ / „Deine Lobby“ / „Lobby von <Host>“), „n / 8 Spieler · <Park>“.
+Kopf: Symbol, Titel („Multiplayer“ / „Deine Sitzung“ / „Sitzung von <Host>“), „n / 8 Spieler · <Park>“.
 Fuß: Status-Punkt (Farbe nach Zustand) + Statustext + Knöpfe:
 
 | Knopf | Wann | Aktion |
 |---|---|---|
-| „Lobby erstellen“ (Menü) / „Diesen Park hosten“ (Park) | keine Sitzung, Steam da; gesperrt, wenn Hosten nicht geht | `host` |
+| „Sitzung starten“ | keine Sitzung, Steam da; gesperrt, wenn Hosten nicht geht | `host` |
 | „Neu synchronisieren“ | Gast mit Desync | `resync` |
 | „Steam-Overlay“ | in Sitzung | `invite_overlay` |
 | „Beenden“ (Host) / „Verlassen“ (Gast) | in Sitzung | `leave` |
@@ -42,18 +42,18 @@ Verlauf · Sitzung**. Im Hauptmenü und ohne Sitzung gibt es nur die Team-Ansich
 | Spalte | Abschnitt | Elemente | Aktionen | FEAT |
 |---|---|---|---|---|
 | links | „Möchte beitreten“ | Name + „Zulassen“/„Ablehnen“ (nur Host, nur bei Anfragen) | `approve`, `deny` | FEAT-027 |
-| links | „Spieler“ | Profilbild, Name, Krone (Host), Aktivität, Farbe; „Hinspringen“, „Folgen“/„Nicht folgen“; freie Plätze bis 8 | `jump`, `follow` | FEAT-043, FEAT-096, FEAT-097 |
+| links | „Spieler“ | Profilbild, Name, Krone (Host), Aktivität, Farbe; „Hinbringen“, „Folgen“/„Nicht folgen“; freie Plätze bis 8 | `jump`, `follow` | FEAT-043, FEAT-096, FEAT-097 |
 | Mitte | „Wo spielen wir?“ (Menü) | Reiter Gespeichert/Neu/Franchise/Karriere·später; Parkliste („aktualisieren“), Biome + Kreativ/Budget, „Franchise-Menü öffnen“, „Park öffnen“ (Host) | `choose`, `parks`, `start` | FEAT-032, FEAT-046 |
 | Mitte | „Park des Hosts“ (Park) | Parkname, Zahlen, Verlauf | – | FEAT-079 |
 | Mitte | „Inhalte“ | DLC-Vergleich; Host: „Nur gemeinsame Inhalte“/„Alle Inhalte erlauben“ | `guard` | FEAT-037, FEAT-038 |
-| rechts | „Chat“ | Nachrichten, Eingabe „Nachricht an alle … (Enter sendet)“ | `chat` | FEAT-035 |
+| rechts | „Chat“ | Nachrichten, Eingabe „Nachricht an alle“ (Enter sendet) | `chat` | FEAT-035 |
 | rechts | „Freunde einladen“ / „Steam-Freunde“ | Freunde mit Status; „Einladen“/„Eingeladen“ (in Sitzung) oder „Beitreten“ (Freund hat Lobby) | `invite`, `join_friend` | FEAT-023, FEAT-024 |
 
 ### 2.2 Besuchen
 
 | Bereich | Elemente | Aktionen | FEAT |
 |---|---|---|---|
-| links „Als Besucher im Park“ | Erklärung oder „Host hat den Besucher-Modus ausgeschaltet“; „Als Besucher losgehen“, „Zurück zum Bauen“, „Ich-Sicht (Spiel)“ | `visitor`, `guest` | FEAT-160, FEAT-164 |
+| links „Als Besucher im Park“ | Erklärung oder „Host hat den Besucher-Modus ausgeschaltet“; „Als Besucher losgehen“, „Zurück zum Bauen“, „Ich-Sicht“ | `visitor`, `guest` | FEAT-160, FEAT-164 |
 | links „Steuerung“, „Gemeinsam“ | Hilfetexte (siehe UX-Audit A1) | – | – |
 | rechts „Fahrgeschäfte“ | Liste nach Entfernung: Name, Art, Werte, Bewertung; „Mitfahren“, „Alle einladen“ | `visitor`+`ride`, `invite_ride` | FEAT-166, FEAT-138 |
 
@@ -62,14 +62,14 @@ Verlauf · Sitzung**. Im Hauptmenü und ohne Sitzung gibt es nur die Team-Ansich
 | Bereich | Elemente | Aktionen | FEAT |
 |---|---|---|---|
 | links „Neu“ | Art (Aufgabe, Baugebiet, Vorschlag, Kommentar, Treffpunkt), Titel, Notiz, „Zuständig: … Wechseln“, Radius 10/20/40 m, „Hinzufügen“; Ort = letzter Ping oder Bildmitte | `board_add` | FEAT-130–134 |
-| rechts „Brett des Parks“ | Einträge; „Erledigt“/„Wieder offen“, „Dafür (n)“/„Dagegen (n)“, „Hinspringen“, „Löschen“ | `board_done`, `board_vote`, `goto`, `board_del` | FEAT-130–135 |
+| rechts „Brett des Parks“ | Einträge; „Erledigt“/„Wieder offen“, „Dafür (n)“/„Dagegen (n)“, „Hinbringen“, „Löschen“ | `board_done`, `board_vote`, `goto`, `board_del` | FEAT-130–135 |
 
 ### 2.4 Verlauf
 
 | Abschnitt | Elemente | Aktionen | FEAT |
 |---|---|---|---|
 | „Seit deinem letzten Besuch“ | Text | – | FEAT-139 |
-| „Meldungen des Parks“ | Pannen/Probleme mit „Hinspringen“ | `goto` | FEAT-140 |
+| „Meldungen des Parks“ | Pannen/Probleme mit „Hinbringen“ | `goto` | FEAT-140 |
 | „Sicherungspunkte“ | Liste; Host: „Zurückholen…“, „Sicherungspunkt erstellen“ | `restore`, `checkpoint` | FEAT-141 |
 | „Verlauf der Sitzung“ | Feed | – | FEAT-044 |
 
@@ -86,7 +86,7 @@ Verlauf · Sitzung**. Im Hauptmenü und ohne Sitzung gibt es nur die Team-Ansich
 | Element | Ort | Wann | Bedienung | FEAT |
 |---|---|---|---|---|
 | Spielerleiste (`PlayerBar`) | oben rechts, ab 84 px | in Sitzung im Park, nicht beim Mitfahren | Klick auf Mitspieler = folgen | FEAT-090, FEAT-096 |
-| Hinweis „Host ist in der Lobby …“ | unter der Spielerleiste | Host im Hauptmenü | – | FEAT-033 |
+| Hinweis „Der Host ist im Hauptmenü …“ | unter der Spielerleiste | Host im Hauptmenü | – | FEAT-033 |
 | Namensschilder | über dem Blickpunkt der Mitspieler (Coaster-Labels des Spiels, Stil in `DebugToolImports.js`) | Mitspieler im Park, F8 „Namensschilder“ an | – | FEAT-091 |
 | Bodenmarke, Sichtkegel, Geist, Sperr-Färbung, Figuren | in der Welt (`viz.lua`) | Mitspieler im Park | – | FEAT-092–094, FEAT-171 |
 | Kontextmenü (`ContextMenu`) | an der Maus | nach eigenem Ping (kurzer Mittelklick), nicht im Besuch | `ctx` (invite, ride, take, comment, proposal, area, meet, close) | FEAT-136, FEAT-137 |
@@ -154,7 +154,7 @@ Entwickler-Seite: technische Werte und „API-Rekorder an/aus“, „Namensschil
 | `follow` | sid | folgen an/aus | ja |
 | `ping` | – | Ping unter dem Mauszeiger (`Session.Ping`) | **nein** (Ping kommt über Mittelklick) |
 | `visitor` | 1/0 | Besuch starten/beenden | ja |
-| `guest` | – | Laufmodus des Spiels (`Visitor.WatchGuest`) | ja („Ich-Sicht (Spiel)“) |
+| `guest` | – | Laufmodus des Spiels (`Visitor.WatchGuest`) | ja („Ich-Sicht“) |
 | `view` | – | Ich-Sicht ↔ von hinten | ja |
 | `ride` | Bahn-Key | mitfahren | ja |
 | `emote` | Art | Emote | ja |

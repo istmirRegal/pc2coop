@@ -6,10 +6,10 @@ Wie der Spieler zwischen den Teilen der Mod wechselt (Ist-Zustand 1.13.0).
 
 ```
 Hauptmenü ─ Kachel „Multiplayer“ / F7 ─► Multiplayer-Fenster (Team-Ansicht)
-   │                                        ├─ „Lobby erstellen“ → Lobby (Host)
+   │                                        ├─ „Sitzung starten“ → Lobby (Host)
    │                                        ├─ Freund „Beitreten“ → Beitritt
    │                                        └─ Host: „Wo spielen wir?“ → „Park öffnen“ → alle laden den Park
-   └─ Fenster zu, in Lobby ─► Mini-Lobby-Karte („Lobby öffnen“ / „Verlassen“)
+   └─ Fenster zu, in Lobby ─► Mini-Lobby-Karte („Sitzung öffnen“ / „Verlassen“)
 ```
 
 Steam-Einladung angenommen → (`JoinConfirm`, wenn per Startparameter) → `JoinProgress` →
@@ -31,7 +31,7 @@ Bauen ─ F8 ─► Entwickler-Dialog (Seite „Entwickler“ ↔ „Zurueck“)
 
 ```
 Fenster „Besuchen“ ─ „Als Besucher losgehen“ ─► Besuch (von hinten, Figur)
-                   ─ „Ich-Sicht (Spiel)“     ─► Besuch in der Ich-Sicht (Laufmodus des Spiels)
+                   ─ „Ich-Sicht“     ─► Besuch in der Ich-Sicht (Laufmodus des Spiels)
                    ─ Fahrgeschäft „Mitfahren“ ─► Besuch + Mitfahren
 
 Besuch (von hinten) ⇄ V ⇄ Ich-Sicht

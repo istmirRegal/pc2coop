@@ -381,7 +381,7 @@ local function restore(sid, gid, reason)
     local out = {{sid, "R|" .. gid .. "|" .. reason}}
     if objects[gid] then
         out[#out+1] = {sid, upsertLine(gid)}
-        addFeed(nameOf(sid) .. ": Aenderung verworfen, " .. objects[gid].last .. " war schneller")
+        addFeed(nameOf(sid) .. ": Änderung verworfen, " .. objects[gid].last .. " war schneller")
     else
         out[#out+1] = {sid, "D|" .. gid .. "|host|0"}
     end
@@ -486,7 +486,7 @@ local function authorityDelete(sid, part, gid, rev)
     end
     tombstones[gid] = rev + 1
     count(sid, "deleted")
-    addFeed(nameOf(sid) .. " hat " .. res .. " geloescht")
+    addFeed(nameOf(sid) .. " hat " .. res .. " gelöscht")
     local out = {{sid, "M|" .. gid .. "|" .. part .. "|0"}}
     for _, d in global.ipairs(others(sid, "D|" .. gid .. "|" .. clean(nameOf(sid)) .. "|" .. (rev + 1))) do out[#out+1] = d end
     return out
@@ -580,7 +580,7 @@ local function join(sid, name, mode)
         -- Asked again while the park is still on its way: it arrives, nothing to restart.
         if players[sid].sending then return end
         players[sid].pending, players[sid].sending, players[sid].sent = {}, true, 0
-        addFeed(players[sid].name .. " tritt bei und laedt den Park")
+        addFeed(players[sid].name .. " tritt bei und lädt den Park")
         tasks[#tasks+1] = global.coroutine.create(function() sendPark(sid) end)
     elseif mode == "loaded" and players[sid].pending then
         addFeed(players[sid].name .. " ist beigetreten")
@@ -705,9 +705,9 @@ local function forwardRide(sid, old, new, file)
         end
     end
     deliver(out)
-    if new == "-" then addFeed(nameOf(sid) .. " hat ein Fahrgeschaeft abgerissen")
+    if new == "-" then addFeed(nameOf(sid) .. " hat ein Fahrgeschäft abgerissen")
     elseif old == "-" then addFeed(nameOf(sid) .. " hat eine Achterbahn gebaut")
-    else addFeed(nameOf(sid) .. " hat eine Achterbahn geaendert") end
+    else addFeed(nameOf(sid) .. " hat eine Achterbahn geändert") end
 end
 
 -- A change report, either from our own game or from a client.
@@ -800,7 +800,7 @@ local function hostChange(sid, f)
             lastTakeAsk[sid] = frames
             if f[2] == me then toast(takeText(nameOf(sid), holds[f[2]].label), players[sid].color)
             else send(f[2], "tk|" .. clean(nameOf(sid)) .. "|" .. clean(holds[f[2]].label)) end
-            addFeed(nameOf(sid) .. " fragt " .. nameOf(f[2]) .. " nach Uebernahme")
+            addFeed(nameOf(sid) .. " fragt " .. nameOf(f[2]) .. " nach Übernahme")
         end
     elseif f[1] == "ride-invite" and players[sid] and validRideKey(f[2]) then
         local line = "iv|" .. clean(nameOf(sid)) .. "|" .. f[2] .. "|" .. clean(f[3] or "?")
@@ -808,7 +808,7 @@ local function hostChange(sid, f)
             if other ~= me and other ~= sid and players[other] and not players[other].pending then send(other, line) end
         end
         if sid ~= me then invitation = {by = nameOf(sid), key = f[2], name = clean(f[3] or "?"), frame = frames} end
-        addFeed(nameOf(sid) .. " laedt zur Testfahrt auf " .. clean(f[3] or "?") .. " ein")
+        addFeed(nameOf(sid) .. " lädt zur Testfahrt auf " .. clean(f[3] or "?") .. " ein")
     elseif f[1] == "vote-answer" and players[sid] and vote and f[2] == vote.id then
         vote.answers[sid] = f[3] == "1"
         Session._VoteCheck()
@@ -947,24 +947,24 @@ function Session.OnSyncLine(line)
     end
     if kind == "hold-denied" then Session._Denied(rest); return end
     if kind == "hold-lost" then
-        toast("Ein Mitspieler hat das Objekt geaendert, das du gerade bearbeitet hast.", "ff922b")
+        toast("Ein Mitspieler hat das Objekt geändert, das du gerade bearbeitet hast.", "ff922b")
         return
     end
     if kind == "undo-blocked" then
-        toast("Rueckgaengig geht nur fuer deinen eigenen letzten Schritt - der neueste hier stammt von einem Mitspieler.", "ff922b")
+        toast("Rückgängig geht nur für deinen eigenen letzten Schritt - der neueste hier stammt von einem Mitspieler.", "ff922b")
         return
     end
     if kind == "rejected" then
         local reason = global.string.match(rest, "|(.*)$") or ""
-        if reason == "gesperrt" then toast("Zurueckgenommen: ein Mitspieler bearbeitet dieses Objekt gerade.", "ff922b")
+        if reason == "gesperrt" then toast("Zurückgenommen: ein Mitspieler bearbeitet dieses Objekt gerade.", "ff922b")
         elseif reason == "fremd" then return
-        elseif reason == "veraltet" then toast("Zurueckgenommen: ein Mitspieler war bei diesem Objekt schneller.", "ff922b") end
+        elseif reason == "veraltet" then toast("Zurückgenommen: ein Mitspieler war bei diesem Objekt schneller.", "ff922b") end
         return
     end
     if kind == "unsupported" then
         if frames - lastUnsupported > 600 then
             lastUnsupported = frames
-            toast("Hinweis: \"" .. clean(rest) .. "\" wird noch nicht an die anderen uebertragen. Sie koennen im "
+            toast("Hinweis: \"" .. clean(rest) .. "\" wird noch nicht an die anderen übertragen. Sie können im "
                 .. "Multiplayer-Fenster \"Neu synchronisieren\".", "ff922b")
         end
         return
@@ -997,7 +997,7 @@ local function onMessage(from, payload)
             local name, theirGame = clean(f[2] or "?"), clean(f[6] or "")
             if f[5] ~= Session.VERSION then
                 local version = clean(f[5] or "alt")
-                addFeed(name .. " hat PC2Coop " .. version .. ", du " .. Session.VERSION .. " - bitte beide UPDATE.cmd ausfuehren")
+                addFeed(name .. " hat PC2Coop " .. version .. ", du " .. Session.VERSION .. " - bitte beide UPDATE.cmd ausführen")
                 send(from, "reject|" .. Session.VERSION .. "|" .. gameVersion)
                 return
             end
@@ -1010,7 +1010,7 @@ local function onMessage(from, payload)
             -- is only handed to someone the host invited from here or lets in now.
             if not players[from] and askBeforeJoin and not invited[from] and not approved[from] then
                 if not requests[from] then
-                    toast(name .. " moechte beitreten. Im Multiplayer-Fenster zulassen oder ablehnen.", "fcc419")
+                    toast(name .. " möchte beitreten. Im Multiplayer-Fenster zulassen oder ablehnen.", "fcc419")
                     emit("session:join-request|" .. from)
                 end
                 requests[from] = {name = name, mode = f[4], base = f[3], dlc = f[7], mods = f[8]}
@@ -1023,7 +1023,7 @@ local function onMessage(from, payload)
             -- incomplete. Now that they are back, they fetch it again.
             players[from].stale = nil
             send(from, "resync|")
-            addFeed(players[from].name .. " war kurz weg - der Park wird neu uebertragen")
+            addFeed(players[from].name .. " war kurz weg - der Park wird neu übertragen")
             hostChange(from, split(payload, "|"))
         elseif kind == "desync" and players[from] then
             addFeed(players[from].name .. " ist nicht mehr synchron")
@@ -1231,13 +1231,13 @@ function Session._OnStage()
         local have = memory.hostPark == (parkToken or "")
         if phase == "lobby" or not have then
             if seenStage == key and phase ~= "lobby" then return end
-            if context == "park" and phase == "live" then toast("Der Host hat einen anderen Park geoeffnet - er wird geladen.", "fcc419") end
+            if context == "park" and phase == "live" then toast("Der Host hat einen anderen Park geöffnet - er wird geladen.", "fcc419") end
             requestPark()
         end
     elseif stage == "lobby" and seenStage ~= key then
         seenStage = key
         if context == "park" and memory.phase == "live" then
-            toast("Der Host ist zurueck in der Lobby und waehlt einen Park. Geh ins Hauptmenue, um dabei zu bleiben.", "fcc419")
+            toast("Der Host ist zurück in der Lobby und wählt einen Park. Geh ins Hauptmenü, um dabei zu bleiben.", "fcc419")
         elseif context == "menu" and memory.phase ~= "lobby" then
             remember("phase", "lobby")
         end
@@ -1278,7 +1278,7 @@ local function onNet(event)
             if context == "menu" then
                 -- The lobby: everyone waits in the main menu until the host opens a park.
                 stage, parkToken, parkTitle = "lobby", nil, ""
-                if again then toast("Du bist wieder in der Lobby. Oeffne einen Park - alle laden ihn dann mit.", "fcc419") end
+                if again then toast("Du bist wieder in der Lobby. Öffne einen Park - alle laden ihn dann mit.", "fcc419") end
             else
                 stage = "park"
                 choice = nil
@@ -1349,8 +1349,8 @@ local function onNet(event)
         joining = false
         local code = global.tonumber(f[2]) or 0
         local reasons = {[2] = "Diese Einladung ist abgelaufen: die Sitzung gibt es nicht mehr. Lass dich neu einladen.",
-            [4] = "Die Sitzung ist voll.", [6] = "Die Sitzung ist nur fuer Steam-Freunde des Hosts."}
-        failJoin(reasons[code] or ("Beitritt nicht moeglich (Steam-Code " .. code .. "). Lass dich neu einladen."), false)
+            [4] = "Die Sitzung ist voll.", [6] = "Die Sitzung ist nur für Steam-Freunde des Hosts."}
+        failJoin(reasons[code] or ("Beitritt nicht möglich (Steam-Code " .. code .. "). Lass dich neu einladen."), false)
     elseif kind == "member:join" then
         emit("session:member|" .. f[2] .. "|" .. clean(f[3]))
     elseif kind == "member:leave" then
@@ -1497,7 +1497,7 @@ local function onNet(event)
         if role == "client" and f[2] == hostId then selfStalled = true end
         -- Steam accepted nothing for this player for a minute: the data for them is gone.
         local who = players[f[2]] and players[f[2]].name or "Ein Mitspieler"
-        addFeed("Verbindung zu " .. who .. " haengt - bitte neu beitreten")
+        addFeed("Verbindung zu " .. who .. " hängt - bitte neu beitreten")
         emit("session:peer-stalled|" .. f[2] .. "|" .. global.tostring(f[3]))
     elseif kind == "lobby:created" then
         emit("session:lobby-created|" .. f[2])
@@ -1551,7 +1551,7 @@ function Session._TryLoad()
     local ok, failure = Session._LoadPark(transfer.world, transfer.name)
     if not ok then
         transfer.started = false
-        failJoin("Die uebertragene Park-Datei ist ungueltig (" .. global.tostring(failure) .. ").", true)
+        failJoin("Die übertragene Park-Datei ist ungültig (" .. global.tostring(failure) .. ").", true)
     end
 end
 
@@ -2233,7 +2233,7 @@ function Session._VoteCheck()
     if done.kind == "restore" then
         for _, c in global.ipairs(checkpoints) do
             if global.tostring(c.n) == done.arg then
-                addFeed("Alle einverstanden: zurueck auf " .. c.label)
+                addFeed("Alle einverstanden: zurück auf " .. c.label)
                 global.pcall(function()
                     local world = global.api.world.GetActive()
                     manager:RequestLoadParkFromFile("/run/" .. c.base .. ".bin", world, nil, parkTitle ~= "" and parkTitle or "Park", false)
@@ -2359,7 +2359,7 @@ function Session.Park() return park end
 function Session.Holds() return holds end
 
 function Session._Denied(name)
-    toast(global.tostring(name) .. " bearbeitet das gerade. Dein Werkzeug wurde zurueckgesetzt.", "ff922b")
+    toast(global.tostring(name) .. " bearbeitet das gerade. Dein Werkzeug wurde zurückgesetzt.", "ff922b")
     World.LeaveTool()
 end
 
@@ -2408,7 +2408,7 @@ function Session._HostRefused(seq, rest)
         local current = objects[gid] or {rev = 0, creator = "Park"}
         objects[gid] = {res = state.res, p = state.p, q = state.q, s = state.s, rev = current.rev + 1, last = "Host", creator = current.creator}
         deliver(others(me, upsertLine(gid)))
-        addFeed("Aenderung von " .. owner .. " zurueckgenommen: " .. why)
+        addFeed("Änderung von " .. owner .. " zurückgenommen: " .. why)
     else
         objects[gid], tombstones[gid] = nil, true
         deliver(others(me, "D|" .. gid .. "|host|0"))
@@ -2499,7 +2499,7 @@ local function firstUseHint()
     parkFrames = parkFrames + 1
     if parkFrames ~= 600 or memory.hinted == "1" then return end
     remember("hinted", "1")
-    toast("Tipp: Kurzer Mittelklick zeigt allen eine Stelle und bietet Aktionen dafuer an (Kommentar, Testfahrt, Uebernahme). "
+    toast("Tipp: Kurzer Mittelklick zeigt allen eine Stelle und bietet Aktionen dafür an (Kommentar, Testfahrt, Übernahme). "
         .. "Alles weitere: Multiplayer unten im Baumenue oder F7.", "4dabf7")
 end
 

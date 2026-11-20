@@ -311,11 +311,11 @@ function statusOf(coop) {
     const host = hostOf(coop);
     if (!coop.available) return { text: 'Steam ist nicht verfügbar.', tone: 'warn' };
     if (join.phase === 'failed') return { text: join.reason, tone: 'warn' };
-    if (join.phase === 'hostlobby') return { text: (join.host || 'Der Host') + ' ist zurück in der Lobby und wählt einen Park. Geh ins Hauptmenü, um dabei zu bleiben.', tone: 'wait' };
+    if (join.phase === 'hostlobby') return { text: (join.host || 'Der Host') + ' ist zurück im Hauptmenü und wählt einen Park. Geh auch ins Hauptmenü, um dabeizubleiben.', tone: 'wait' };
     if (join.phase && ['live', 'lobby', 'rejoin'].indexOf(join.phase) < 0) return { text: joinText(join), tone: 'busy' };
     if (!coop.role) {
-        return { text: coop.context === 'menu' ? 'Erstelle eine Lobby oder tritt der Lobby eines Freundes bei.'
-            : 'Hoste diesen Park und lade Freunde ein - sie bekommen ihn automatisch.', tone: 'idle' };
+        return { text: coop.context === 'menu' ? 'Starte eine Sitzung oder tritt einem Freund bei.'
+            : 'Starte eine Sitzung – Freunde treten bei und bauen mit.', tone: 'idle' };
     }
     if (coop.desync) return { text: 'Nicht mehr synchron: ' + coop.desync + (coop.role === 'client' ? ' - "Neu synchronisieren" lädt den Park des Hosts erneut.' : ''), tone: 'warn' };
     if (coop.stage === 'lobby') {
@@ -335,7 +335,7 @@ function statusOf(coop) {
 const TONE = { get ok() { return C('positive'); }, get busy() { return C('accentLight'); }, get wait() { return C('highlight'); },
     get warn() { return C('warning'); }, get idle() { return C('neutral3'); } };
 
-const ACT_LOBBY = 'in der Lobby';
+const ACT_LOBBY = 'im Hauptmenü';
 
 function playerActivity(coop, p) {
     if (p.act === 'lobby') return coop.stage === 'park' ? 'wartet auf den Park' : ACT_LOBBY;
@@ -358,14 +358,14 @@ class PlayerBar extends StateComponent {
                 padding: '0.2rem 0.6rem 0.2rem 0.2rem', borderRadius: '1rem', backgroundColor: HUD_BG(0.72),
                 borderWidth: '2px', borderStyle: 'solid', borderColor: coop.following === p.sid ? C('highlight') : 'transparent' } },
                 h(Avatar, { player: p, size: 28, pic: avatars[p.sid] }),
-                h('div', { style: { color: C('whiteColor'), fontSize: '0.8rem', marginLeft: '0.45rem' } }, p.name + (p.me ? ' (du)' : '')),
+                h('div', { style: { color: C('whiteColor'), fontSize: '0.9rem', marginLeft: '0.45rem' } }, p.name + (p.me ? ' (du)' : '')),
                 p.host && h(Icon, { src: 'img/icons/crown.svg', style: { width: '0.9rem', height: '0.9rem', marginLeft: '0.35rem' } }),
-                h('div', { style: { color: coop.following === p.sid ? C('highlight') : C('accentButtonLight'), fontSize: '0.65rem', marginLeft: '0.45rem' } },
-                    coop.following === p.sid ? 'du folgst - klicken beendet'
+                h('div', { style: { color: coop.following === p.sid ? C('highlight') : C('accentButtonLight'), fontSize: '0.9rem', marginLeft: '0.45rem' } },
+                    coop.following === p.sid ? 'du folgst – Klick beendet'
                         : ((coop.visitor && coop.visitor.emotes && coop.visitor.emotes[p.sid]) || playerActivity(coop, p))))),
             join.phase === 'hostlobby' && h('div', { style: { marginTop: '0.3rem', padding: '0.4rem 0.6rem', maxWidth: '18rem', borderRadius: '0.5rem',
-                backgroundColor: HUD_BG(0.85), color: C('highlight'), fontSize: '0.7rem' } },
-                'Host ist in der Lobby - Hauptmenü öffnen, um dabei zu bleiben.'));
+                backgroundColor: HUD_BG(0.85), color: C('highlight'), fontSize: '0.9rem' } },
+                'Der Host ist im Hauptmenü. Geh auch hin, um dabeizubleiben.'));
     }
 }
 
@@ -381,7 +381,7 @@ class VisitorBar extends StateComponent {
         const visitor = coop.visitor;
         if (!visitor || !visitor.active || coop.context === 'menu' || coop.open) return null;
         const pill = { display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0.3rem 0.5rem', borderRadius: '0.9rem',
-            backgroundColor: HUD_BG(0.82), color: C('whiteColor'), fontSize: '0.75rem' };
+            backgroundColor: HUD_BG(0.82), color: C('whiteColor'), fontSize: '0.9rem' };
         const bar = h('div', { style: pill },
             visitor.active && h('div', { style: { margin: '0 0 0.2rem', color: C('accentButtonLight') } },
                 visitor.riding ? 'Du fährst ' + visitor.riding + ' - "Zurück" unten rechts steigt aus'
@@ -410,8 +410,8 @@ class VisitorBar extends StateComponent {
         const rides = list(visitor.rides);
         const picked = rides.find((r) => r.key === state.picked);
         const panel = visitor.list && h('div', { style: { width: '50rem', marginTop: '0.4rem', borderRadius: '0.6rem', overflow: 'hidden',
-            backgroundColor: C('panel'), color: C('accentText'), fontSize: '0.85rem' } },
-            h('div', { style: { height: '2.2rem', lineHeight: '2.2rem', padding: '0 0.9rem', backgroundColor: C('accent'), color: C('whiteColor'), fontSize: '0.9rem' } },
+            backgroundColor: C('panel'), color: C('accentText'), fontSize: '0.9rem' } },
+            h('div', { style: { height: '2.2rem', lineHeight: '2.2rem', padding: '0 0.9rem', backgroundColor: C('accent'), color: C('whiteColor'), fontSize: '1rem' } },
                 'Fahrgeschäfte im Park - nächstes zuerst'),
             box(picked && coop.role ? 330 : 400, rides.length === 0
                 ? h('div', { style: { padding: '0.9rem', color: C('accentButtonDesaturatedDark') } }, 'Noch keine Fahrgeschäfte im Park.')
@@ -426,9 +426,9 @@ class VisitorBar extends StateComponent {
                         backgroundColor: state.picked === r.key ? C('area') : 'transparent' } },
                         h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
                             h('div', { style: { width: '26rem' } },
-                                h('div', { style: { fontSize: '0.9rem' } }, r.name + '  ', h('span', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.75rem' } }, r.kind)),
-                                h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.75rem' } }, stats + (extra ? '  ·  ' + extra : '')),
-                                h('div', { style: { color: C('accent'), fontSize: '0.75rem' } },
+                                h('div', { style: { fontSize: '1rem' } }, r.name + '  ', h('span', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } }, r.kind)),
+                                h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } }, stats + (extra ? '  ·  ' + extra : '')),
+                                h('div', { style: { color: C('accent'), fontSize: '0.9rem' } },
                                     r.count ? 'Bewertung ' + one(r.avg) + ' / 5 (' + r.count + ')' : 'noch keine Bewertung')),
                             buttons([
                                 { label: 'Mitfahren', onSelect: () => request('ride', r.key) },
@@ -438,11 +438,11 @@ class VisitorBar extends StateComponent {
                                         request('rate', r.key + '|' + n + '|');
                                     } })) : []),
                             ])),
-                        list(r.comments).slice(-2).map((c, i) => h('div', { key: 'c' + i, style: { color: C('accentText'), fontSize: '0.75rem', marginTop: '0.15rem' } },
+                        list(r.comments).slice(-2).map((c, i) => h('div', { key: 'c' + i, style: { color: C('accentText'), fontSize: '0.9rem', marginTop: '0.15rem' } },
                             c.who + ' (' + c.stars + '/5): ' + c.text)));
                 })),
             picked && coop.role && h('div', { style: { padding: '0.5rem 0.9rem', backgroundColor: C('area') } },
-                h(InputField, { text: state.draft, promptText: literal('Vorschlag zu ' + picked.name + ' ... (Enter sendet)'), maxInputLength: 120,
+                h(InputField, { text: state.draft, promptText: literal('Vorschlag zu ' + picked.name), maxInputLength: 120,
                     beginEditOnSelect: true, onChange: (e) => this.setState({ draft: (e && e.text) || '' }), onCommit: (e) => {
                         const text = String((e && e.text) || '').trim().split('|').join(' ');
                         this.setState({ draft: '' });
@@ -468,11 +468,11 @@ class EmoteWheel extends StateComponent {
                 const on = wheel.selected === i + 1;
                 return h('div', { key: label, style: { position: 'absolute', left: rem((Math.sin(angle) * radius - 70)),
                     top: rem((-Math.cos(angle) * radius - 24)), width: '7rem', height: '2.4rem', lineHeight: '2.4rem', textAlign: 'center',
-                    borderRadius: '1.2rem', fontSize: '0.95rem', backgroundColor: on ? C('accent') : HUD_BG(0.85), color: C('whiteColor'),
+                    borderRadius: '1.2rem', fontSize: '1rem', backgroundColor: on ? C('accent') : HUD_BG(0.85), color: C('whiteColor'),
                     borderWidth: '2px', borderStyle: 'solid', borderColor: on ? C('whiteColor') : 'rgba(255, 255, 255, 0.25)' } }, (i + 1) + '  ' + label);
             }),
             h('div', { style: { position: 'absolute', left: '-5.5rem', top: '-0.7rem', width: '11rem', textAlign: 'center', color: C('whiteColor'),
-                fontSize: '0.75rem', textShadow: '0 1px 0.15rem #000' } }, 'Maus bewegen, T loslassen'));
+                fontSize: '0.9rem', textShadow: '0 1px 0.15rem #000' } }, 'Maus bewegen, T loslassen'));
     }
 }
 
@@ -483,7 +483,7 @@ class VoteBanner extends StateComponent {
         const vote = coop.team && coop.team.vote;
         if (!vote) return null;
         return h('div', { style: { position: 'absolute', top: '7rem', left: '50%', width: '38rem', marginLeft: '-19rem', padding: '0.7rem 0.9rem',
-            borderRadius: '0.6rem', backgroundColor: HUD_BG(0.92), color: C('whiteColor'), fontSize: '0.9rem', pointerEvents: 'auto' } },
+            borderRadius: '0.6rem', backgroundColor: HUD_BG(0.92), color: C('whiteColor'), fontSize: '1rem', pointerEvents: 'auto' } },
             h('div', { style: { marginBottom: '0.4rem' } }, 'Abstimmung von ' + vote.by + ': ' + vote.text),
             vote.answered ? h('div', { style: { color: C('accentButtonLight') } }, 'Deine Stimme ist abgegeben - warte auf die anderen.')
                 : buttons([{ label: 'Ja', onSelect: () => request('vote', '1') }, { label: 'Nein', onSelect: () => request('vote', '0') }]));
@@ -507,11 +507,11 @@ class ContextMenu extends StateComponent {
             this.at = { key, x: Math.min(m.x + 18, w - 19 * remPx()), y: Math.min(Math.max(m.y - 20, 10), hgt - 21 * remPx()) };
         }
         const item = (label, arg, strong) => h('div', { key: arg, onClick: () => request('ctx', arg),
-            style: { padding: '0.45rem 0.7rem', fontSize: '0.85rem', cursor: 'pointer', borderTop: '1px solid rgba(255, 255, 255, 0.12)',
+            style: { padding: '0.45rem 0.7rem', fontSize: '0.9rem', cursor: 'pointer', borderTop: '1px solid rgba(255, 255, 255, 0.12)',
                 color: strong ? C('accentButtonLight') : C('whiteColor') } }, label);
         return h('div', { style: { position: 'absolute', left: this.at.x + 'px', top: this.at.y + 'px', width: '18rem', borderRadius: '0.5rem',
             backgroundColor: HUD_BG(0.94), color: C('whiteColor'), pointerEvents: 'auto', overflow: 'hidden' } },
-            h('div', { style: { padding: '0.4rem 0.7rem', fontSize: '0.75rem', color: C('accentButtonLight') } }, ctx.ride ? ctx.ride.name : 'Hier'),
+            h('div', { style: { padding: '0.4rem 0.7rem', fontSize: '0.9rem', color: C('accentButtonLight') } }, ctx.ride ? ctx.ride.name : 'Hier'),
             ctx.ride && item('Team zur Testfahrt einladen', 'invite', true),
             ctx.ride && item('Selbst mitfahren', 'ride'),
             ...list(ctx.editors).map((e) => item('Übernahme bei ' + e.name + ' anfragen (' + e.label + ')', 'take|' + e.sid, true)),
@@ -533,7 +533,7 @@ class CompBanner extends StateComponent {
         const text = comp.phase === 'build' ? comp.label + (comp.topic ? ' · ' + comp.topic : '') + ' · noch ' + Math.floor(s / 60) + ':' + (s % 60 < 10 ? '0' : '') + (s % 60)
             : 'Bewerten: Multiplayer > Sitzung';
         return h('div', { style: { position: 'absolute', top: '0.9rem', left: '50%', width: '26rem', marginLeft: '-13rem', textAlign: 'center',
-            padding: '0.3rem 0.6rem', borderRadius: '0.8rem', backgroundColor: HUD_BG(0.85), color: C('whiteColor'), fontSize: '0.85rem' } }, text);
+            padding: '0.3rem 0.6rem', borderRadius: '0.8rem', backgroundColor: HUD_BG(0.85), color: C('whiteColor'), fontSize: '0.9rem' } }, text);
     }
 }
 
@@ -544,7 +544,7 @@ class InviteBanner extends StateComponent {
         const invite = coop.team && coop.team.invitation;
         if (!invite || coop.open) return null;
         return h('div', { style: { position: 'absolute', top: '7rem', left: '50%', width: '32rem', marginLeft: '-16rem', padding: '0.6rem 0.8rem',
-            borderRadius: '0.6rem', backgroundColor: HUD_BG(0.92), color: C('whiteColor'), fontSize: '0.9rem', pointerEvents: 'auto' } },
+            borderRadius: '0.6rem', backgroundColor: HUD_BG(0.92), color: C('whiteColor'), fontSize: '1rem', pointerEvents: 'auto' } },
             h('div', { style: { marginBottom: '0.4rem' } }, invite.by + ' lädt zur Testfahrt auf ' + invite.name + ' ein.'),
             buttons([{ label: 'Mitfahren', onSelect: () => request('invitation', '1') }, { label: 'Später', onSelect: () => request('invitation', '0') }]));
     }
@@ -578,7 +578,7 @@ class Toasts extends StateComponent {
         if (state.visible.length === 0) return null;
         return h('div', { style: { position: 'absolute', bottom: '6rem', left: '1.2rem', display: 'flex', flexDirection: 'column' } },
             state.visible.map((t) => h('div', { key: t.id, style: { margin: '0.2rem 0', padding: '0.5rem 0.8rem', maxWidth: '26rem',
-                borderRadius: '0.5rem', backgroundColor: HUD_BG(0.82), color: C('whiteColor'), fontSize: '0.85rem',
+                borderRadius: '0.5rem', backgroundColor: HUD_BG(0.82), color: C('whiteColor'), fontSize: '0.9rem',
                 borderLeft: '0.25rem solid #' + (t.color || '00c6ff') } }, t.loc ? shown(t.text) : t.text)));
     }
 }
@@ -603,7 +603,7 @@ function openScreen(mode) {
 }
 
 const section = (title, extra) => h('div', { style: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-    color: C('accent'), fontSize: '0.9rem', fontWeight: 'bold', margin: '0.8rem 0 0.4rem' } }, title, extra || null);
+    color: C('accent'), fontSize: '1rem', fontWeight: 'bold', margin: '0.8rem 0 0.4rem' } }, title, extra || null);
 
 const row = (children, key) => h('div', { key, style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     flexWrap: 'wrap', padding: '0.25rem 0', borderBottom: '1px solid rgba(0, 138, 204, 0.15)' } }, children);
@@ -635,12 +635,12 @@ class Lobby extends StateComponent {
         const status = statusOf(coop);
         const host = hostOf(coop);
         const title = !coop.role ? 'Multiplayer'
-            : coop.role === 'host' ? 'Deine Lobby' : 'Lobby von ' + (host ? host.name : 'Host');
+            : coop.role === 'host' ? 'Deine Sitzung' : 'Sitzung von ' + (host ? host.name : 'Host');
         const footer = [];
         if (!coop.available) {
             // Nothing to do without Steam.
         } else if (!coop.role) {
-            footer.push({ label: coop.context === 'menu' ? 'Lobby erstellen' : 'Diesen Park hosten', onSelect: () => request('host'), disabled: !coop.canHost });
+            footer.push({ label: 'Sitzung starten', onSelect: () => request('host'), disabled: !coop.canHost });
         } else {
             if (coop.desync && coop.role === 'client') footer.push({ label: 'Neu synchronisieren', onSelect: () => request('resync') });
             footer.push({ label: 'Steam-Overlay', onSelect: () => request('invite_overlay') });
@@ -651,19 +651,19 @@ class Lobby extends StateComponent {
             borderRight: last ? 'none' : '1px solid rgba(0, 138, 204, 0.18)' } }, children);
         return h('div', { style: { position: 'absolute', left: 0, top: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0, 0, 0, 0.5)' } },
             h('div', { style: { position: 'absolute', left: '50%', top: '50%', width: '66rem', height: '39rem', marginLeft: '-33rem',
-                marginTop: '-19.5rem', borderRadius: '0.7rem', overflow: 'hidden', backgroundColor: C('panel'), color: C('accentText'), fontSize: '0.95rem',
+                marginTop: '-19.5rem', borderRadius: '0.7rem', overflow: 'hidden', backgroundColor: C('panel'), color: C('accentText'), fontSize: '1rem',
                 boxShadow: '0 0.6rem 2rem rgba(0, 0, 0, 0.45)' } },
                 h('div', { style: { display: 'flex', alignItems: 'center', height: '3.2rem', padding: '0 1.2rem', backgroundColor: C('accent'), color: C('whiteColor') } },
                     h(Icon, { src: 'img/icons/collaborate.svg', style: { width: '1.4rem', height: '1.4rem', marginRight: '0.6rem' } }),
-                    h('div', { style: { fontSize: '1.4rem', flexGrow: 1 } }, title),
-                    coop.role && h('div', { style: { color: C('accentButtonLight'), fontSize: '0.9rem' } },
+                    h('div', { style: { fontSize: '1.2rem', flexGrow: 1 } }, title),
+                    coop.role && h('div', { style: { color: C('accentButtonLight'), fontSize: '1rem' } },
                         list(coop.players).length + ' / ' + SLOTS + ' Spieler' + (coop.stage === 'park' && coop.parkTitle ? ' · ' + coop.parkTitle : ''))),
                 this.renderBody(coop, state, column),
                 h('div', { style: { display: 'flex', alignItems: 'center', height: '4rem', padding: '0 1.2rem', backgroundColor: C('area'),
                     borderTop: '1px solid rgba(0, 138, 204, 0.2)' } },
                     h('div', { style: { width: '0.6rem', height: '0.6rem', borderRadius: '0.3rem', backgroundColor: TONE[status.tone] || TONE.idle,
                         marginRight: '0.5rem', flexShrink: 0 } }),
-                    h('div', { style: { width: '32rem', fontSize: '0.95rem' } }, status.text),
+                    h('div', { style: { width: '32rem', fontSize: '1rem' } }, status.text),
                     h('div', { style: { width: '31rem' } }, buttons(footer)))));
     }
 
@@ -675,7 +675,7 @@ class Lobby extends StateComponent {
         const bar = inPark && h('div', { style: { display: 'flex', height: '2.2rem', alignItems: 'center', padding: '0 0.9rem',
             backgroundColor: C('area'), borderBottom: '1px solid rgba(0, 138, 204, 0.2)' } },
             PANEL_TABS.map(([key, label]) => h('div', { key, onClick: () => request('paneltab', key),
-                style: { padding: '0.3rem 0.9rem', marginRight: '0.4rem', borderRadius: '0.8rem', fontSize: '0.9rem',
+                style: { padding: '0.3rem 0.9rem', marginRight: '0.4rem', borderRadius: '0.8rem', fontSize: '1rem',
                     backgroundColor: tab === key ? C('accent') : C('whiteColor'), color: tab === key ? C('whiteColor') : C('accentText'),
                     border: '1px solid rgba(0, 138, 204, 0.45)' } }, label)));
         const height = inPark ? 592 : 636;
@@ -698,32 +698,32 @@ class Lobby extends StateComponent {
         return h('div', { style: { display: 'flex', height: rem(height) } },
             h('div', { style: { width: '21rem', padding: '0 0.9rem', borderRight: '1px solid rgba(0, 138, 204, 0.18)' } },
                 section('Als Besucher im Park'),
-                h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.8rem', marginBottom: '0.4rem' } }, blocked
+                h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem', marginBottom: '0.4rem' } }, blocked
                     ? 'Der Host hat den Besucher-Modus für diese Sitzung ausgeschaltet.'
                     : 'Lauf durch euren Park, fahr mit, bewerte die Fahrgeschäfte. Die anderen sehen dich dort, wo du stehst.'),
                 buttons([
                     !blocked && !visitor.active && { label: 'Als Besucher losgehen', onSelect: () => request('visitor', '1') },
                     visitor.active && { label: 'Zurück zum Bauen', onSelect: () => request('visitor', '0') },
-                    !blocked && { label: 'Ich-Sicht (Spiel)', onSelect: () => { request('visitor', '1'); request('guest', '1'); } },
+                    !blocked && { label: 'Ich-Sicht', onSelect: () => { request('visitor', '1'); request('guest', '1'); } },
                 ]),
                 section('Steuerung'),
-                h('div', { style: { fontSize: '0.8rem', lineHeight: '1.2rem' } },
+                h('div', { style: { fontSize: '0.9rem', lineHeight: '1.2rem' } },
                     'WASD laufen, Shift schneller', h('br'), 'Maus: umsehen', h('br'),
                     'T halten: Emotes  ·  E: einsteigen', h('br'), 'Tab: zurück zum Bauen'),
                 section('Gemeinsam'),
-                h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.8rem' } },
-                    'Testfahrt mit allen: in der Liste rechts "Mitfahren" - jeder kann einsteigen. Führung: Mitspieler oben rechts anklicken, dann folgst du ihm.')),
+                h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } },
+                    'Testfahrt mit allen: in der Liste rechts "Mitfahren" - jeder kann einsteigen. Führung: Mitspieler oben rechts anklicken, um zu folgen.')),
             h('div', { style: { width: '45rem', padding: '0 0.9rem' } },
-                section('Fahrgeschäfte', h('span', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.75rem', textTransform: 'none' } }, 'das nächste zuerst')),
+                section('Fahrgeschäfte', h('span', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem', textTransform: 'none' } }, 'das nächste zuerst')),
                 box(height - 60, list(visitor.rides).length === 0
                     ? h('div', { style: { color: C('accentButtonDesaturatedDark'), padding: '0.4rem 0' } }, 'Noch keine Fahrgeschäfte im Park.')
                     : list(visitor.rides).map((r) => row([
                         h('div', { style: { width: '23.5rem' } },
-                            h('div', { style: { fontSize: '0.9rem' } }, r.name + '  ', h('span', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.75rem' } }, r.kind)),
-                            h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.75rem' } }, (typeof r.e === 'number'
+                            h('div', { style: { fontSize: '1rem' } }, r.name + '  ', h('span', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } }, r.kind)),
+                            h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } }, (typeof r.e === 'number'
                                 ? 'Spaß ' + one(r.e) + '  ·  Angst ' + one(r.f) + '  ·  Übelkeit ' + one(r.n) : 'noch nicht getestet')
                                 + (r.dist !== false ? '  ·  ' + r.dist + ' m' : '')),
-                            h('div', { style: { color: C('accent'), fontSize: '0.75rem' } }, r.count ? 'Bewertung ' + one(r.avg) + ' / 5 (' + r.count + ')'
+                            h('div', { style: { color: C('accent'), fontSize: '0.9rem' } }, r.count ? 'Bewertung ' + one(r.avg) + ' / 5 (' + r.count + ')'
                                 + (list(r.comments).length ? ' - "' + list(r.comments)[list(r.comments).length - 1].text + '"' : '') : 'noch keine Bewertung')),
                         buttons([{ label: 'Mitfahren', onSelect: () => { request('visitor', '1'); request('ride', r.key); } },
                             coop.role && { label: 'Alle einladen', onSelect: () => request('invite_ride', r.key + '|' + r.name) }]),
@@ -752,7 +752,7 @@ class Lobby extends StateComponent {
                 section('Neu'),
                 h('div', { style: { display: 'flex', flexWrap: 'wrap', marginBottom: '0.4rem' } },
                     BOARD_KINDS.map(([key, label]) => h('div', { key, onClick: () => this.setState({ kind: key, planSeq: team.planSeq }),
-                        style: { padding: '0.3rem 0.7rem', margin: '0 0.3rem 0.3rem 0', borderRadius: '0.8rem', fontSize: '0.85rem',
+                        style: { padding: '0.3rem 0.7rem', margin: '0 0.3rem 0.3rem 0', borderRadius: '0.8rem', fontSize: '0.9rem',
                             backgroundColor: kind === key ? C('accent') : C('whiteColor'), color: kind === key ? C('whiteColor') : C('accentText'),
                             border: '1px solid rgba(0, 138, 204, 0.45)' } }, label))),
                 h('div', { style: { margin: '0.3rem 0' } }, h(InputField, { text: state.title, maxInputLength: 60, beginEditOnSelect: true,
@@ -766,25 +766,25 @@ class Lobby extends StateComponent {
                     buttons([{ label: 'Wechseln', onSelect: nextAssignee }])], 'assignee'),
                 kind === 'area' && row([h('div', null, 'Größe: ' + state.radius + ' m Radius'), buttons([10, 20, 40].map((n) =>
                     ({ label: n + ' m', onSelect: () => this.setState({ radius: n }) })))], 'radius'),
-                needsPlace && h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.75rem', margin: '0.3rem 0' } },
+                needsPlace && h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem', margin: '0.3rem 0' } },
                     'Ort: dein letzter Ping (mittlere Maustaste) - sonst die Bildmitte.'),
                 buttons([{ label: 'Hinzufügen', onSelect: add }])),
             h('div', { style: { width: '43rem', padding: '0 0.9rem' } },
-                section('Brett des Parks', h('span', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.75rem', textTransform: 'none' } },
+                section('Brett des Parks', h('span', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem', textTransform: 'none' } },
                     'für alle sichtbar, auch als Marker im Park')),
                 box(height - 60, items.length === 0
                     ? h('div', { style: { color: C('accentButtonDesaturatedDark'), padding: '0.4rem 0' } }, 'Noch nichts geplant. Links ein Baugebiet, eine Aufgabe, einen Kommentar oder einen Treffpunkt anlegen.')
                     : items.map((item) => row([
                         h('div', { style: { width: '26rem', opacity: item.done ? 0.55 : 1 } },
-                            h('div', { style: { fontSize: '0.9rem' } }, (item.done ? '✓ ' : '') + item.title + '  ',
-                                h('span', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.75rem' } }, BOARD_WORD[item.kind] + ' · ' + item.by
+                            h('div', { style: { fontSize: '1rem' } }, (item.done ? '✓ ' : '') + item.title + '  ',
+                                h('span', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } }, BOARD_WORD[item.kind] + ' · ' + item.by
                                     + (item.assignee ? ' → ' + item.assignee : ''))),
-                            item.text && h('div', { style: { color: C('accentText'), fontSize: '0.75rem' } }, item.text)),
+                            item.text && h('div', { style: { color: C('accentText'), fontSize: '0.9rem' } }, item.text)),
                         buttons([
                             item.kind === 'task' && { label: item.done ? 'Wieder offen' : 'Erledigt', onSelect: () => request('board_done', item.id + '|' + (item.done ? '0' : '1')) },
                             item.kind === 'proposal' && { label: (item.myVote === '1' ? '✓ ' : '') + 'Dafür (' + item.yes + ')', onSelect: () => request('board_vote', item.id + '|1') },
                             item.kind === 'proposal' && { label: (item.myVote === '0' ? '✓ ' : '') + 'Dagegen (' + item.no + ')', onSelect: () => request('board_vote', item.id + '|0') },
-                            item.x !== false && { label: 'Hinspringen', onSelect: () => request('goto', item.x + '|' + item.z) },
+                            item.x !== false && { label: 'Hinbringen', onSelect: () => request('goto', item.x + '|' + item.z) },
                             { label: 'Löschen', onSelect: () => request('board_del', item.id) },
                         ]),
                     ], item.id)))));
@@ -796,13 +796,13 @@ class Lobby extends StateComponent {
         return h('div', { style: { display: 'flex', height: rem(height) } },
             h('div', { style: { width: '32rem', padding: '0 0.9rem', borderRight: '1px solid rgba(0, 138, 204, 0.18)' } },
                 section('Seit deinem letzten Besuch'),
-                h('div', { style: { fontSize: '0.85rem', color: team.since ? C('accentText') : C('accentButtonDesaturatedDark') } }, team.since || 'Dein erster Besuch in diesem Park - oder es gibt noch nichts zu vergleichen.'),
+                h('div', { style: { fontSize: '0.9rem', color: team.since ? C('accentText') : C('accentButtonDesaturatedDark') } }, team.since || 'Dein erster Besuch in diesem Park - oder es gibt noch nichts zu vergleichen.'),
                 section('Meldungen des Parks'),
                 list(team.events).length === 0 ? h('div', { style: { color: C('accentButtonDesaturatedDark') } }, 'Gerade keine Pannen oder Probleme.')
                     : list(team.events).slice().reverse().map((e, i) => row([h('div', null, e.label),
-                        buttons([{ label: 'Hinspringen', onSelect: () => request('goto', e.x + '|' + e.z) }])], 'e' + i)),
+                        buttons([{ label: 'Hinbringen', onSelect: () => request('goto', e.x + '|' + e.z) }])], 'e' + i)),
                 section('Sicherungspunkte'),
-                h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.75rem', marginBottom: '0.3rem' } },
+                h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem', marginBottom: '0.3rem' } },
                     'Eine Kopie des Parks beim Host. Zurückholen betrifft alle und braucht die Zustimmung aller.'),
                 ...list(team.checkpoints).map((c) => row([h('div', null, c.label),
                     isHost && buttons([{ label: 'Zurückholen…', onSelect: () => request('restore', String(c.n)) }])], 'c' + c.n)),
@@ -810,7 +810,7 @@ class Lobby extends StateComponent {
             h('div', { style: { width: '34rem', padding: '0 0.9rem' } },
                 section('Verlauf der Sitzung'),
                 box(height - 60, list(coop.log).length === 0 ? h('div', { style: { color: C('accentButtonDesaturatedDark') } }, 'Noch nichts passiert.')
-                    : list(coop.log).slice().reverse().map((line, i) => h('div', { key: 'l' + i, style: { fontSize: '0.8rem',
+                    : list(coop.log).slice().reverse().map((line, i) => h('div', { key: 'l' + i, style: { fontSize: '0.9rem',
                         padding: '0.2rem 0', borderBottom: '1px solid rgba(0, 138, 204, 0.1)' } }, shown(line))))));
     }
 
@@ -820,7 +820,7 @@ class Lobby extends StateComponent {
         const isHost = coop.role === 'host';
         const state = this.state;
         const areaOf = (name) => list(team.board).find((i) => i.kind === 'area' && i.assignee === name && i.x !== false);
-        const out = [section('Wettbewerb', h('span', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.75rem', textTransform: 'none' } },
+        const out = [section('Wettbewerb', h('span', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem', textTransform: 'none' } },
             'ein Park, alle sehen dasselbe - die Spielziele des Parks (Szenario, Herausforderung) gelten für alle gemeinsam'))];
         if (!comp) {
             if (!isHost) { out.push(h('div', { style: { color: C('accentButtonDesaturatedDark') } }, 'Gerade kein Wettbewerb. Der Host kann einen starten.')); return out; }
@@ -835,7 +835,7 @@ class Lobby extends StateComponent {
             return out;
         }
         const clock = (s) => Math.floor(s / 60) + ':' + (s % 60 < 10 ? '0' : '') + (s % 60);
-        out.push(h('div', { style: { fontSize: '0.9rem', margin: '0.2rem 0 0.4rem' } }, comp.label + (comp.topic ? ' · Thema: ' + comp.topic : '') + ' · '
+        out.push(h('div', { style: { fontSize: '1rem', margin: '0.2rem 0 0.4rem' } }, comp.label + (comp.topic ? ' · Thema: ' + comp.topic : '') + ' · '
             + (comp.phase === 'build' ? 'noch ' + clock(comp.left) : comp.phase === 'rate' ? 'Bewertung läuft' : 'Ergebnis')));
         if (comp.phase === 'rate') {
             const pick = state.compPick || {};
@@ -848,7 +848,7 @@ class Lobby extends StateComponent {
                 };
                 const area = areaOf(e.name);
                 out.push(row([h('div', { style: { width: '10rem' } }, e.name),
-                    area ? buttons([{ label: 'Hinspringen', onSelect: () => request('goto', area.x + '|' + area.z) }]) : h('div', { style: { width: '6rem' } }),
+                    area ? buttons([{ label: 'Hinbringen', onSelect: () => request('goto', area.x + '|' + area.z) }]) : h('div', { style: { width: '6rem' } }),
                     h('div', null, 'Gestaltung'), buttons([1, 2, 3, 4, 5].map((n) => ({ label: (chosen.d === n ? '● ' : '') + n, onSelect: () => set('d', n) }))),
                     h('div', null, 'Technik'), buttons([1, 2, 3, 4, 5].map((n) => ({ label: (chosen.t === n ? '● ' : '') + n, onSelect: () => set('t', n) })))], 'r' + e.sid));
             });
@@ -866,7 +866,7 @@ class Lobby extends StateComponent {
         const rules = (coop.team && coop.team.rules) || {};
         const isHost = coop.role === 'host';
         return h('div', { style: { padding: '0 0.9rem', height: rem(height), overflowY: 'auto' } },
-            section('Regeln dieser Sitzung', h('span', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.75rem', textTransform: 'none' } },
+            section('Regeln dieser Sitzung', h('span', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem', textTransform: 'none' } },
                 isHost ? 'du bestimmst sie als Host' : 'nur der Host kann sie ändern')),
             isHost && row([h('div', { style: { width: '21rem', color: C('accentButtonDesaturatedDark') } }, 'Schnell wählen'),
                 buttons([
@@ -880,17 +880,17 @@ class Lobby extends StateComponent {
                     : h('div', { style: { color: C('accent') } }, (options.find((o) => o[0] === rules[name]) || ['', '-'])[1])], name)),
             this.renderCompetition(coop),
             section('Deine Rolle'),
-            h('div', { style: { fontSize: '0.8rem', color: C('accentText'), maxWidth: '55rem' } }, isHost
+            h('div', { style: { fontSize: '0.9rem', color: C('accentText'), maxWidth: '55rem' } }, isHost
                 ? 'Host: der Park läuft bei dir. Du legst die Regeln fest, erstellst Sicherungspunkte und schlägst vor, zu einem zurückzukehren. '
                   + 'Beitrittsanfragen bestätigst du im Tab Team.'
                 : 'Mitspieler: du baust frei mit. Was jemand anderes gerade bearbeitet, ist für dich gesperrt - Mittelklick darauf und "Übernahme anfragen". '
                   + 'Rückgängig betrifft nur deine eigenen Schritte.'),
             section('Abwesenheit'),
-            h('div', { style: { fontSize: '0.8rem', color: C('accentText'), maxWidth: '55rem' } },
+            h('div', { style: { fontSize: '0.9rem', color: C('accentText'), maxWidth: '55rem' } },
                 'Der Park läuft beim Host. Verlässt der Host die Sitzung, endet sie für alle; beim nächsten Mal lädt er den Park und ihr steigt wieder ein. '
                 + 'Pausiert der Host, pausiert der Park für alle (je nach Regel "Spieltempo").'),
             section('Beitritt'),
-            h('div', { style: { fontSize: '0.8rem', color: C('accentText') } },
+            h('div', { style: { fontSize: '0.9rem', color: C('accentText') } },
                 'Nur Steam-Freunde des Hosts sehen die Sitzung. Beitrittsanfragen erscheinen im Reiter "Team".'));
     }
 
@@ -908,16 +908,16 @@ class Lobby extends StateComponent {
                     h('div', { style: { display: 'flex', alignItems: 'center', fontSize: '1rem', fontWeight: 'bold' } },
                         p.name + (p.me ? ' (du)' : ''),
                         p.host && h(Icon, { src: 'img/icons/crown.svg', style: { width: '0.8rem', height: '0.8rem', marginLeft: '0.3rem' } })),
-                    h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.8rem' } }, playerActivity(coop, p)),
-                    content && h('div', { style: { color: content.warn ? C('warningDark') : C('positiveDark'), fontSize: '0.75rem' } }, content.text),
+                    h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } }, playerActivity(coop, p)),
+                    content && h('div', { style: { color: content.warn ? C('warningDark') : C('positiveDark'), fontSize: '0.9rem' } }, content.text),
                     canLook && buttons([
-                        { label: 'Hinspringen', onSelect: () => request('jump', p.sid) },
+                        { label: 'Hinbringen', onSelect: () => request('jump', p.sid) },
                         { label: coop.following === p.sid ? 'Nicht folgen' : 'Folgen', onSelect: () => request('follow', p.sid) }]))));
         });
         if (coop.role) {
             for (let i = players.length; i < SLOTS; i++) {
                 slots.push(h('div', { key: 'e' + i, style: { padding: '0.6rem', margin: '0.25rem 0', borderRadius: '0.5rem', color: C('accentButtonDesaturatedDark'),
-                    backgroundColor: C('area'), fontSize: '0.8rem' } }, 'Freier Platz'));
+                    backgroundColor: C('area'), fontSize: '0.9rem' } }, 'Freier Platz'));
             }
         }
         return box(636, [
@@ -927,8 +927,8 @@ class Lobby extends StateComponent {
                 { label: 'Ablehnen', onSelect: () => request('deny', r.sid) }])], 'r' + r.sid)),
             section('Spieler'),
             !coop.role && h('div', { style: { color: C('accentButtonDesaturatedDark'), padding: '0.3rem 0' } },
-                coop.context === 'menu' ? 'Noch keine Lobby. "Lobby erstellen" unten - oder rechts der Lobby eines Freundes beitreten.'
-                    : 'Noch keine Sitzung. "Diesen Park hosten" teilt ihn mit deinen Freunden.'),
+                coop.context === 'menu' ? 'Noch keine Sitzung. Starte eine oder tritt rechts einem Freund bei.'
+                    : 'Noch keine Sitzung. Starte eine, um diesen Park mit Freunden zu teilen.'),
             ...slots]);
     }
 
@@ -936,7 +936,7 @@ class Lobby extends StateComponent {
     renderChooser(coop, state) {
         const tab = state.tab;
         const tabButton = (key, label, later) => h('div', { key, onClick: later ? undefined : () => this.setState({ tab: key }),
-            style: { padding: '0.3rem 0.7rem', marginRight: '0.3rem', borderRadius: '0.8rem', fontSize: '0.85rem',
+            style: { padding: '0.3rem 0.7rem', marginRight: '0.3rem', borderRadius: '0.8rem', fontSize: '0.9rem',
                 backgroundColor: tab === key ? C('accent') : (later ? C('area') : C('whiteColor')), color: tab === key ? C('whiteColor') : (later ? C('neutral3') : C('accentText')),
                 border: '1px solid ' + (later ? 'rgba(0, 0, 0, 0.06)' : 'rgba(0, 138, 204, 0.45)') } }, label);
         const picked = (key) => coop.chosen === key;
@@ -947,29 +947,29 @@ class Lobby extends StateComponent {
             const parks = list(coop.parks);
             content = box(300, parks.length === 0 ? h('div', { style: { color: C('accentButtonDesaturatedDark'), padding: '0.4rem 0' } }, 'Keine gespeicherten Sandbox-Parks gefunden.')
                 : parks.map((park) => h('div', { key: 's' + park.id, onClick: () => request('choose', 'save|' + park.id), style: pickStyle(picked('save:' + park.id)) },
-                    h('div', { style: { fontSize: '0.95rem', fontWeight: 'bold' } }, park.name),
-                    h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.75rem' } }, (BIOMES.find((b) => b[0] === park.world) || [0, park.world || 'Sandbox'])[1]))));
+                    h('div', { style: { fontSize: '1rem', fontWeight: 'bold' } }, park.name),
+                    h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } }, (BIOMES.find((b) => b[0] === park.world) || [0, park.world || 'Sandbox'])[1]))));
         } else if (tab === 'new') {
             const pickNew = (biome, creative) => request('choose', 'new|' + biome + '|' + (creative ? '1' : '0'));
             const current = (coop.chosen || '').indexOf('new:') === 0 ? coop.chosen.substring(4) : null;
             content = box(300, [
                 h('div', { key: 'b', style: { display: 'flex', flexWrap: 'wrap' } }, BIOMES.map(([id, label]) => h('div', { key: id,
                     onClick: () => pickNew(id, state.creative), style: Object.assign(pickStyle(current === id), { width: '11.1rem', margin: '0.2rem 0.4rem 0.2rem 0' }) },
-                    h('div', { style: { fontSize: '0.95rem', fontWeight: 'bold' } }, label)))),
+                    h('div', { style: { fontSize: '1rem', fontWeight: 'bold' } }, label)))),
                 h('div', { key: 'm', style: { display: 'flex', marginTop: '0.5rem' } },
                     [[true, 'Kreativ (Geld unbegrenzt)'], [false, 'Mit Budget']].map(([creative, label]) => h('div', { key: label,
                         onClick: () => { this.setState({ creative }); if (current) pickNew(current, creative); },
-                        style: Object.assign(pickStyle(state.creative === creative), { marginRight: '0.4rem', fontSize: '0.85rem' }) }, label)))]);
+                        style: Object.assign(pickStyle(state.creative === creative), { marginRight: '0.4rem', fontSize: '0.9rem' }) }, label)))]);
         } else {
             content = box(300, [
                 h('div', { key: 't', style: { color: C('accentButtonDesaturatedDark'), padding: '0.4rem 0' } },
-                    'Franchise-Parks wählst du im Franchise-Menü des Spiels. Sobald der Park offen ist, laden ihn alle in der Lobby.'),
+                    'Franchise-Parks wählst du im Franchise-Menü des Spiels. Sobald der Park offen ist, laden ihn alle in der Sitzung.'),
                 h('div', { key: 'b' }, buttons([{ label: 'Franchise-Menü öffnen', onSelect: () => { request('choose', 'franchise'); openScreen(MODES[1]); } }]))]);
         }
         const choice = coop.choice;
         const canStart = choice && (choice.kind === 'save' || choice.kind === 'new') && !choice.starting;
         return [section('Wo spielen wir?', h('span', { style: { textTransform: 'none', letterSpacing: 0 } },
-                tab === 'save' ? h('span', { onClick: () => request('parks'), style: { color: C('accent'), fontSize: '0.75rem' } }, 'aktualisieren') : null)),
+                tab === 'save' ? h('span', { onClick: () => request('parks'), style: { color: C('accent'), fontSize: '0.9rem' } }, 'aktualisieren') : null)),
             h('div', { key: 'tabs', style: { display: 'flex', marginBottom: '0.4rem' } },
                 tabButton('save', 'Gespeichert'), tabButton('new', 'Neu'), tabButton('franchise', 'Franchise'),
                 tabButton('career', 'Karriere · später', true)),
@@ -977,9 +977,9 @@ class Lobby extends StateComponent {
             h('div', { key: 'sel', style: { display: 'flex', alignItems: 'center', height: '3.8rem', marginTop: '0.4rem', padding: '0 0.6rem',
                 borderRadius: '0.5rem', backgroundColor: choice ? C('accentFaint') : C('area') } },
                 h('div', { style: { width: '15rem' } },
-                    h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.75rem' } }, choice ? 'Ausgewählt - sehen alle' : 'Noch nichts ausgewählt'),
-                    choice && h('div', { style: { fontSize: '0.95rem', fontWeight: 'bold' } }, choice.title),
-                    choice && h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.75rem' } }, choice.detail)),
+                    h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } }, choice ? 'Ausgewählt - sehen alle' : 'Noch nichts ausgewählt'),
+                    choice && h('div', { style: { fontSize: '1rem', fontWeight: 'bold' } }, choice.title),
+                    choice && h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } }, choice.detail)),
                 h('div', { style: { width: '9.5rem' } }, canStart ? buttons([{ label: 'Park öffnen', onSelect: () => request('start') }]) : null))];
     }
 
@@ -991,7 +991,7 @@ class Lobby extends StateComponent {
             const host = hostOf(coop);
             return box(470, [section('Wo spielen wir?'),
                 h('div', { key: 'c', style: { padding: '0.7rem', borderRadius: '0.5rem', backgroundColor: choice ? C('accentFaint') : C('area') } },
-                    choice ? [h('div', { key: 'l', style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.75rem' } }, (host ? host.name : 'Der Host') + ' hat gewählt'),
+                    choice ? [h('div', { key: 'l', style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } }, (host ? host.name : 'Der Host') + ' hat gewählt'),
                         h('div', { key: 't', style: { fontSize: '1.1rem', fontWeight: 'bold' } }, choice.title),
                         h('div', { key: 'd', style: { color: C('accentButtonDesaturatedDark') } }, choice.detail),
                         h('div', { key: 's', style: { marginTop: '0.4rem' } }, choice.starting ? 'Wird geöffnet - der Park lädt gleich bei dir.' : 'Wartet auf den Start durch den Host.')]
@@ -1016,11 +1016,11 @@ class Lobby extends StateComponent {
             section('Chat'),
             h('div', { style: { height: '10.7rem', overflowY: 'auto', padding: '0.3rem 0.5rem', borderRadius: '0.4rem', backgroundColor: C('whiteColor'),
                 border: '1px solid rgba(0, 138, 204, 0.18)' } },
-                chat.length === 0 ? h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.8rem' } }, 'Noch keine Nachrichten.')
-                    : chat.map((c, i) => h('div', { key: 'c' + i, style: { padding: '2px 0', fontSize: '0.85rem' } },
+                chat.length === 0 ? h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } }, 'Noch keine Nachrichten.')
+                    : chat.map((c, i) => h('div', { key: 'c' + i, style: { padding: '2px 0', fontSize: '0.9rem' } },
                         h('span', { style: { color: '#' + (c.color || '20435a'), fontWeight: 'bold' } }, c.name + ': '), c.text))),
             h('div', { style: { marginTop: '0.4rem' } },
-                h(InputField, { text: state.draft, promptText: literal('Nachricht an alle ... (Enter sendet)'), maxInputLength: 200,
+                h(InputField, { text: state.draft, promptText: literal('Nachricht an alle'), maxInputLength: 200,
                     beginEditOnSelect: true, onChange: (e) => this.setState({ draft: (e && e.text) || '' }), onCommit: (e) => {
                         const text = String((e && e.text) || '').trim();
                         this.setState({ draft: '' });
@@ -1038,7 +1038,7 @@ class Lobby extends StateComponent {
             : 'Nicht alle haben: ' + uneven.map(packName).join(', ') + (coop.guard ? ' - daraus wird nichts gebaut.' : ' - wird trotzdem gebaut.');
         return h('div', { key: 'content', style: { height: '6.5rem' } },
             section('Inhalte'),
-            h('div', { style: { color: uneven.length ? C('warningDark') : C('positiveDark'), fontSize: '0.85rem' } }, text),
+            h('div', { style: { color: uneven.length ? C('warningDark') : C('positiveDark'), fontSize: '0.9rem' } }, text),
             coop.role === 'host' && uneven.length > 0 && buttons([{ label: coop.guard ? 'Alle Inhalte erlauben' : 'Nur gemeinsame Inhalte',
                 onSelect: () => request('guard', coop.guard ? '0' : '1') }]));
     }
@@ -1054,10 +1054,10 @@ class Lobby extends StateComponent {
                 friends.length === 0 ? h('div', { style: { color: C('accentButtonDesaturatedDark') } }, 'Lade Freundesliste ...')
                     : friends.map((f) => row([
                         h('div', { style: { width: '11.5rem' } },
-                            h('div', { style: { fontSize: '0.9rem' } }, f.name),
-                            h('div', { style: { color: f.lobby ? C('positiveDark') : f.pc2 ? C('positiveDark') : C('accentButtonDesaturatedDark'), fontSize: '0.75rem' } },
-                                f.lobby ? 'hat eine offene Lobby' : f.pc2 ? 'spielt Planet Coaster 2' : (FRIEND_STATE[f.state] || ''))),
-                        inSession[f.sid] ? h('span', { style: { color: C('positiveDark'), fontSize: '0.8rem' } }, 'ist dabei')
+                            h('div', { style: { fontSize: '1rem' } }, f.name),
+                            h('div', { style: { color: f.lobby ? C('positiveDark') : f.pc2 ? C('positiveDark') : C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } },
+                                f.lobby ? 'hat eine offene Sitzung' : f.pc2 ? 'spielt Planet Coaster 2' : (FRIEND_STATE[f.state] || ''))),
+                        inSession[f.sid] ? h('span', { style: { color: C('positiveDark'), fontSize: '0.9rem' } }, 'ist dabei')
                             : coop.role ? buttons([{ label: f.invited ? 'Eingeladen' : 'Einladen', disabled: f.invited, onSelect: () => request('invite', f.sid) }])
                             : f.lobby ? buttons([{ label: 'Beitreten', onSelect: () => request('join_friend', f.sid) }]) : null,
                     ], 'f' + f.sid))));
@@ -1083,28 +1083,28 @@ class MiniLobby extends StateComponent {
             }, 500);
         }
         const chip = (label, onClick) => h('div', { onClick, style: { marginLeft: '0.4rem', padding: '0.25rem 0.6rem', borderRadius: '0.7rem',
-            backgroundColor: 'rgba(0, 160, 216, 0.9)', color: C('whiteColor'), fontSize: '0.85rem' } }, label);
+            backgroundColor: 'rgba(0, 160, 216, 0.9)', color: C('whiteColor'), fontSize: '0.9rem' } }, label);
         return h('div', { style: { position: 'absolute', left: '74rem', top: '11.5rem', width: '20.5rem', padding: '0.6rem 0.8rem', pointerEvents: 'auto',
             borderRadius: '0.6rem', backgroundColor: HUD_BG(0.9), color: C('whiteColor'), borderLeftWidth: '0.25rem', borderLeftStyle: 'solid', borderLeftColor: TONE[status.tone] || TONE.idle } },
             h('div', { style: { display: 'flex', alignItems: 'center' } },
-                h('div', { style: { fontSize: '1rem', flexGrow: 1 } }, coop.role === 'host' ? 'Deine Lobby' : 'Lobby'),
+                h('div', { style: { fontSize: '1rem', flexGrow: 1 } }, coop.role === 'host' ? 'Deine Sitzung' : 'Sitzung'),
                 list(coop.players).slice(0, SLOTS).map((p) => h('div', { key: p.sid, style: { marginLeft: '-0.3rem' } }, h(Avatar, { player: p, size: 26, pic: avatars[p.sid] })))),
-            h('div', { style: { color: C('accentButtonLight'), fontSize: '0.8rem', margin: '0.3rem 0 0.4rem' } }, status.text),
+            h('div', { style: { color: C('accentButtonLight'), fontSize: '0.9rem', margin: '0.3rem 0 0.4rem' } }, status.text),
             h('div', { style: { display: 'flex', justifyContent: 'flex-end' } },
-                chip('Lobby öffnen', () => request('open')),
+                chip('Sitzung öffnen', () => request('open')),
                 chip(coop.role === 'host' ? 'Beenden' : 'Verlassen', () => request('leave'))));
     }
 }
 
 function joinText(join) {
     const host = join.host ? ' von ' + join.host : '';
-    if (join.phase === 'joining') return 'Trete der Lobby bei ...';
+    if (join.phase === 'joining') return 'Trete der Sitzung bei …';
     if (join.phase === 'silent') return 'Keine Verbindung zum Host - warte ...';
     if (join.phase === 'asking') return 'Warte auf die Zustimmung' + host + ' ...';
     if (join.phase === 'confirm') return 'Beitritt' + (join.host ? ' bei ' + join.host : '') + ' wartet auf deine Bestätigung.';
     if (join.phase === 'awaiting') return 'Empfange den Park' + host + ' ... ' + Math.round((join.progress || 0) * 100) + ' %';
     if (join.phase === 'loading') return 'Lade den Park' + host + ' ...';
-    if (join.phase === 'lobby') return 'In der Lobby' + host + '.';
+    if (join.phase === 'lobby') return 'In der Sitzung' + host + '.';
     return 'Verbunden' + host + '.';
 }
 
@@ -1118,7 +1118,7 @@ class JoinProgress extends StateComponent {
         return h('div', { style: { position: 'absolute', left: '50%', top: '42%', width: '26rem', marginLeft: '-13rem',
             padding: '1.1rem 1.4rem', borderRadius: '0.7rem', backgroundColor: HUD_BG(0.9), color: C('whiteColor'), textAlign: 'center' } },
             h('div', { style: { fontSize: '1.1rem', marginBottom: '0.3rem' } }, 'Multiplayer'),
-            h('div', { style: { fontSize: '0.85rem', color: C('accentButtonLight'), marginBottom: '0.7rem' } }, joinText(join)),
+            h('div', { style: { fontSize: '0.9rem', color: C('accentButtonLight'), marginBottom: '0.7rem' } }, joinText(join)),
             h('div', { style: { height: '0.4rem', borderRadius: '0.2rem', backgroundColor: 'rgba(255, 255, 255, 0.15)' } },
                 h('div', { style: { height: '0.4rem', borderRadius: '0.2rem', backgroundColor: C('accentLight'), width: Math.round(share * 100) + '%' } })));
     }
@@ -1336,7 +1336,7 @@ function patchStartTabClass(tabClass, TileButton) {
             const at = findParent(tree, 'careerBtn');
             if (at && !at.list.some((c) => c && c.key === 'pc2coopBtn')) {
                 const title = literal('Multiplayer');
-                const description = literal('Mit Steam-Freunden live im selben Park bauen. Lobby öffnen, Freunde einladen, gemeinsam einen Park wählen.');
+                const description = literal('Mit Steam-Freunden live im selben Park bauen.');
                 at.list.splice(at.index + 1, 0, preact.h(TileButton, { label: title, titleIcon: 'img/icons/collaborate.svg',
                     key: 'pc2coopBtn', description, backgroundImage: 'img/frontEnd/franchiseBG.png', outcome: 'PC2CoopMultiplayer',
                     onSelect: () => request('open'),

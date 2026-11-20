@@ -15,10 +15,17 @@ Icons des Spiels (`docs/ui-ux/NATIVE_UI.md`) und erfindet nur, was das Spiel nic
 - A2: alle Farben über `C(name)`.
 - Abschnittstitel fett statt in Großbuchstaben.
 
+**Umgesetzt (P0, Schritt 2, 2026-11-20, im Spiel fotografiert):**
+- A3: Schriftskala 0.9 / 1 / 1.1 / 1.2 rem, nichts unter 0.9 rem.
+- Texte im JS nach UX_OVERHAUL §3/§7: „Sitzung“ statt Lobby/hosten, „Hinbringen“,
+  „Ich-Sicht“, keine Tasten mehr in Eingabefeldern.
+- Umlaute in den Lua-Meldungen (Toasts, Verlauf, Beitrittsfehler).
+
 **Noch offen in P0:**
-- Schriftskala A3: heute 1:1 umgerechnet, also noch 13–28 px bei 1080p.
 - HUD-Grund folgt der Akzentfarbe noch nicht.
-- Bausteine A6 und Texte.
+- Bausteine A6.
+- Lua-Verlaufstexte mit „Lobby“ („… ist in der Lobby“).
+- F8-Dialog (`menu.lua`): wird für Spieler entfernt (TP-31).
 
 Der Ist-Teil B beschreibt bei Farben und Maßen den Stand **vor** diesem Schritt.
 

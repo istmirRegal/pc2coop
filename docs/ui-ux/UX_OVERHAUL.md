@@ -406,8 +406,8 @@ NAVIGATION, Registry) und Screenshots aus der Testkopie.
 | **P5 Zustände** | alle Zeilen aus §5, Bestätigungen (Beenden, Zurückholen) | jede Zeile in §5 einmal im Spiel ausgelöst und fotografiert |
 | **P6 Abnahme** | zwei echte PCs, Maus/Tastatur echt | Eigner spielt eine Sitzung ohne Erklärung |
 
-**Stand:** P0 Schritt 1 erledigt (2026-11-20): Farben und Einheiten, siehe
-`docs/ui-ux/DESIGN_SYSTEM.md`. Weiter mit Schriftskala, Texten und Bausteinen.
+**Stand (2026-11-20):** P0 Schritte 1 und 2 erledigt: Farben, Einheiten, Schriftskala, Texte,
+Lua-Umlaute (`docs/ui-ux/DESIGN_SYSTEM.md`). Offen in P0: Bausteine, HUD-Grund in Akzentfarbe.
 
 Prototypen zuerst (vor P2/P3/P4): `Panel` in unserer Ebene, Seite im Hauptmenü-Rahmen,
 Bauleiste im Besuch aus. Ergebnis entscheidet, ob Ziel oder Rückfall gebaut wird.

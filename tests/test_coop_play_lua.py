@@ -155,7 +155,7 @@ class CoopPlayTests(unittest.TestCase):
         texts = ' / '.join(self.toasts('300'))
         self.assertIn('bearbeitet dieses Objekt gerade', texts)
         self.assertIn('eigenen letzten Schritt', texts)
-        self.assertIn('Objekt geaendert, das du gerade bearbeitet hast', texts)
+        self.assertIn('Objekt geändert, das du gerade bearbeitet hast', texts)
 
 
 if __name__ == '__main__':

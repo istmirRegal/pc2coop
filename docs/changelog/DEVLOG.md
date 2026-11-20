@@ -3,6 +3,19 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-20 – UX-Overhaul P0, Schritt 2: Schrift und Texte
+
+- Die Schriftgrößen folgen der Skala des Spiels: 0.9, 1, 1.1 und 1.2 rem. Vorher waren es
+  zehn Größen von 13 bis 28 px.
+- JS-Texte folgen §3/§7 aus `UX_OVERHAUL.md`. UX-A3, UX-A4 und UX-B3 sind für die Mod-Oberfläche
+  erledigt. Die Lua-Verlaufstexte mit „Lobby“ und der F8-Dialog sind noch offen.
+- Umlaute in 26 Lua-Meldungszeilen (UX-B1). Geändert wurden nur Texte in
+  `toast`/`addFeed`/`failJoin`/`_RefuseJoin` und in den Beitrittsgründen. Protokoll-Codes wie
+  `laedt` sind unverändert. Ein Test ist angepasst (`tests/test_coop_play_lua.py`).
+- Testkopie (1080p) mit offenem und mit geschlossenem Fenster fotografiert: nichts läuft über.
+- Fallstrick: `sed -i` stellt hier CRLF auf LF um. Nach jeder Textersetzung
+  `git diff --stat` mit und ohne `--ignore-cr-at-eol` vergleichen (ADR-017).
+
 ## 2026-11-20 – UX-Overhaul P0, Schritt 1: Farben und Einheiten
 
 - `CoopLayer.js` hat keine festen Farben mehr (außer Spielerfarben). Alle Farben kommen über

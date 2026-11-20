@@ -10,6 +10,11 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
 - Die Oberfläche wächst mit Auflösung und UI-Skalierung wie das Spiel (vorher feste Pixel,
   bei 1440p und 4K zu klein).
 - Abschnittstitel im Multiplayer-Fenster ohne Großbuchstaben, wie im Spiel.
+- Größere, besser lesbare Schrift in der Größenordnung des Spiels.
+- Einheitliche Begriffe:
+  - „Sitzung“ statt „Lobby“ und „Park hosten“
+  - „Hinbringen“ wie im Spiel
+- Meldungen jetzt mit Umlauten.
 
 ## 1.13.0 – 2026-11-19
 
