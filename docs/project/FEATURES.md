@@ -129,7 +129,7 @@ der Bereich nicht, die nächste freie Nummer ab 230.
 | FEAT-112 | „Multiplayer“ im Pausemenü | Implemented | 1.4.1 |
 | FEAT-113 | Kachel „Multiplayer“ im Hauptmenü | Implemented | 1.8.0 |
 | FEAT-114 | F7 öffnet Multiplayer | Implemented | 1.4.1 |
-| FEAT-115 | Entwickler-Menü (F8) | Implemented | 1.6.0 |
+| FEAT-115 | Entwickler-Menü (F8, nur mit Dev-Flag) | Implemented | 1.6.0 |
 | FEAT-116 | Chat-Bereich unten links | Implemented | 1.6.0 |
 | FEAT-117 | Banner (Abstimmung, Wettbewerb, Einladung) | Implemented | 1.12.0 |
 | FEAT-118 | Zustandsbrücke Lua ↔ Oberfläche | Implemented | 1.8.0 |

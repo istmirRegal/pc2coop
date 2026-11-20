@@ -50,7 +50,8 @@ und Maus, Dateien im Spielordner. Lua spricht sie über `probe/PC2CoopProbe/Main
 ### FEAT-196 – Mittelklick, F7, F8, Enter
 - **Status:** Implemented · **Seit:** 1.6.0
 - **Technik:** Ereignisse `key:mdown`, `key:mup|ms|weg²` (nur im Spielfenster), `key:menu` (F7),
-  `key:dev` (F8), `key:chat` (Enter, seit P1 des UX-Overhauls; ob der Chat aufgeht, entscheiden
+  `key:dev` (F8, nur mit `pc2coop-dev.flag`, `pc2_developer_mode`), `key:chat` (Enter, seit P1 des
+  UX-Overhauls; ob der Chat aufgeht, entscheiden
   Lua und die Oberfläche, FEAT-116).
 
 ### FEAT-197 – Echtzeit-Uhr

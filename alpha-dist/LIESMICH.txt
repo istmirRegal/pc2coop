@@ -50,8 +50,7 @@ Wenn der Beitritt nicht klappt
 - "Einladung abgelaufen": die Sitzung gibt es nicht mehr (alte Einladung). Lass dich
   neu einladen. Ein "Eingeladen"-Knopf wird nach etwa 25 Sekunden wieder aktiv.
 - "Park konnte nicht geladen werden": "Erneut versuchen" holt den Park noch einmal.
-- Wer ins Hauptmenue zurueckgeht, bleibt in der Lobby; "Beenden" (Host) schliesst sie.
-F8 oeffnet das Entwickler-Menue (Sync-Zustand, API-Rekorder, Namensschilder).
+- Wer ins Hauptmenue zurueckgeht, bleibt in der Sitzung; "Beenden" (Host) schliesst sie.
 
 Die anderen sehen
 - Bodenmarke: eine kleine farbige Scheibe dort, wohin ein Mitspieler schaut, mit seinem
@@ -72,7 +71,8 @@ Die anderen sehen
 - Urheber: Waehlst du ein Objekt aus (Info-Fenster offen) oder nimmst es in die Hand,
   steht daran, wer es erstellt und wer es zuletzt bearbeitet hat. Der Host merkt sich das
   pro Park (Datei pc2coop-authors-<Park>.txt im Spielordner), auch ueber Speichern und Laden.
-Im Entwickler-Menue (F8) lassen sich Namensschilder und diese Anzeige abschalten.
+Im Multiplayer-Fenster, Reiter "Sitzung", Abschnitt "Fuer dich", laesst sich diese Anzeige
+abschalten ("Mitspieler in der Welt zeigen").
 
 Multiplayer im Baumenue
 Unten rechts in der Bauleiste gibt es den Reiter "Multiplayer" (oder F7). Das Fenster hat im Park

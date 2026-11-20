@@ -18,6 +18,7 @@
 #include <utility>
 
 void pc2_diagnostic_event(const char*) noexcept;
+bool pc2_developer_mode() noexcept;
 int pc2_push_string(void* state, const char* text, size_t size) noexcept;
 
 namespace {
@@ -874,12 +875,13 @@ void poll_visitor() {
     }
 }
 
-// F7 opens the multiplayer window, F8 the developer menu, Enter the chat (Lua and the UI decide
-// whether it opens: only in a park, never while a text field of the game has the keyboard).
+// F7 opens the multiplayer window, Enter the chat (Lua and the UI decide whether it opens:
+// only in a park, never while a text field of the game has the keyboard). F8 opens the
+// developer dialog and only exists with the developer marker file (TP-31).
 void poll_hotkeys() {
     static bool f7 = false, f8 = false, enter = false;
     poll_key(VK_F7, f7, "key:menu");
-    poll_key(VK_F8, f8, "key:dev");
+    if (pc2_developer_mode()) poll_key(VK_F8, f8, "key:dev");
     poll_key(VK_RETURN, enter, "key:chat");
     poll_middle_button();
     poll_visitor();

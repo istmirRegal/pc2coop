@@ -21,11 +21,15 @@ Icons des Spiels (`docs/ui-ux/NATIVE_UI.md`) und erfindet nur, was das Spiel nic
   „Ich-Sicht“, keine Tasten mehr in Eingabefeldern.
 - Umlaute in den Lua-Meldungen (Toasts, Verlauf, Beitrittsfehler).
 
-**Noch offen in P0:**
-- HUD-Grund folgt der Akzentfarbe noch nicht.
-- Bausteine A6.
-- Lua-Verlaufstexte mit „Lobby“ („… ist in der Lobby“).
-- F8-Dialog (`menu.lua`): wird für Spieler entfernt (TP-31).
+**Umgesetzt (P0, Schritt 3, 2026-11-20, im Spiel fotografiert bei 1080p, Standard-Akzent):**
+- HUD-Grund über `--accentPanelBackground-triplet`, Linien und Rahmen über `--accent-triplet`
+  (`HUD_BG`, `ACCENT_A`). Keine feste Akzentfarbe mehr in `CoopLayer.js`.
+- Bausteine A6 im Code: siehe Tabelle unten.
+- Lua-Meldungen sagen „Sitzung“ statt „Lobby“.
+- F8-Dialog nur mit Dev-Flag (TP-31); „Für dich“ im Reiter Sitzung (Anfang TP-32).
+
+**Noch nicht geprüft:** 1440p, 4K, UI-Skalierung klein/groß, Farbenblind-Modus, andere
+Akzentfarbe (die Einstellungen der Testkopie wurden nicht umgestellt).
 
 Der Ist-Teil B beschreibt bei Farben und Maßen den Stand **vor** diesem Schritt.
 
@@ -118,6 +122,10 @@ in kleinen Etiketten wie `StatusTag`.
 | **Pille** (eigen) | wie `OnlineNotification` | Verbindung, Sync |
 | **Tastenhinweis** (eigen, bis die Spiel-Leiste nutzbar ist) | wie `InputHintsItem`: Tastensymbol + Wort | Besuch, Markieren |
 | **Spieler-Pille** (eigen) | HUD-Grund, Avatar, Name, Krone, Zustands-Icon | Sitzungs-Cluster |
+
+Im Code (`CoopLayer.js`, P0 Schritt 3): Zeile `row`, Anfrage-Karte `RequestCard`, Pille `hudPill`,
+HUD-Karte `hudCard`, Tastenhinweis `keyCap`/`keyHint`/`hintBar`. Das Fenster als Spiel-`Panel`
+folgt mit P2.
 
 ### A7. Icons
 

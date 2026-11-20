@@ -20,7 +20,7 @@ Darstellung: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js` (Kompone
 | Park, Pausemenü (Esc) | Eintrag „Multiplayer“ (`patchMenuClass`) | im Park | `open` | FEAT-112 |
 | Tastatur | **F7** öffnet/schließt das Fenster (`key:menu` → `Ui.Toggle`) | überall | – | FEAT-114 |
 | Tastatur | **Enter** öffnet die Chat-Eingabe unten links (`key:chat` → `Ui.ChatKey`) | im Park, Fenster zu, kein Textfeld des Spiels aktiv | `chatinput` | FEAT-116 |
-| Tastatur | **F8** Entwickler-Dialog (Spiel-Dialog, `menu.lua`) | im Park | – | FEAT-115 |
+| Tastatur | **F8** Entwickler-Dialog (Spiel-Dialog, `menu.lua`) | nur mit Dev-Flag (`pc2coop-dev.flag`), im Park | – | FEAT-115 |
 
 ## 2. Multiplayer-Fenster (`Lobby`, 1320 × 780 px, Mitte)
 
@@ -78,6 +78,7 @@ Verlauf · Sitzung**. Im Hauptmenü und ohne Sitzung gibt es nur die Team-Ansich
 
 | Abschnitt | Elemente | Aktionen | FEAT |
 |---|---|---|---|
+| „Für dich“ (nur auf deinem PC) | „Mitspieler in der Welt zeigen“ An/Aus (Name, Blickrichtung, gehaltenes Objekt, Sperr-Färbung) | `labels` | FEAT-091 |
 | „Wettbewerb“ | Host: Thema, Bauduell/Koop gegen die Uhr je 15/30/60 Min.; laufend: Uhr, Bewertung Gestaltung/Technik 1–5, Ergebnis; Host: „Zeit beenden, bewerten“/„Bewertung abschließen“/„Wettbewerb schließen“ | `comp_start`, `comp_rate`, `comp_next`, `goto` | FEAT-145–147 |
 | „Regeln dieser Sitzung“ | Host: Schnellwahl „Locker zusammen bauen“/„Geordnet“/„Nur bauen“; Spieltempo, Fremde Bauten, Besucher-Modus | `rule_preset`, `rule` | FEAT-142, FEAT-143 |
 | „Deine Rolle“, „Abwesenheit“, „Beitritt“ | Erklärtexte | – | FEAT-144 |
@@ -88,7 +89,7 @@ Verlauf · Sitzung**. Im Hauptmenü und ohne Sitzung gibt es nur die Team-Ansich
 |---|---|---|---|---|
 | Sitzungs-Cluster (`PlayerBar`): Avatar, Name, Krone, Tätigkeit; darunter die Wettbewerbs-Uhr | oben rechts, ab 4.2 rem | in Sitzung im Park; beim Mitfahren nur Avatare | Klick auf Mitspieler = folgen | FEAT-090, FEAT-096 |
 | Verbindungs-Pille (`ConnectionPill`): keine Verbindung zum Host / nicht synchron (+ „Neu synchronisieren“) / Host im Hauptmenü | oben Mitte, 5 rem | nur bei Problemen, Fenster zu | `resync` | FEAT-033, FEAT-031 |
-| Namensschilder | über dem Blickpunkt der Mitspieler (Coaster-Labels des Spiels, Stil in `DebugToolImports.js`) | Mitspieler im Park, F8 „Namensschilder“ an | – | FEAT-091 |
+| Namensschilder | über dem Blickpunkt der Mitspieler (Coaster-Labels des Spiels, Stil in `DebugToolImports.js`) | Mitspieler im Park, „Für dich“ an (Reiter Sitzung) | – | FEAT-091 |
 | Bodenmarke, Sichtkegel, Geist, Sperr-Färbung, Figuren | in der Welt (`viz.lua`) | Mitspieler im Park | – | FEAT-092–094, FEAT-171 |
 | Ablehnung am Objekt: Schild „<Name> baut hier gerade“ / „war schneller“ / „hat das gerade geändert“, Objekt blinkt in der Farbe des Mitspielers | 4 m über dem Objekt (Coaster-Labels), Blinken über Sperr-Färbung | 5 s nach einer zurückgenommenen eigenen Änderung (Blinken 2 s); ohne Objekt als Karte im Chat-Bereich | – | FEAT-082 |
 | Markieren-Radialmenü (`ContextMenu`): Titel (Fahrgeschäft oder „Markierung“), Kreise mit Spiel-Icons „Testfahrt mit allen“, „Mitfahren“, „Übernahme von …“, „Kommentar“, „Vorschlag“, „Baugebiet“, „Treffpunkt“; Mitte = Schließen | um die Maus | nach eigener Markierung (kurzer Mittelklick), nicht im Besuch | `ctx` (invite, ride, take, comment, proposal, area, meet, close) | FEAT-136, FEAT-137 |
@@ -131,6 +132,8 @@ des Spiels (Alt springen, Strg ducken, L Lampe).
 
 ## 6. F8-Dialog (`menu.lua`, Dialog des Spiels)
 
+Nur für Entwickler: Die DLL meldet F8 nur mit `pc2coop-dev.flag` (TP-31). Spieler sehen ihn nicht.
+
 Hauptseite: Status-Text (Rolle, Spieler, Zähler, letzte Ereignisse) und „Raum hosten“,
 „Freunde einladen“, „Sitzung beenden“/„Sitzung verlassen“, „Zu <Name>“, „Entwickler“, „Schliessen“.
 Entwickler-Seite: technische Werte und „API-Rekorder an/aus“, „Namensschilder an/aus“,
@@ -153,6 +156,7 @@ Entwickler-Seite: technische Werte und „API-Rekorder an/aus“, „Namensschil
 | `rejoin`, `forget_rejoin` | – | Wiederbeitritt | ja |
 | `chat` | Text | Chat senden | ja |
 | `chatinput` | 1/0 | Chat-Eingabe offen/zu (`Session.SetTyping`) | ja (automatisch beim Öffnen/Schließen) |
+| `labels` | 1/0 | Mitspieler in der Welt zeigen an/aus (`Menu.labelsEnabled`) | ja |
 | `jump` | sid | Kamera zum Spieler | ja |
 | `follow` | sid | folgen an/aus | ja |
 | `ping` | – | Ping unter dem Mauszeiger (`Session.Ping`) | **nein** (Ping kommt über Mittelklick) |

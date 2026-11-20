@@ -34,12 +34,15 @@ Code: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js`,
 - **Status:** Implemented · **Seit:** 1.4.1
 - **Technik:** DLL `key:menu` → `Session.OnMenuKey` (gesetzt vom Manager) → Fenster/Menü.
 
-### FEAT-115 – Entwickler-Menü (F8)
-- **Status:** Implemented · **Seit:** 1.6.0
+### FEAT-115 – Entwickler-Menü (F8, nur mit Dev-Flag)
+- **Status:** Implemented · **Seit:** 1.6.0 · **Nur für Entwickler seit:** UX-Overhaul P0 (TP-31)
 - **Funktion:** Sync-Zustand, API-Rekorder an/aus, Namensschilder an/aus, Sync pausieren.
+  Spieler sehen das Menü nicht: Hosten, Einladen und Verlassen stehen im Multiplayer-Fenster,
+  der Schalter für die Anzeige der Mitspieler im Abschnitt „Für dich“ (FEAT-091).
 - **Technik:** `menu.lua` (`Menu.Init`, `Menu.Toggle`, Dialog-Stack des Spiels,
-  `STRING_LITERAL`-Texte); DLL `key:dev` → `Session.OnDevKey`. Hauptseite: Raum hosten,
-  Freunde einladen, Sitzung verlassen/beenden, „Zu <Name>“, Entwickler, Schließen.
+  `STRING_LITERAL`-Texte); DLL `key:dev` → `Session.OnDevKey`. Die DLL meldet F8 nur, wenn
+  `pc2coop-dev.flag` neben der DLL liegt (`pc2_developer_mode`, wie der QA-Kanal). Hauptseite:
+  Raum hosten, Freunde einladen, Sitzung verlassen/beenden, „Zu <Name>“, Entwickler, Schließen.
 
 ### FEAT-116 – Chat-Bereich unten links
 - **Status:** Implemented · **Seit:** 1.6.0 (als Toasts) · **Hängt ab von:** FEAT-044, FEAT-035

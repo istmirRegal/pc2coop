@@ -439,7 +439,7 @@ class JoinRobustnessTests(SessionTests):
         self.pump(4)   # the simulated DLL answers "status" with the lobby the host is still in
         view = host.lua.eval('session.View()')
         self.assertEqual((view['role'], view['stage']), ('host', 'lobby'))
-        self.assertTrue(any('wieder in der Lobby' in t['text'] for t in host.lua.eval('session.Toasts()').values()))
+        self.assertTrue(any('Sitzung läuft weiter' in t['text'] for t in host.lua.eval('session.Toasts()').values()))
         alex = self.peers['200'].lua.eval('session.JoinState()')
         self.assertEqual(alex['phase'], 'hostlobby')
         # Edits of a player still in the old park do not reach the lobby.

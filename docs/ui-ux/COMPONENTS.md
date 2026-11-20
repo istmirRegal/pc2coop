@@ -14,7 +14,7 @@ Alle in `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js`.
 Wichtige Zustandsfelder (aus `ui.lua`): `available`, `role`, `context` (menu/park), `open`,
 `canHost`, `players[]` (sid, name, host, me, color, act, …), `following`, `join` (phase,
 host, progress, reason, retry), `stage`, `parkTitle`, `choice`, `canChoose`, `parks[]`,
-`friends[]`, `chat[]`, `log[]`, `toasts[]` (id, text, color, loc, kind), `chatKey`, `desync`, `dlc`, `guard`, `requests[]`,
+`friends[]`, `chat[]`, `log[]`, `toasts[]` (id, text, color, loc, kind), `chatKey`, `labels`, `desync`, `dlc`, `guard`, `requests[]`,
 `team` (tab, board, events, since, checkpoints, rules, vote, competition, context,
 invitation), `visitor` (active, riding, guest, hint, shop, list, rides[], emotes, wheel).
 Wer ein Feld hinzufügt, trägt es hier ein.
@@ -48,7 +48,11 @@ Wer ein Feld hinzufügt, trägt es hier ein.
 | `rem(px)` | Größe in rem (`px / 20`, Entwurf bei 1080p) |
 | `glyph(src, size, white, extra)` | Spiel-Icon aus `/img/icons/` mit fester Größe; das `Icon` des Spiels ignoriert `style` (Größe 0) |
 | `remPx()` | aktuelle Pixel pro rem (für Mauskoordinaten) |
-| `HUD_BG(alpha)` | dunkler HUD-Grund (`--accentPanelBackground` des Standardthemas) |
+| `HUD_BG(alpha)` | HUD-Grund wie `rgba(var(--accentPanelBackground-triplet), …)` im Spiel; folgt der Akzentfarbe |
+| `ACCENT_A(alpha)` | Akzentfarbe mit Transparenz (Linien, Rahmen), wie `rgba(var(--accent-triplet), …)` |
+| `hudPill(extra, alpha)` | Baustein Pille: HUD-Grund, runde Ecken, weiße Schrift (Wettbewerbs-Uhr) |
+| `hudCard(extra, alpha)` | Baustein HUD-Karte: Meldungen, Chat, Mini-Sitzungskarte, Beitrittskarte |
+| `keyCap(label)`, `keyHint(key, word, last)`, `hintBar(extra, children)` | Baustein Tastenhinweis wie `InputHintsItem` (`MarkHint`, Chat-Eingabe) |
 | `literal(text)` | Text für Spiel-Komponenten |
 | `shown(text)` | Lokalisierungs-Schlüssel übersetzen, sonst Text |
 | `section(title, extra)` | Abschnittstitel |

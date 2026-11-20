@@ -251,6 +251,7 @@ local function buildState()
         requests = session.Requests and session.Requests() or {},
         following = session.Following and session.Following() or false,
         chat = session.Chat(), toasts = session.Toasts(), chatKey = chatKeys,
+        labels = menu ~= nil and menu.labelsEnabled == true,
         stage = view.stage or false, parkTitle = view.parkTitle or "", guard = view.guard ~= false,
         context = view.context or false, dlc = view.dlc,
         choice = view.choice or false, canChoose = choosing(), parks = choosing() and parkList or {},
@@ -278,6 +279,12 @@ local actions = {
     chat = function(arg) session.SendChat(arg) end,
     -- "1" while the chat input of the HUD is open, "0" when it closes.
     chatinput = function(arg) session.SetTyping(arg == "1") end,
+    -- "Für dich" (tab Sitzung): name tags of the other players on ("1") or off ("0"), this PC only.
+    labels = function(arg)
+        if not menu then return end
+        menu.labelsEnabled = arg == "1"
+        if not menu.labelsEnabled then global.pcall(function() global.require("pc2coop.labels").Clear() end) end
+    end,
     jump = function(arg)
         -- To the player's recent ping when there is one, else to their camera.
         for _, ping in global.ipairs(session.Pings()) do

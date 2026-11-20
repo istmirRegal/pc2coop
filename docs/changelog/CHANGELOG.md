@@ -5,6 +5,13 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
 
 ## Unveröffentlicht
 
+- F8 öffnet kein Entwickler-Menü mehr. Sitzung starten, einladen und verlassen geht im
+  Multiplayer-Fenster (F7).
+- Neu im Multiplayer-Fenster, Reiter „Sitzung“: „Für dich“ mit dem Schalter „Mitspieler in der
+  Welt zeigen“ (vorher nur im Entwickler-Menü).
+- Dunkle Flächen der Mod (Chat, Meldungen, Karten) und die Linien im Fenster folgen jetzt
+  deiner Akzentfarbe.
+- Auch die Meldungen sagen jetzt „Sitzung“ statt „Lobby“.
 - Wird eine Änderung von dir zurückgenommen, steht der Grund jetzt direkt am Objekt, mit
   Namen: „Vici baut hier gerade“ oder „Vici war schneller“. Das Objekt blinkt kurz in Vicis
   Farbe. Vorher kam nur eine Meldung ohne Namen.

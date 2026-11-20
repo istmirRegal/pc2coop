@@ -24,8 +24,8 @@ Berührungspunkte, Bewertung, Zielbild). Dort sind alle IDs dieser Datei einem B
 | ID | Befund | Ort |
 |---|---|---|
 | UX-B1 | Texte aus Lua (Feed, Toasts, F8-Dialog) ohne Umlaute („geloescht“, „Fahrgeschaeft“, „Schliessen“, „Zurueck“), JS-Texte mit Umlauten | `session.lua`, `menu.lua` |
-| UX-B2 | F8-Dialog benutzt den Spiel-Dialog mit Fließtext; sieht anders aus als das Multiplayer-Fenster und doppelt Teile davon (Hosten, Einladen, Verlassen) | `menu.lua` |
-| UX-B3 | Bezeichnungen wechseln: „Raum hosten“ (F8) / „Lobby erstellen“ / „Diesen Park hosten“; „Sitzung“ / „Lobby“ / „Raum“ | `menu.lua`, `Lobby` |
+| UX-B2 | F8-Dialog benutzt den Spiel-Dialog mit Fließtext; sieht anders aus als das Multiplayer-Fenster und doppelt Teile davon (Hosten, Einladen, Verlassen) (erledigt 2026-11-20: nur mit Dev-Flag) | `menu.lua` |
+| UX-B3 | Bezeichnungen wechseln: „Raum hosten“ (F8) / „Lobby erstellen“ / „Diesen Park hosten“; „Sitzung“ / „Lobby“ / „Raum“ (erledigt 2026-11-20, auch in den Lua-Meldungen) | `menu.lua`, `Lobby` |
 
 ## C. Auffindbarkeit
 

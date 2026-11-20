@@ -155,14 +155,16 @@ const FONT = 'StandardFont, StandardFont_fallback1, StandardFont_fallback2, Stan
 // They are read like the game's BibleColours.js does: Gameface ignored var() in the inline
 // 'background' shorthand (2026-11-20, window without background); plain values work everywhere.
 // Defaults = the game's default theme.
-const PALETTE_DEFAULT = { accent: '#008ACC', alert: '#FF3363', neutral3: '#9cbad0',accentButtonDesaturatedDark: '#2b6e9c', accentButtonLight: '#81d3fd', accentFaint: '#cce8f5', accentLight: '#64bde8', accentText: '#0b3a56', area: '#E8EFF4', highlight: '#FFBB00', panel: '#FFFFFF', positive: '#00CA65', positiveDark: '#099340', warning: '#EE7722', warningDark: '#9b5000', whiteColor: '#FFFFFF' };
+const PALETTE_DEFAULT = { accent: '#008ACC', alert: '#FF3363', neutral3: '#9cbad0',accentButtonDesaturatedDark: '#2b6e9c', accentButtonLight: '#81d3fd', accentFaint: '#cce8f5', accentLight: '#64bde8', accentText: '#0b3a56', area: '#E8EFF4', highlight: '#FFBB00', panel: '#FFFFFF', positive: '#00CA65', positiveDark: '#099340', warning: '#EE7722', warningDark: '#9b5000', whiteColor: '#FFFFFF',
+    'accent-triplet': '0, 138, 204', 'accentPanelBackground-triplet': '0, 32, 61' };
 const palette = Object.assign({}, PALETTE_DEFAULT);
 function refreshPalette() {
     try {
         const styles = getComputedStyle(document.body);
         for (const name in PALETTE_DEFAULT) {
             const value = String(styles.getPropertyValue('--' + name) || '').trim();
-            palette[name] = value || PALETTE_DEFAULT[name];
+            const usable = /-triplet$/.test(name) ? /^\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}$/.test(value) : value !== '';
+            palette[name] = usable ? value : PALETTE_DEFAULT[name];
         }
     } catch (e) { /* keep the last colours */ }
 }
@@ -175,8 +177,16 @@ const glyph = (src, size, white, extra) => h('div', { style: Object.assign({ wid
 // Sizes follow the game's UI scale: 1rem = 20px at 1080p (UIScaleConfig.js), see docs/ui-ux/NATIVE_UI.md.
 const rem = (px) => (Math.round(px / 20 * 1000) / 1000) + 'rem';
 const remPx = () => parseFloat(document.documentElement.style.fontSize) || 20;
-// HUD background: the game's --accentPanelBackground (#00203d) with transparency.
-const HUD_BG = (alpha) => 'rgba(0, 32, 61, ' + alpha + ')';
+// HUD background like the game's rgba(var(--accentPanelBackground-triplet), …): follows the accent colour.
+const HUD_BG = (alpha) => 'rgba(' + C('accentPanelBackground-triplet') + ', ' + alpha + ')';
+// The accent colour with transparency (lines, frames), rgba(var(--accent-triplet), …) in the game.
+const ACCENT_A = (alpha) => 'rgba(' + C('accent-triplet') + ', ' + alpha + ')';
+
+// Building blocks (docs/ui-ux/DESIGN_SYSTEM.md A6). HUD pill and HUD card: HUD background, white text.
+const hudPill = (extra, alpha) => Object.assign({ display: 'flex', alignItems: 'center', padding: '0.25rem 0.6rem', borderRadius: '1rem',
+    backgroundColor: HUD_BG(alpha || 0.85), color: C('whiteColor'), fontSize: '0.9rem' }, extra || {});
+const hudCard = (extra, alpha) => Object.assign({ borderRadius: '0.5rem', backgroundColor: HUD_BG(alpha || 0.85), color: C('whiteColor'),
+    fontSize: '0.9rem' }, extra || {});
 
 // Profile pictures: the DLL sends an uncompressed PNG (stored zlib blocks, no row filters).
 // Gameface shows no data: URLs, so the pixels are read here and painted on a canvas.
@@ -374,8 +384,7 @@ class PlayerBar extends StateComponent {
                     !compact && h('div', { style: { color: following ? C('highlight') : C('accentButtonLight'), fontSize: '0.9rem', marginLeft: '0.45rem',
                         maxWidth: '12rem', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' } }, activity));
             }),
-            comp && comp.phase === 'build' && !compact && h('div', { style: { display: 'flex', alignItems: 'center', marginTop: '0.3rem',
-                padding: '0.25rem 0.6rem', borderRadius: '1rem', backgroundColor: HUD_BG(0.85), color: C('whiteColor'), fontSize: '0.9rem' } },
+            comp && comp.phase === 'build' && !compact && h('div', { style: hudPill({ marginTop: '0.3rem' }) },
                 glyph('img/icons/clock.svg', '0.9rem', true, { marginRight: '0.4rem' }),
                 comp.label + (comp.topic ? ' · ' + comp.topic : '') + ' · ' + Math.floor(s / 60) + ':' + (s % 60 < 10 ? '0' : '') + (s % 60)));
     }
@@ -434,7 +443,7 @@ class VisitorBar extends StateComponent {
                         : 'noch nicht getestet';
                     const extra = [r.dist !== false ? r.dist + ' m' : null, typeof r.queue === 'number' ? Math.round(r.queue) + ' in der Schlange' : null,
                         r.trains ? r.trains + ' Züge' : null].filter(Boolean).join('  ·  ');
-                    return h('div', { key: r.key, style: { padding: '0.4rem 0.9rem', borderBottom: '1px solid rgba(0, 138, 204, 0.15)',
+                    return h('div', { key: r.key, style: { padding: '0.4rem 0.9rem', borderBottom: '1px solid ' + ACCENT_A(0.15),
                         backgroundColor: state.picked === r.key ? C('area') : 'transparent' } },
                         h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
                             h('div', { style: { width: '26rem' } },
@@ -613,6 +622,10 @@ class ContextMenu extends StateComponent {
 // A key as the game's input hints draw it: white outline, the key's name inside.
 const keyCap = (label) => h('div', { style: { padding: '0 0.3rem', marginRight: '0.4rem', borderRadius: '0.25rem', borderWidth: '0.1rem',
     borderStyle: 'solid', borderColor: C('whiteColor') } }, label);
+// Building block "Tastenhinweis": key and word (last: no gap after it), on the game's hint ground.
+const keyHint = (key, word, last) => [keyCap(key), h('div', { style: { marginRight: last ? 0 : '0.9rem' } }, word)];
+const hintBar = (extra, children) => h('div', { style: Object.assign({ display: 'flex', alignItems: 'center', padding: '0.3rem 0.4rem',
+    borderRadius: '0.35rem', backgroundColor: 'rgba(0, 0, 0, 0.3)', color: C('whiteColor'), fontSize: '0.9rem' }, extra) }, children);
 
 // Key hints like the game's input hints (bottom right, above the build bar): Enter opens the chat,
 // the mark is the way to everything in the radial menu (TP-15, TP-22, UX-C1).
@@ -620,10 +633,8 @@ class MarkHint extends StateComponent {
     render(props, state) {
         const coop = state.coop || {};
         if (!coop.role || coop.context !== 'park' || coop.open || (coop.visitor && coop.visitor.active) || (coop.team && coop.team.context)) return null;
-        return h('div', { style: { position: 'absolute', right: '1rem', bottom: '5.2rem', display: 'flex', alignItems: 'center',
-            padding: '0.3rem 0.4rem', borderRadius: '0.35rem', backgroundColor: 'rgba(0, 0, 0, 0.3)', color: C('whiteColor'), fontSize: '0.9rem' } },
-            keyCap('Enter'), h('div', { style: { marginRight: '0.9rem' } }, 'Chat'),
-            keyCap('Mittelklick'), 'Markieren');
+        return hintBar({ position: 'absolute', right: '1rem', bottom: '5.2rem' },
+            [...keyHint('Enter', 'Chat'), ...keyHint('Mittelklick', 'Markieren', true)]);
     }
 }
 
@@ -729,11 +740,11 @@ class ChatArea extends StateComponent {
         if (!typing && notices.length === 0 && lines.length === 0) return null;
         return h('div', { style: { position: 'absolute', bottom: '6rem', left: '1.2rem', width: '26rem', display: 'flex', flexDirection: 'column',
             alignItems: 'flex-start' } },
-            notices.map((t) => h('div', { key: 'n' + t.id, style: { margin: '0.2rem 0', padding: '0.5rem 0.8rem', maxWidth: '26rem',
-                borderRadius: '0.5rem', backgroundColor: HUD_BG(0.82), color: C('whiteColor'), fontSize: '0.9rem',
-                borderLeftWidth: '0.25rem', borderLeftStyle: 'solid', borderLeftColor: '#' + (t.color || '00c6ff') } }, t.loc ? shown(t.text) : t.text)),
-            (typing || lines.length > 0) && h('div', { style: { alignSelf: 'stretch', marginTop: '0.2rem', padding: '0.4rem 0.6rem',
-                borderRadius: '0.5rem', backgroundColor: HUD_BG(typing ? 0.85 : 0.55), pointerEvents: typing ? 'auto' : 'none' } },
+            notices.map((t) => h('div', { key: 'n' + t.id, style: hudCard({ margin: '0.2rem 0', padding: '0.5rem 0.8rem', maxWidth: '26rem',
+                borderLeftWidth: '0.25rem', borderLeftStyle: 'solid', borderLeftColor: t.color ? '#' + t.color : C('accentLight') }, 0.82) },
+                t.loc ? shown(t.text) : t.text)),
+            (typing || lines.length > 0) && h('div', { style: hudCard({ alignSelf: 'stretch', marginTop: '0.2rem', padding: '0.4rem 0.6rem',
+                pointerEvents: typing ? 'auto' : 'none' }, typing ? 0.85 : 0.55) },
                 lines.length === 0 ? h('div', { style: { color: C('neutral3'), fontSize: '0.9rem' } }, 'Noch keine Nachrichten.') : lines.map((t) => this.line(t)),
                 typing && h('div', { style: { marginTop: '0.4rem' } },
                     h(InputField, { text: state.draft, promptText: literal('Nachricht an alle'), maxInputLength: 200, modifiers: 'alt', commitOnCancel: false,
@@ -745,8 +756,7 @@ class ChatArea extends StateComponent {
                         },
                         onCancel: (e) => this.close((e && e.text) || '') })),
                 typing && h('div', { style: { display: 'flex', alignItems: 'center', marginTop: '0.35rem', color: C('whiteColor'), fontSize: '0.9rem' } },
-                    keyCap('Enter'), h('div', { style: { marginRight: '0.9rem' } }, 'Senden'),
-                    keyCap('Esc'), 'Schließen')));
+                    ...keyHint('Enter', 'Senden'), ...keyHint('Esc', 'Schließen', true))));
     }
 }
 
@@ -773,7 +783,7 @@ const section = (title, extra) => h('div', { style: { display: 'flex', alignItem
     color: C('accent'), fontSize: '1rem', fontWeight: 'bold', margin: '0.8rem 0 0.4rem' } }, title, extra || null);
 
 const row = (children, key) => h('div', { key, style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    flexWrap: 'wrap', padding: '0.25rem 0', borderBottom: '1px solid rgba(0, 138, 204, 0.15)' } }, children);
+    flexWrap: 'wrap', padding: '0.25rem 0', borderBottom: '1px solid ' + ACCENT_A(0.15) } }, children);
 
 const buttons = (items) => h('div', { style: { display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '100%' } },
     items.filter(Boolean).map((b, i) => h('div', { key: 'b' + i, style: { margin: '2px 0 2px 0.3rem', maxWidth: '100%' } },
@@ -815,7 +825,7 @@ class Lobby extends StateComponent {
         }
         footer.push({ label: 'Schließen', onSelect: () => request('close'), inputName: 'UI_Cancel' });
         const column = (width, children, last) => h('div', { style: { width: rem(width), height: '31.8rem', padding: '0 0.9rem',
-            borderRight: last ? 'none' : '1px solid rgba(0, 138, 204, 0.18)' } }, children);
+            borderRight: last ? 'none' : '1px solid ' + ACCENT_A(0.18) } }, children);
         return h('div', { style: { position: 'absolute', left: 0, top: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0, 0, 0, 0.5)' } },
             h('div', { style: { position: 'absolute', left: '50%', top: '50%', width: '66rem', height: '39rem', marginLeft: '-33rem',
                 marginTop: '-19.5rem', borderRadius: '0.7rem', overflow: 'hidden', backgroundColor: C('panel'), color: C('accentText'), fontSize: '1rem',
@@ -827,7 +837,7 @@ class Lobby extends StateComponent {
                         list(coop.players).length + ' / ' + SLOTS + ' Spieler' + (coop.stage === 'park' && coop.parkTitle ? ' · ' + coop.parkTitle : ''))),
                 this.renderBody(coop, state, column),
                 h('div', { style: { display: 'flex', alignItems: 'center', height: '4rem', padding: '0 1.2rem', backgroundColor: C('area'),
-                    borderTop: '1px solid rgba(0, 138, 204, 0.2)' } },
+                    borderTop: '1px solid ' + ACCENT_A(0.2) } },
                     h('div', { style: { width: '0.6rem', height: '0.6rem', borderRadius: '0.3rem', backgroundColor: TONE[status.tone] || TONE.idle,
                         marginRight: '0.5rem', flexShrink: 0 } }),
                     h('div', { style: { width: '32rem', fontSize: '1rem' } }, status.text),
@@ -840,11 +850,11 @@ class Lobby extends StateComponent {
         const inPark = coop.role && coop.context !== 'menu' && team;
         const tab = inPark ? team.tab : 'team';
         const bar = inPark && h('div', { style: { display: 'flex', height: '2.2rem', alignItems: 'center', padding: '0 0.9rem',
-            backgroundColor: C('area'), borderBottom: '1px solid rgba(0, 138, 204, 0.2)' } },
+            backgroundColor: C('area'), borderBottom: '1px solid ' + ACCENT_A(0.2) } },
             PANEL_TABS.map(([key, label]) => h('div', { key, onClick: () => request('paneltab', key),
                 style: { padding: '0.3rem 0.9rem', marginRight: '0.4rem', borderRadius: '0.8rem', fontSize: '1rem',
                     backgroundColor: tab === key ? C('accent') : C('whiteColor'), color: tab === key ? C('whiteColor') : C('accentText'),
-                    border: '1px solid rgba(0, 138, 204, 0.45)' } }, label)));
+                    border: '1px solid ' + ACCENT_A(0.45) } }, label)));
         const height = inPark ? 592 : 636;
         let body;
         if (tab === 'visit') body = this.renderVisit(coop, height);
@@ -863,7 +873,7 @@ class Lobby extends StateComponent {
         const rules = (coop.team && coop.team.rules) || {};
         const blocked = coop.role === 'client' && rules.visitors === '0';
         return h('div', { style: { display: 'flex', height: rem(height) } },
-            h('div', { style: { width: '21rem', padding: '0 0.9rem', borderRight: '1px solid rgba(0, 138, 204, 0.18)' } },
+            h('div', { style: { width: '21rem', padding: '0 0.9rem', borderRight: '1px solid ' + ACCENT_A(0.18) } },
                 section('Als Besucher im Park'),
                 h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem', marginBottom: '0.4rem' } }, blocked
                     ? 'Der Host hat den Besucher-Modus für diese Sitzung ausgeschaltet.'
@@ -915,13 +925,13 @@ class Lobby extends StateComponent {
             this.setState({ title: '', text: '', kind, planSeq: team.planSeq });
         };
         return h('div', { style: { display: 'flex', height: rem(height) } },
-            h('div', { style: { width: '23rem', padding: '0 0.9rem', borderRight: '1px solid rgba(0, 138, 204, 0.18)' } },
+            h('div', { style: { width: '23rem', padding: '0 0.9rem', borderRight: '1px solid ' + ACCENT_A(0.18) } },
                 section('Neu'),
                 h('div', { style: { display: 'flex', flexWrap: 'wrap', marginBottom: '0.4rem' } },
                     BOARD_KINDS.map(([key, label]) => h('div', { key, onClick: () => this.setState({ kind: key, planSeq: team.planSeq }),
                         style: { padding: '0.3rem 0.7rem', margin: '0 0.3rem 0.3rem 0', borderRadius: '0.8rem', fontSize: '0.9rem',
                             backgroundColor: kind === key ? C('accent') : C('whiteColor'), color: kind === key ? C('whiteColor') : C('accentText'),
-                            border: '1px solid rgba(0, 138, 204, 0.45)' } }, label))),
+                            border: '1px solid ' + ACCENT_A(0.45) } }, label))),
                 h('div', { style: { margin: '0.3rem 0' } }, h(InputField, { text: state.title, maxInputLength: 60, beginEditOnSelect: true,
                     promptText: literal(kind === 'area' ? 'Name des Gebiets ("Wikingerland")' : kind === 'task' ? 'Was ist zu tun?'
                         : kind === 'proposal' ? 'Idee ("Wildwasserbahn am See?")' : 'Titel'),
@@ -961,7 +971,7 @@ class Lobby extends StateComponent {
         const team = coop.team || {};
         const isHost = coop.role === 'host';
         return h('div', { style: { display: 'flex', height: rem(height) } },
-            h('div', { style: { width: '32rem', padding: '0 0.9rem', borderRight: '1px solid rgba(0, 138, 204, 0.18)' } },
+            h('div', { style: { width: '32rem', padding: '0 0.9rem', borderRight: '1px solid ' + ACCENT_A(0.18) } },
                 section('Seit deinem letzten Besuch'),
                 h('div', { style: { fontSize: '0.9rem', color: team.since ? C('accentText') : C('accentButtonDesaturatedDark') } }, team.since || 'Dein erster Besuch in diesem Park - oder es gibt noch nichts zu vergleichen.'),
                 section('Meldungen des Parks'),
@@ -978,7 +988,7 @@ class Lobby extends StateComponent {
                 section('Verlauf der Sitzung'),
                 box(height - 60, list(coop.log).length === 0 ? h('div', { style: { color: C('accentButtonDesaturatedDark') } }, 'Noch nichts passiert.')
                     : list(coop.log).slice().reverse().map((line, i) => h('div', { key: 'l' + i, style: { fontSize: '0.9rem',
-                        padding: '0.2rem 0', borderBottom: '1px solid rgba(0, 138, 204, 0.1)' } }, shown(line))))));
+                        padding: '0.2rem 0', borderBottom: '1px solid ' + ACCENT_A(0.1) } }, shown(line))))));
     }
 
     renderCompetition(coop) {
@@ -1033,6 +1043,14 @@ class Lobby extends StateComponent {
         const rules = (coop.team && coop.team.rules) || {};
         const isHost = coop.role === 'host';
         return h('div', { style: { padding: '0 0.9rem', height: rem(height), overflowY: 'auto' } },
+            section('Für dich', h('span', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem', textTransform: 'none' } },
+                'nur auf deinem PC')),
+            row([h('div', { style: { width: '30rem', display: 'flex', flexDirection: 'column' } },
+                h('div', null, 'Mitspieler in der Welt zeigen'),
+                h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } },
+                    'Name, Blickrichtung, gehaltenes Objekt und Sperr-Färbung')),
+                buttons([['1', 'An'], ['0', 'Aus']].map(([value, text]) => ({ label: ((coop.labels ? '1' : '0') === value ? '● ' : '') + text,
+                    onSelect: () => request('labels', value) })))], 'labels'),
             section('Regeln dieser Sitzung', h('span', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem', textTransform: 'none' } },
                 isHost ? 'du bestimmst sie als Host' : 'nur der Host kann sie ändern')),
             isHost && row([h('div', { style: { width: '21rem', color: C('accentButtonDesaturatedDark') } }, 'Schnell wählen'),
@@ -1069,7 +1087,7 @@ class Lobby extends StateComponent {
             const content = contentLine(coop, p);
             const canLook = coop.stage === 'park' && coop.context === 'park' && !p.me && p.x !== undefined && p.act !== 'lobby';
             slots.push(h('div', { key: 'p' + p.sid, style: { display: 'flex', alignItems: 'center', padding: '0.35rem 0.5rem', margin: '0.25rem 0',
-                borderRadius: '0.5rem', backgroundColor: C('whiteColor'), border: '1px solid rgba(0, 138, 204, 0.18)' } },
+                borderRadius: '0.5rem', backgroundColor: C('whiteColor'), border: '1px solid ' + ACCENT_A(0.18) } },
                 h(Avatar, { player: p, size: 40, pic: avatars[p.sid] }),
                 h('div', { style: { flexGrow: 1, minWidth: 0, marginLeft: '0.6rem' } },
                     h('div', { style: { display: 'flex', alignItems: 'center', fontSize: '1rem', fontWeight: 'bold' } },
@@ -1105,10 +1123,10 @@ class Lobby extends StateComponent {
         const tabButton = (key, label, later) => h('div', { key, onClick: later ? undefined : () => this.setState({ tab: key }),
             style: { padding: '0.3rem 0.7rem', marginRight: '0.3rem', borderRadius: '0.8rem', fontSize: '0.9rem',
                 backgroundColor: tab === key ? C('accent') : (later ? C('area') : C('whiteColor')), color: tab === key ? C('whiteColor') : (later ? C('neutral3') : C('accentText')),
-                border: '1px solid ' + (later ? 'rgba(0, 0, 0, 0.06)' : 'rgba(0, 138, 204, 0.45)') } }, label);
+                border: '1px solid ' + (later ? 'rgba(0, 0, 0, 0.06)' : ACCENT_A(0.45)) } }, label);
         const picked = (key) => coop.chosen === key;
         const pickStyle = (on) => ({ padding: '0.4rem 0.6rem', margin: '0.2rem 0', borderRadius: '0.4rem', backgroundColor: on ? C('accentFaint') : C('whiteColor'),
-            borderWidth: '1px', borderStyle: 'solid', borderColor: on ? C('accent') : 'rgba(0, 138, 204, 0.18)' });
+            borderWidth: '1px', borderStyle: 'solid', borderColor: on ? C('accent') : ACCENT_A(0.18) });
         let content;
         if (tab === 'save') {
             const parks = list(coop.parks);
@@ -1182,7 +1200,7 @@ class Lobby extends StateComponent {
         return h('div', { key: 'chat', style: { height: '16.5rem' } },
             section('Chat'),
             h('div', { style: { height: '10.7rem', overflowY: 'auto', padding: '0.3rem 0.5rem', borderRadius: '0.4rem', backgroundColor: C('whiteColor'),
-                border: '1px solid rgba(0, 138, 204, 0.18)' } },
+                border: '1px solid ' + ACCENT_A(0.18) } },
                 chat.length === 0 ? h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } }, 'Noch keine Nachrichten.')
                     : chat.map((c, i) => h('div', { key: 'c' + i, style: { padding: '2px 0', fontSize: '0.9rem' } },
                         h('span', { style: { color: '#' + (c.color || '20435a'), fontWeight: 'bold' } }, c.name + ': '), c.text))),
@@ -1250,9 +1268,9 @@ class MiniLobby extends StateComponent {
             }, 500);
         }
         const chip = (label, onClick) => h('div', { onClick, style: { marginLeft: '0.4rem', padding: '0.25rem 0.6rem', borderRadius: '0.7rem',
-            backgroundColor: 'rgba(0, 160, 216, 0.9)', color: C('whiteColor'), fontSize: '0.9rem' } }, label);
-        return h('div', { style: { position: 'absolute', left: '74rem', top: '11.5rem', width: '20.5rem', padding: '0.6rem 0.8rem', pointerEvents: 'auto',
-            borderRadius: '0.6rem', backgroundColor: HUD_BG(0.9), color: C('whiteColor'), borderLeftWidth: '0.25rem', borderLeftStyle: 'solid', borderLeftColor: TONE[status.tone] || TONE.idle } },
+            backgroundColor: ACCENT_A(0.9), color: C('whiteColor'), fontSize: '0.9rem' } }, label);
+        return h('div', { style: hudCard({ position: 'absolute', left: '74rem', top: '11.5rem', width: '20.5rem', padding: '0.6rem 0.8rem', pointerEvents: 'auto',
+            borderRadius: '0.6rem', fontSize: '1rem', borderLeftWidth: '0.25rem', borderLeftStyle: 'solid', borderLeftColor: TONE[status.tone] || TONE.idle }, 0.9) },
             h('div', { style: { display: 'flex', alignItems: 'center' } },
                 h('div', { style: { fontSize: '1rem', flexGrow: 1 } }, coop.role === 'host' ? 'Deine Sitzung' : 'Sitzung'),
                 list(coop.players).slice(0, SLOTS).map((p) => h('div', { key: p.sid, style: { marginLeft: '-0.3rem' } }, h(Avatar, { player: p, size: 26, pic: avatars[p.sid] })))),
@@ -1283,8 +1301,8 @@ class JoinProgress extends StateComponent {
         // A lost connection in the park ('silent') is the connection pill, not this card.
         if (!join || ['joining', 'asking', 'awaiting', 'loading'].indexOf(join.phase) < 0 || coop.open) return null;
         const share = join.phase === 'awaiting' ? (join.progress || 0) : join.phase === 'loading' ? 1 : 0.02;
-        return h('div', { style: { position: 'absolute', left: '50%', top: '42%', width: '26rem', marginLeft: '-13rem',
-            padding: '1.1rem 1.4rem', borderRadius: '0.7rem', backgroundColor: HUD_BG(0.9), color: C('whiteColor'), textAlign: 'center' } },
+        return h('div', { style: hudCard({ position: 'absolute', left: '50%', top: '42%', width: '26rem', marginLeft: '-13rem',
+            padding: '1.1rem 1.4rem', borderRadius: '0.7rem', fontSize: '1rem', textAlign: 'center' }, 0.9) },
             h('div', { style: { fontSize: '1.1rem', marginBottom: '0.3rem' } }, 'Multiplayer'),
             h('div', { style: { fontSize: '0.9rem', color: C('accentButtonLight'), marginBottom: '0.7rem' } }, joinText(join)),
             h('div', { style: { height: '0.4rem', borderRadius: '0.2rem', backgroundColor: 'rgba(255, 255, 255, 0.15)' } },

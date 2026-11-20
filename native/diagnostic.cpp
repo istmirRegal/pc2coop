@@ -63,6 +63,9 @@ static bool developer_mode() noexcept {
     return state == 1;
 }
 
+// F8 (developer dialog) is reported only with the marker file (TP-31: players never see it).
+bool pc2_developer_mode() noexcept { return developer_mode(); }
+
 bool pc2_diagnostic_inbox(char* data, DWORD capacity, DWORD* size) noexcept {
     static FILETIME last_write{};
     static DWORD last_size = 0;

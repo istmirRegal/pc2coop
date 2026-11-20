@@ -92,6 +92,17 @@ class UiTests(unittest.TestCase):
         self.assertFalse(self.lua.eval('calls.typing'), 'a fresh view has no open chat input')
         self.assertFalse(any('chatinput' in line for line in self.lua.eval('logs').values()), 'typing is not logged')
 
+    def test_name_tags_are_switched_in_the_window(self):
+        self.lua.execute('mymenu = {labelsEnabled = true}; cleared = 0; '
+                         'package.loaded["pc2coop.labels"] = {Clear = function() cleared = cleared + 1 end}; '
+                         'ui.Init(function(m) logs[#logs+1] = m end, session, {}, mymenu)')
+        self.assertTrue(self.state()['labels'])
+        self.ui._Request('71|labels|0')
+        self.assertFalse(self.state()['labels'])
+        self.assertEqual(self.lua.eval('cleared'), 1, 'the tags in the world go at once')
+        self.ui._Request('72|labels|1')
+        self.assertTrue(self.lua.eval('mymenu.labelsEnabled'))
+
     def open_close_open(self):
         self.lua.execute('ui.SetOpen(true)')
         self.assertTrue(self.state()['open'])

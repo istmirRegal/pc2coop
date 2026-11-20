@@ -25,7 +25,7 @@ Bauen ─ F7 / Reiter „Multiplayer“ (Bauleiste) / Pausemenü „Multiplayer�
 Bauen ─ Mittelklick kurz ─► Markierung + Radialmenü (Testfahrt, mitfahren, Übernahme, Brett-Eintrag)
 Bauen/Besuch ─ Enter ─► Chat-Eingabe unten links ─ Enter senden / Esc ─► zurück
 Bauen ─ Klick auf Mitspieler oben rechts ─► folgen (nochmal klicken beendet)
-Bauen ─ F8 ─► Entwickler-Dialog (Seite „Entwickler“ ↔ „Zurueck“)
+Bauen ─ F8 ─► Entwickler-Dialog, nur mit Dev-Flag (Seite „Entwickler“ ↔ „Zurueck“)
 ```
 
 ## Besucher-Modus

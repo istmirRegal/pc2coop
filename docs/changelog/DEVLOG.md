@@ -3,6 +3,23 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-20 – UX-Overhaul P0, Schritt 3: Akzentfarbe, Bausteine, Lobby-Texte, F8
+
+- JS: `HUD_BG` liest `--accentPanelBackground-triplet`, neu `ACCENT_A` für
+  `--accent-triplet` (15 Stellen mit festem `rgba(0, 138, 204, …)` und eine mit
+  `rgba(0, 160, 216, …)` ersetzt). Ungültige Tripel fallen auf den Standard zurück.
+- Bausteine: `hudPill`, `hudCard`, `keyHint`, `hintBar` (benutzt in Uhr, Meldungen, Chat,
+  Mini-Sitzungskarte, Beitrittskarte, `MarkHint`, Chat-Hinweisen).
+- Lua: vier Meldungen sagen „Sitzung“ statt „Lobby“; Test angepasst.
+- DLL: F8 (`key:dev`) nur mit `pc2coop-dev.flag` (`pc2_developer_mode`). DLL neu gebaut.
+- „Für dich“ im Reiter Sitzung: „Mitspieler in der Welt zeigen“ (UI-Aktion `labels`). Fund:
+  Der alte Schalter „Namensschilder“ blendet auch Bodenmarke, Sichtkegel, Geist und
+  Sperr-Färbung aus; der Text sagt das jetzt.
+- Testkopie (1080p, Standard-Akzent): HUD, Meldungskarten, Reiter Sitzung, Schalter aus/an
+  fotografiert. Nicht geprüft: F8 ohne Dev-Flag (die Testkopie braucht das Flag für die
+  QA-Befehle), andere Akzentfarbe, Farbenblind-Modus, andere Auflösungen.
+- Tests: `test_ui_lua.py` (1 neu), `test_session_lua.py` (1 angepasst).
+
 ## 2026-11-20 – UX-Overhaul P1, Schritt 4: Ablehnung am Objekt (TP-16)
 
 - Netz: `R|gid|grund|wer` und `deny|name|gid`. Der Host nennt, wer im Weg war (`restore`:

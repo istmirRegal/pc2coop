@@ -623,7 +623,7 @@ local function join(sid, name, mode)
     for _, fr in global.ipairs(friends) do if fr.sid == sid then fr.invitedAt = nil end end
     if mode == "lobby" then
         players[sid].lobby = true
-        if not returning then addFeed(players[sid].name .. " ist in der Lobby") end
+        if not returning then addFeed(players[sid].name .. " ist der Sitzung beigetreten") end
         return
     end
     players[sid].lobby = nil
@@ -1304,7 +1304,7 @@ function Session._OnStage()
     elseif stage == "lobby" and seenStage ~= key then
         seenStage = key
         if context == "park" and memory.phase == "live" then
-            toast("Der Host ist zurück in der Lobby und wählt einen Park. Geh ins Hauptmenü, um dabei zu bleiben.", "fcc419")
+            toast("Der Host ist zurück im Hauptmenü und wählt einen Park. Geh auch ins Hauptmenü, um dabeizubleiben.", "fcc419")
         elseif context == "menu" and memory.phase ~= "lobby" then
             remember("phase", "lobby")
         end
@@ -1345,7 +1345,7 @@ local function onNet(event)
             if context == "menu" then
                 -- The lobby: everyone waits in the main menu until the host opens a park.
                 stage, parkToken, parkTitle = "lobby", nil, ""
-                if again then toast("Du bist wieder in der Lobby. Öffne einen Park - alle laden ihn dann mit.", "fcc419") end
+                if again then toast("Deine Sitzung läuft weiter. Öffne einen Park - alle laden ihn dann mit.", "fcc419") end
             else
                 stage = "park"
                 choice = nil
@@ -1384,7 +1384,7 @@ local function onNet(event)
         elseif context == "menu" and (phase == "live" or phase == "lobby" or phase == "awaiting") then
             -- Back in the main menu: still in the host's lobby (leaving is a button).
             role = "client"
-            if phase == "live" then toast("Du bist in der Lobby von " .. hostName .. ".", "fcc419") end
+            if phase == "live" then toast("Du bist weiter in der Sitzung von " .. hostName .. ". Der Host wählt einen Park.", "fcc419") end
             enterLobby()
         elseif context == "park" and phase == "loading" then
             role = "client"
