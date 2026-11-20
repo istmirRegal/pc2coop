@@ -24,8 +24,8 @@ Hauptcode: `probe/PC2CoopProbe/Main/pc2coop/session.lua` (Rolle, Nachrichten, Zu
 - **Technik:** `probe/PC2CoopProbe/Main/pc2coop/frontend.lua` (`Frontend.Tick`) betreibt
   Session und UI im Hauptmenü; `Session.SetContext("menu")`; `stage = "lobby"` (FEAT-033).
   `Ui.SetFrontend` schaltet die Lobby-Ansicht.
-- **UI:** Kachel „Multiplayer“ (FEAT-113), Lobby-Fenster mit drei Spalten (Spieler, „Wo
-  spielen wir?“, Chat/Freunde), Mini-Karte (FEAT-034).
+- **UI:** Kachel „Multiplayer“ (FEAT-113), Multiplayer-Seite (FEAT-119), Sitzungsleiste
+  (FEAT-034). Der Host öffnet den Park auf den Seiten des Spiels.
 
 ### FEAT-022 – Laufenden Park hosten (Pausemenü)
 - **Status:** Implemented · **Seit:** 1.4.1
@@ -110,14 +110,17 @@ Hauptcode: `probe/PC2CoopProbe/Main/pc2coop/session.lua` (Rolle, Nachrichten, Zu
   Texte z. B. „Einladung abgelaufen“, „Park konnte nicht geladen werden“.
 
 ### FEAT-032 – Park-Auswahl in der Lobby
-- **Status:** Implemented · **Seit:** 1.9.0 · **Hängt ab von:** FEAT-021
+- **Status:** Replaced (durch FEAT-119: Park über die Seiten des Spiels; Lua bleibt, ohne Knopf)
+  · **Seit:** 1.9.0 · **Hängt ab von:** FEAT-021
+- **Warum ersetzt:** baute die Seiten des Spiels nach (UX-A6, TP-03); der Host wählt den Park so,
+  wie er es gewohnt ist.
 - **Funktion:** Host wählt „Gespeichert“ (eigene Sandbox-Parks), „Neu“ (Klima, Kreativ oder
   Budget) oder „Franchise“; alle sehen die Wahl, „Park öffnen“ startet für alle.
 - **Technik:** `probe/PC2CoopProbe/Main/pc2coop/parks.lua` (`Parks.List`, `Parks.Load`,
   `Parks.New`, über `ParkLoadSaveManager` und `SandboxMenuHUD`); `Session.SetChoice`,
   `Session.Choice`, `Session.MarkStarting`. UI-Aktionen `parks`, `choose`, `start`.
-- **UI:** Lobby Mitte „Wo spielen wir?“ (Knöpfe „Park öffnen“, „Franchise-Menü öffnen“);
-  `openScreen` öffnet Spielmenüs.
+- **UI:** bis UX-Overhaul P3 Lobby Mitte „Wo spielen wir?“ (Parkliste, Klima, „Park öffnen“).
+  Heute: `parks` und `start` ohne Knopf, `choose` nur noch „franchise“ (Kachel Franchise).
 - **Besonderheiten:** Karriere und Herausforderungen fehlen noch (ROADMAP).
 
 ### FEAT-033 – Parkwechsel des Hosts für alle (Stage)
@@ -128,9 +131,10 @@ Hauptcode: `probe/PC2CoopProbe/Main/pc2coop/session.lua` (Rolle, Nachrichten, Zu
 
 ### FEAT-034 – Mini-Lobby-Karte im Hauptmenü
 - **Status:** Implemented · **Seit:** 1.9.0
-- **Funktion:** Während der Host im Menü einen Park sucht, zeigt eine kleine Karte oben
-  rechts den Stand mit „Lobby öffnen“ und „Verlassen“.
-- **UI:** Komponente `MiniLobby` (Aktionen `open`, `leave`).
+- **Funktion:** Sitzungsleiste (TP-04): auf jeder Seite des Hauptmenüs oben rechts unter dem
+  Newsletter-Kasten, solange die Multiplayer-Seite nicht offen ist. Avatare, Zustand, „Öffnen“
+  und „Beenden“/„Verlassen“; bleibt sichtbar, während der Host durch die Spielseiten geht.
+- **UI:** Komponente `MiniLobby` (Aktionen `open`, `leave` über `endOrAsk`).
 
 ### FEAT-035 – Chat
 - **Status:** Implemented · **Seit:** 1.8.0

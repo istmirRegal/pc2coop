@@ -5,6 +5,14 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
 
 ## Unveröffentlicht
 
+- Neu im Hauptmenü: die Seite „Multiplayer“ im Stil des Spiels (Esc führt zurück). Acht Plätze
+  für die Spieler; ein Klick auf einen freien Platz lädt Freunde ein. Eingeladene stehen blass im
+  Platz, bis sie kommen. Daneben der Chat.
+- Den Park öffnet der Host jetzt auf den Seiten des Spiels („Sandbox“, „Franchise“). Alle in der
+  Sitzung laden ihn mit. Die eigene Parkliste der Mod ist weg.
+- Die kleine Sitzungskarte im Hauptmenü ist jetzt eine Leiste oben rechts und bleibt auf allen
+  Seiten des Hauptmenüs sichtbar.
+- Die Kachel „Multiplayer“ zeigt, ob eine Sitzung offen ist oder ein Freund eine hat.
 - Vorschläge auf dem Brett zeigen „Dagegen“ nicht mehr als gewählt, wenn du noch gar nicht
   abgestimmt hast.
 - Brett: Jeder Eintrag hat ein Icon für seine Art. Wer für eine Aufgabe oder ein Baugebiet

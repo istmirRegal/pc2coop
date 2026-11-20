@@ -59,9 +59,9 @@ der Bereich nicht, die nächste freie Nummer ab 230.
 | FEAT-029 | Versionsprüfung (Mod und Spiel) | Implemented | 1.4.1 |
 | FEAT-030 | Park-Übertragung beim Beitritt | Implemented | 1.4.1 |
 | FEAT-031 | Beitrittsfortschritt und Beitrittsfehler | Implemented | 1.5.0 |
-| FEAT-032 | Park-Auswahl in der Lobby | Implemented | 1.9.0 |
+| FEAT-032 | Park-Auswahl in der Lobby | Replaced | 1.9.0 |
 | FEAT-033 | Parkwechsel des Hosts für alle (Stage) | Implemented | 1.8.0 |
-| FEAT-034 | Mini-Lobby-Karte im Hauptmenü | Implemented | 1.9.0 |
+| FEAT-034 | Sitzungsleiste im Hauptmenü (vorher Mini-Lobby-Karte) | Implemented | 1.9.0 |
 | FEAT-035 | Chat | Implemented | 1.8.0 |
 | FEAT-036 | Steam-Profilbilder | Implemented | 1.8.0 |
 | FEAT-037 | DLC- und Mod-Vergleich | Implemented | 1.8.0 |
@@ -124,7 +124,7 @@ der Bereich nicht, die nächste freie Nummer ab 230.
 
 | ID | Funktion | Status | Seit |
 |---|---|---|---|
-| FEAT-110 | Multiplayer-Fenster (Park: links, vier Reiter; Hauptmenü: Lobby) | Implemented | 1.8.0 |
+| FEAT-110 | Multiplayer-Fenster (Park: links, vier Reiter; Hauptmenü: nur Rückfall) | Implemented | 1.8.0 |
 | FEAT-111 | Reiter „Multiplayer“ in der Bauleiste | Implemented | 1.12.2 |
 | FEAT-112 | „Multiplayer“ im Pausemenü | Implemented | 1.4.1 |
 | FEAT-113 | Kachel „Multiplayer“ im Hauptmenü | Implemented | 1.8.0 |
@@ -133,6 +133,7 @@ der Bereich nicht, die nächste freie Nummer ab 230.
 | FEAT-116 | Chat-Bereich unten links | Implemented | 1.6.0 |
 | FEAT-117 | Banner (Abstimmung, Wettbewerb, Einladung) | Implemented | 1.12.0 |
 | FEAT-118 | Zustandsbrücke Lua ↔ Oberfläche | Implemented | 1.8.0 |
+| FEAT-119 | Multiplayer-Seite im Hauptmenü | Implemented | 1.13.0 |
 
 ## Team-Funktionen — [features/team.md](../features/team.md)
 

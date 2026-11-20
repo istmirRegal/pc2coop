@@ -5,11 +5,12 @@ Wie der Spieler zwischen den Teilen der Mod wechselt (Ist-Zustand 1.13.0).
 ## Hauptmenü
 
 ```
-Hauptmenü ─ Kachel „Multiplayer“ / F7 ─► Multiplayer-Fenster (Team-Ansicht)
+Hauptmenü ─ Kachel „Multiplayer“ / F7 / Sitzungsleiste „Öffnen“ ─► Seite „Multiplayer“ (Esc zurück)
    │                                        ├─ „Sitzung starten“ → Lobby (Host)
    │                                        ├─ Freund „Beitreten“ → Beitritt
-   │                                        └─ Host: „Wo spielen wir?“ → „Park öffnen“ → alle laden den Park
-   └─ Fenster zu, in Lobby ─► Mini-Lobby-Karte („Sitzung öffnen“ / „Verlassen“)
+   │                                        ├─ freier Platz „+ Einladen“ → Freundesliste rechts
+   │                                        └─ Host: Kachel „Sandbox“/„Franchise“ → Seite des Spiels → Park öffnen → alle laden ihn
+   └─ in einer Sitzung, Seite nicht offen ─► Sitzungsleiste oben rechts auf jeder Seite („Öffnen“ / „Beenden“)
 ```
 
 Steam-Einladung angenommen → (`JoinConfirm`, wenn per Startparameter) → `JoinProgress` →

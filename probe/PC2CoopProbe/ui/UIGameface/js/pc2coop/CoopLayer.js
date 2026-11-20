@@ -375,9 +375,9 @@ function statusOf(coop) {
         const hostName = host ? host.name : 'Der Host';
         if (choice && choice.starting) return { text: hostName + ' öffnet ' + choice.title + ' - gleich lädt er bei allen.', tone: 'busy' };
         if (coop.role === 'host') {
-            return { text: choice ? 'Ausgewählt: ' + choice.title + '. "Park öffnen" startet für alle.' : 'Wähle, wo ihr spielt. Alle sehen deine Auswahl.', tone: 'wait' };
+            return { text: choice ? 'Ausgewählt: ' + choice.title + '.' : 'Alle warten, bis du einen Park öffnest.', tone: 'wait' };
         }
-        return { text: choice ? hostName + ' hat gewählt: ' + choice.title + ' (' + choice.detail + ').' : hostName + ' wählt gerade, wo ihr spielt ...', tone: 'wait' };
+        return { text: choice ? hostName + ' hat gewählt: ' + choice.title + '.' : hostName + ' wählt gerade einen Park …', tone: 'wait' };
     }
     const loading = players.filter((p) => /^holt/.test(p.act || '') || p.act === 'laedt' || p.act === 'lobby');
     if (loading.length) return { text: loading.map((p) => p.name).join(', ') + (loading.length > 1 ? ' laden' : ' lädt') + ' den Park ...', tone: 'busy' };
@@ -809,6 +809,8 @@ class ChatArea extends StateComponent {
         const lines = typing ? this._history.slice(-12) : state.lines;
         if (!typing && notices.length === 0 && lines.length === 0) return null;
         const coop = state.coop || {};
+        // The multiplayer page in the main menu has its own chat and places (TP-03).
+        if (coop.context === 'menu' && pageShown()) return null;
         // Right of the multiplayer window while it is open on the left edge (TP-11).
         const left = coop.open && coop.context === 'park' ? rem((PANEL_WIDTH + 1.2) * 20) : '1.2rem';
         return h('div', { style: { position: 'absolute', bottom: '6rem', left, width: '26rem', display: 'flex', flexDirection: 'column',
@@ -836,20 +838,61 @@ class ChatArea extends StateComponent {
 const FRIEND_STATE = ['offline', 'online', 'beschäftigt', 'abwesend', 'abwesend', 'online', 'online'];
 const SLOTS = 8;
 
-// Where the lobby plays. Career and challenges need their own rules (shared goals), later.
-const MODES = [
-    { key: 'park', title: 'Eigener Park', text: 'Gespeicherten Park laden', screen: 'LoadPark', id: 2 },
-    { key: 'franchise', title: 'Franchise', text: 'Park einer Franchise öffnen', screen: 'FranchiseMenu', id: 7 },
-    { key: 'sandbox', title: 'Neuer Sandbox-Park', text: 'Karte und Regeln wählen', screen: 'SandboxStartMenu', id: 16 },
-    { key: 'career', title: 'Karriere', text: 'kommt später', later: true },
-    { key: 'challenge', title: 'Herausforderung', text: 'kommt später', later: true },
-];
-
-function openScreen(mode) {
-    if (!nav || mode.later) return;
-    request('close');
-    const ids = nav.data && nav.data.FrontEndNavData && nav.data.FrontEndNavData.ScreenID;
-    try { nav.nav.FrontEndNav.set(ids && ids[mode.screen] !== undefined ? ids[mode.screen] : mode.id); } catch (error) { log('nav ' + error); }
+// The multiplayer page in the main menu (TP-03): a screen of its own in the game's front end
+// (FrontEndNavData.screens), so the game draws breadcrumbs, the bottom bar with Esc and the frame.
+// Without it (import failed) the old window is the fallback.
+const PAGE_ID = 900;                 // not one of the game's screen ids
+const PAGE_BLOCKED = [-1, 0, 1, 2];  // none, title prompt, setting up, loading a park
+let tileButton = null;               // the game's FrontEndTileButton, once the main menu is patched
+function pageReady() {
+    const data = nav && nav.data && nav.data.FrontEndNavData;
+    if (!data || !data.screens || !data.ScreenID) return false;
+    if (!data.screens[PAGE_ID]) {
+        data.screens[PAGE_ID] = { id: PAGE_ID, label: literal('Multiplayer'), header: literal('Multiplayer'),
+            parent: data.ScreenID.MainMenu, component: MultiplayerPage, claimDefaultInputs: true, showVersionLabel: true };
+        // The engine hears the screen's name (FrontEndModeChange): for it ours is the main menu.
+        if (data.ScreenID[PAGE_ID] === undefined) data.ScreenID[PAGE_ID] = 'MainMenu';
+        log('multiplayer page registered');
+    }
+    return true;
+}
+function pageShown() {
+    try { return !!nav && nav.nav.FrontEndNav.get() === PAGE_ID; } catch (error) { return false; }
+}
+function openPage() {
+    if (!pageReady()) return false;
+    try {
+        const now = nav.nav.FrontEndNav.get();
+        if (now === undefined || PAGE_BLOCKED.indexOf(now) >= 0) return false;
+        if (now !== PAGE_ID) nav.nav.FrontEndNav.set(PAGE_ID);
+        // Redraw the layer (the window steps aside) - later, never from inside a listener: the
+        // open listener calls this, and calling it back recursed until the game crashed.
+        setTimeout(() => listeners.forEach((fn) => { try { fn(currentState); } catch (error) { /* next */ } }), 0);
+        return true;
+    } catch (error) { log('page ' + error); return false; }
+}
+// The game's own pages to open a park (the host picks it the way he is used to); everyone follows.
+function openGamePage(which) {
+    if (!nav) return;
+    const ids = nav.data.FrontEndNavData.ScreenID;
+    try {
+        if (which === 'franchise') {
+            request('choose', 'franchise');
+            // As the game's own tile: the engine opens the franchise menu.
+            Engine.sendEvent('FrontEndFranchiseSelected');
+            if (Engine.isCoherentPlayer()) nav.nav.FrontEndNav.set(ids.FranchiseMenu);
+        } else {
+            nav.nav.FrontEndNav.set(ids.SandboxStartMenu);
+        }
+    } catch (error) { log('nav ' + error); }
+}
+// Online first, players of the game first, sessions on top (TP-05).
+function friendRank(f) { return f.lobby ? 0 : f.pc2 ? 1 : (f.state > 0 ? 2 : 3); }
+function sortedFriends(coop) {
+    const inSession = {};
+    list(coop.players).forEach((p) => { inSession[p.sid] = true; });
+    return list(coop.friends).filter((f) => !inSession[f.sid]).slice(0, 80)
+        .sort((a, b) => friendRank(a) - friendRank(b) || String(a.name).localeCompare(String(b.name)));
 }
 
 const section = (title, extra) => h('div', { style: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
@@ -868,7 +911,6 @@ const buttons = (items, wide) => h('div', { style: { display: 'flex', flexWrap: 
 
 // The lobby: the same panel in the main menu and in a park. Three columns: players, where
 // to play (or the park), chat and friends. Fixed sizes: Gameface does not shrink flex boxes.
-const BIOMES = [['Temperate', 'Gemäßigt'], ['Mediterranean', 'Mediterran'], ['Taiga', 'Taiga'], ['Tropical', 'Tropisch']];
 const box = (height, children, extra) => h('div', { style: Object.assign({ height: rem(height), overflowY: 'auto' }, extra || {}) }, children);
 
 // Tabs of the multiplayer window in a park (docs/KONZEPT.md).
@@ -933,6 +975,7 @@ class Lobby extends StateComponent {
         const coop = state.coop || {};
         if (!coop.open) return null;
         if (coop.context === 'park') return this.renderParkPanel(coop, state);
+        if (pageShown()) return null;
         const status = statusOf(coop);
         const host = hostOf(coop);
         const title = !coop.role ? 'Multiplayer'
@@ -1318,61 +1361,11 @@ class Lobby extends StateComponent {
             ...slots]);
     }
 
-    // Host in the main menu: pick a park; everyone sees the pick before it is opened.
-    renderChooser(coop, state) {
-        const tab = state.tab;
-        const tabButton = (key, label, later) => h('div', { key, onClick: later ? undefined : () => this.setState({ tab: key }),
-            style: { padding: '0.3rem 0.7rem', marginRight: '0.3rem', borderRadius: '0.8rem', fontSize: '0.9rem',
-                backgroundColor: tab === key ? C('accent') : (later ? C('area') : C('whiteColor')), color: tab === key ? C('whiteColor') : (later ? C('neutral3') : C('accentText')),
-                border: '0.05rem solid ' + (later ? 'rgba(0, 0, 0, 0.06)' : ACCENT_A(0.45)) } }, label);
-        const picked = (key) => coop.chosen === key;
-        const pickStyle = (on) => ({ padding: '0.4rem 0.6rem', margin: '0.2rem 0', borderRadius: '0.4rem', backgroundColor: on ? C('accentFaint') : C('whiteColor'),
-            borderWidth: '0.05rem', borderStyle: 'solid', borderColor: on ? C('accent') : ACCENT_A(0.18) });
-        let content;
-        if (tab === 'save') {
-            const parks = list(coop.parks);
-            content = box(300, parks.length === 0 ? h('div', { style: { color: C('accentButtonDesaturatedDark'), padding: '0.4rem 0' } }, 'Keine gespeicherten Sandbox-Parks gefunden.')
-                : parks.map((park) => h('div', { key: 's' + park.id, onClick: () => request('choose', 'save|' + park.id), style: pickStyle(picked('save:' + park.id)) },
-                    h('div', { style: { fontSize: '1rem', fontWeight: 'bold' } }, park.name),
-                    h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } }, (BIOMES.find((b) => b[0] === park.world) || [0, park.world || 'Sandbox'])[1]))));
-        } else if (tab === 'new') {
-            const pickNew = (biome, creative) => request('choose', 'new|' + biome + '|' + (creative ? '1' : '0'));
-            const current = (coop.chosen || '').indexOf('new:') === 0 ? coop.chosen.substring(4) : null;
-            content = box(300, [
-                h('div', { key: 'b', style: { display: 'flex', flexWrap: 'wrap' } }, BIOMES.map(([id, label]) => h('div', { key: id,
-                    onClick: () => pickNew(id, state.creative), style: Object.assign(pickStyle(current === id), { width: '11.1rem', margin: '0.2rem 0.4rem 0.2rem 0' }) },
-                    h('div', { style: { fontSize: '1rem', fontWeight: 'bold' } }, label)))),
-                h('div', { key: 'm', style: { display: 'flex', marginTop: '0.5rem' } },
-                    [[true, 'Kreativ (Geld unbegrenzt)'], [false, 'Mit Budget']].map(([creative, label]) => h('div', { key: label,
-                        onClick: () => { this.setState({ creative }); if (current) pickNew(current, creative); },
-                        style: Object.assign(pickStyle(state.creative === creative), { marginRight: '0.4rem', fontSize: '0.9rem' }) }, label)))]);
-        } else {
-            content = box(300, [
-                h('div', { key: 't', style: { color: C('accentButtonDesaturatedDark'), padding: '0.4rem 0' } },
-                    'Franchise-Parks wählst du im Franchise-Menü des Spiels. Sobald der Park offen ist, laden ihn alle in der Sitzung.'),
-                h('div', { key: 'b' }, buttons([{ label: 'Franchise-Menü öffnen', onSelect: () => { request('choose', 'franchise'); openScreen(MODES[1]); } }]))]);
-        }
-        const choice = coop.choice;
-        const canStart = choice && (choice.kind === 'save' || choice.kind === 'new') && !choice.starting;
-        return [section('Wo spielen wir?', h('span', { style: { textTransform: 'none', letterSpacing: 0 } },
-                tab === 'save' ? h('span', { onClick: () => request('parks'), style: { color: C('accent'), fontSize: '0.9rem' } }, 'aktualisieren') : null)),
-            h('div', { key: 'tabs', style: { display: 'flex', marginBottom: '0.4rem' } },
-                tabButton('save', 'Gespeichert'), tabButton('new', 'Neu'), tabButton('franchise', 'Franchise'),
-                tabButton('career', 'Karriere · später', true)),
-            content,
-            h('div', { key: 'sel', style: { display: 'flex', alignItems: 'center', height: '3.8rem', marginTop: '0.4rem', padding: '0 0.6rem',
-                borderRadius: '0.5rem', backgroundColor: choice ? C('accentFaint') : C('area') } },
-                h('div', { style: { width: '15rem' } },
-                    h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } }, choice ? 'Ausgewählt - sehen alle' : 'Noch nichts ausgewählt'),
-                    choice && h('div', { style: { fontSize: '1rem', fontWeight: 'bold' } }, choice.title),
-                    choice && h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } }, choice.detail)),
-                h('div', { style: { width: '9.5rem' } }, canStart ? buttons([{ label: 'Park öffnen', onSelect: () => request('start') }]) : null))];
-    }
-
     renderPlace(coop, state) {
         if (!coop.role) return box(470, null);
         if (coop.stage === 'lobby') {
-            if (coop.canChoose) return box(470, this.renderChooser(coop, state), { overflowY: 'hidden' });
+            if (coop.role === 'host') return box(470, [section('Wo spielen wir?'), muted('Öffne einen Park – alle kommen mit.', { marginBottom: '0.5rem' }),
+                buttons([{ label: 'Sandbox', onSelect: () => openGamePage('sandbox') }, { label: 'Franchise', onSelect: () => openGamePage('franchise') }])]);
             const choice = coop.choice;
             const host = hostOf(coop);
             return box(470, [section('Wo spielen wir?'),
@@ -1403,7 +1396,7 @@ class Lobby extends StateComponent {
             h('div', { style: { height: '10.7rem', overflowY: 'auto', padding: '0.3rem 0.5rem', borderRadius: '0.4rem', backgroundColor: C('whiteColor'),
                 border: '0.05rem solid ' + ACCENT_A(0.18) } },
                 chat.length === 0 ? h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } }, 'Noch keine Nachrichten.')
-                    : chat.map((c, i) => h('div', { key: 'c' + i, style: { padding: '0.1rem 0', fontSize: '0.9rem' } },
+                    : chat.map((c, i) => h('div', { key: 'c' + i, style: { display: 'flex', flexDirection: 'row', flexWrap: 'wrap', padding: '0.1rem 0', fontSize: '0.9rem' } },
                         h('span', { style: { color: '#' + (c.color || '20435a'), fontWeight: 'bold' } }, c.name + ': '), c.text))),
             h('div', { style: { marginTop: '0.4rem' } },
                 h(InputField, { text: state.draft, promptText: literal('Nachricht an alle'), maxInputLength: 200,
@@ -1450,7 +1443,135 @@ class Lobby extends StateComponent {
     }
 }
 
-// Small lobby card in the main menu while the panel is closed (settings, park selection ...).
+// The page itself (TP-03, TP-05): players in eight places, a free place invites, chat; the host
+// opens the park on the game's pages. Panels in the game's look (Panel classes as in the park).
+const pagePanel = (title, width, body, footer) => h('div', { className: 'Panel_root', style: { width: rem(width * 20), marginRight: '1.5rem', flexShrink: 0 } },
+    h('div', { className: 'Panel_panel', style: { overflow: 'hidden' } },
+        h('div', { className: 'Panel_titleBar' }, h('div', { className: 'Panel_titleBarLabel', style: { color: C('whiteColor') } }, title)),
+        h('div', { className: 'Panel_content', style: { height: '28rem', overflowY: 'auto', padding: '0.5rem 0.9rem', color: C('accentText') } }, body),
+        footer && h('div', { style: { padding: '0.5rem 0.9rem', backgroundColor: C('area'), borderTopWidth: '0.05rem', borderTopStyle: 'solid',
+            borderTopColor: ACCENT_A(0.2) } }, footer)));
+
+class MultiplayerPage extends StateComponent {
+    render(props, state) {
+        try { return this.draw(state.coop || currentState || {}, state); } catch (error) { log('page ' + error); return h('div', null); }
+    }
+
+    draw(coop, state) {
+        const host = hostOf(coop);
+        const isHost = coop.role === 'host';
+        const status = statusOf(coop);
+        const desc = !coop.role ? 'Baut live zusammen im selben Park. Deine Steam-Freunde treten deiner Sitzung bei.'
+            : coop.stage !== 'lobby' ? 'Die Sitzung ist im Park ' + (coop.parkTitle || '') + '.'
+            : isHost ? 'Öffne einen Park – alle kommen mit.'
+            : (host ? host.name : 'Der Host') + ' wählt den Park. Er lädt bei dir von selbst.';
+        const footer = [];
+        if (!coop.available) {
+            // Nothing to do without Steam.
+        } else if (!coop.role) {
+            footer.push({ label: 'Sitzung starten', onSelect: () => request('host'), disabled: !coop.canHost });
+        } else {
+            footer.push({ label: 'Steam-Overlay', onSelect: () => request('invite_overlay') });
+            footer.push({ label: isHost ? 'Beenden' : 'Verlassen', tip: isHost ? END_TIP : LEAVE_TIP, onSelect: () => endOrAsk(coop) });
+        }
+        const statusLine = h('div', { style: { display: 'flex', alignItems: 'center', fontSize: '0.9rem', marginBottom: '0.3rem' } },
+            h('div', { style: { width: '0.6rem', height: '0.6rem', borderRadius: '0.3rem', backgroundColor: TONE[status.tone] || TONE.idle,
+                marginRight: '0.5rem', flexShrink: 0 } }),
+            h('div', { style: { flexGrow: 1, flexShrink: 1, minWidth: 0 } }, status.text));
+        const picking = !!coop.role && !!state.picking;
+        const right = !coop.role ? pagePanel('Steam-Freunde', 26, this.friendRows(coop))
+            : picking ? pagePanel('Freund einladen', 26, this.friendRows(coop),
+                buttons([{ label: 'Steam-Overlay', onSelect: () => request('invite_overlay') }, { label: 'Fertig', onSelect: () => this.setState({ picking: false }) }]))
+            : pagePanel('Chat', 26, this.chatBody(coop, state));
+        return h('div', { style: { display: 'flex', flexDirection: 'column', flexGrow: 1, margin: '1.25rem 6.05rem 0', pointerEvents: 'auto', fontFamily: FONT } },
+            h('div', { style: { color: C('whiteColor'), fontSize: '1.6rem', fontWeight: 'bold', lineHeight: '2.48rem' } }, 'Multiplayer'),
+            h('div', { style: { color: C('whiteColor'), maxWidth: '38rem', margin: '0.5rem 0 1.5rem' } }, desc),
+            h('div', { style: { display: 'flex', alignItems: 'flex-start' } },
+                pagePanel('Spieler' + (coop.role ? '  ' + list(coop.players).length + ' / ' + SLOTS : ''), 30, this.places(coop),
+                    [statusLine, footer.length > 0 && h('div', { key: 'f' }, buttons(footer))]),
+                right,
+                isHost && coop.stage === 'lobby' && this.parkTiles()));
+    }
+
+    // Eight places (TP-05): players, invited friends (pale), a free place invites.
+    places(coop) {
+        const players = list(coop.players);
+        const requests = coop.role === 'host' ? list(coop.requests) : [];
+        const out = [];
+        if (requests.length > 0) {
+            out.push(section('Möchte beitreten'));
+            requests.forEach((r) => out.push(row([h('div', null, r.name), buttons([
+                { label: 'Zulassen', onSelect: () => request('approve', r.sid) },
+                { label: 'Ablehnen', onSelect: () => request('deny', r.sid) }])], 'r' + r.sid)));
+        }
+        if (!coop.role) {
+            out.push(muted('Noch keine Sitzung.', { padding: '0.3rem 0' }));
+            return out;
+        }
+        const invited = sortedFriends(coop).filter((f) => f.invited);
+        const card = (key, children, extra, onClick) => h('div', { key, onClick, style: Object.assign({ width: '12.9rem', height: '3.6rem', margin: '0.3rem',
+            display: 'flex', alignItems: 'center', padding: '0 0.5rem', borderRadius: '0.5rem', backgroundColor: C('whiteColor'),
+            borderWidth: '0.05rem', borderStyle: 'solid', borderColor: ACCENT_A(0.18), pointerEvents: 'auto' }, extra || {}) }, children);
+        const cards = [];
+        players.forEach((p) => {
+            const content = contentLine(coop, p);
+            cards.push(card('p' + p.sid, [
+                h(Avatar, { key: 'a', player: p, size: 36, pic: avatars[p.sid] }),
+                h('div', { key: 't', style: { flexGrow: 1, flexShrink: 1, minWidth: 0, marginLeft: '0.5rem' } },
+                    h('div', { style: { display: 'flex', alignItems: 'center', fontWeight: 'bold' } }, p.name + (p.me ? ' (du)' : ''),
+                        p.host && glyph('img/icons/crown.svg', '0.8rem', false, { marginLeft: '0.3rem', filter: C('accentText-filter') })),
+                    muted(content && content.warn ? content.text : playerActivity(coop, p), content && content.warn ? { color: C('warningDark') } : undefined))]));
+        });
+        invited.slice(0, Math.max(0, SLOTS - players.length)).forEach((f) => cards.push(card('i' + f.sid, [
+            h('div', { key: 't', style: { marginLeft: '0.3rem' } }, h('div', null, f.name), muted('eingeladen'))], { opacity: 0.55 })));
+        for (let i = cards.length; i < SLOTS; i++) {
+            cards.push(card('e' + i, h('div', { style: { width: '100%', textAlign: 'center', color: C('accent') } }, '+ Einladen'),
+                { backgroundColor: C('area'), borderStyle: 'dashed', borderColor: ACCENT_A(0.45) }, () => this.setState({ picking: true })));
+        }
+        out.push(h('div', { key: 'places', style: { display: 'flex', flexWrap: 'wrap', margin: '0 -0.3rem' } }, cards));
+        return out;
+    }
+
+    friendRows(coop) {
+        const friends = sortedFriends(coop);
+        if (friends.length === 0) return muted(coop.available ? 'Gerade ist keiner deiner Steam-Freunde online.' : 'Steam ist nicht bereit.');
+        return friends.map((f) => row([
+            h('div', { style: { flexGrow: 1, flexShrink: 1, minWidth: 0 } },
+                h('div', null, f.name),
+                muted(f.lobby ? 'hat eine offene Sitzung' : f.pc2 ? 'spielt Planet Coaster 2' : (FRIEND_STATE[f.state] || ''),
+                    f.lobby || f.pc2 ? { color: C('positiveDark') } : undefined)),
+            coop.role ? buttons([{ label: f.invited ? 'Eingeladen' : 'Einladen', disabled: f.invited, onSelect: () => request('invite', f.sid) }])
+                : f.lobby ? buttons([{ label: 'Beitreten', onSelect: () => request('join_friend', f.sid) }]) : null], 'f' + f.sid));
+    }
+
+    chatBody(coop, state) {
+        const chat = list(coop.chat).slice(-40);
+        return [
+            h('div', { key: 'lines', style: { height: '23rem', overflowY: 'auto' } },
+                chat.length === 0 ? muted('Noch keine Nachrichten.')
+                    // In a row: in Gameface every box is flex, a column put the text under the name.
+                    : chat.map((c, i) => h('div', { key: 'c' + i, style: { display: 'flex', flexDirection: 'row', flexWrap: 'wrap', padding: '0.15rem 0', fontSize: '0.9rem' } },
+                        h('span', { style: { color: '#' + (c.color || '20435a'), fontWeight: 'bold' } }, c.name + ': '), c.text))),
+            h('div', { key: 'input', style: { marginTop: '0.4rem' } },
+                h(InputField, { text: state.draft || '', promptText: literal('Nachricht'), maxInputLength: 200, beginEditOnSelect: true,
+                    onChange: (e) => this.setState({ draft: (e && e.text) || '' }),
+                    onCommit: (e) => { const text = String((e && e.text) || '').trim(); this.setState({ draft: '' }); if (text) request('chat', text); },
+                    onCancel: () => this.setState({ draft: '' }) }))];
+    }
+
+    // The host opens the park where the game opens parks; the tiles are the game's own.
+    parkTiles() {
+        const tile = (key, label, description, image, which) => h('div', { key, style: { width: '20rem', height: '13.5rem', marginBottom: '1rem', display: 'flex' } },
+            tileButton ? h(tileButton, { label: literal(label), description: literal(description), backgroundImage: image,
+                titleIcon: 'img/icons/collaborate.svg', outcome: 'PC2CoopPark', onSelect: () => openGamePage(which) })
+                : buttons([{ label, onSelect: () => openGamePage(which) }]));
+        return h('div', { style: { display: 'flex', flexDirection: 'column', flexShrink: 0 } },
+            tile('sandbox', 'Sandbox', 'Neuer Park oder einer deiner Parks', 'img/frontEnd/SandboxNewPark.png', 'sandbox'),
+            tile('franchise', 'Franchise', 'Ein Park deiner Franchise', 'img/frontEnd/franchiseBG.png', 'franchise'));
+    }
+}
+
+// Session bar in the main menu while the multiplayer page is not shown (on the game's pages).
 class MiniLobby extends StateComponent {
     render(props, state) {
         try { return this.draw(state.coop || {}); } catch (error) { log('mini lobby ' + error); return null; }
@@ -1470,15 +1591,17 @@ class MiniLobby extends StateComponent {
         }
         const chip = (label, onClick) => h('div', { onClick, style: { marginLeft: '0.4rem', padding: '0.25rem 0.6rem', borderRadius: '0.7rem',
             backgroundColor: ACCENT_A(0.9), color: C('whiteColor'), fontSize: '0.9rem' } }, label);
-        return h('div', { style: hudCard({ position: 'absolute', left: '74rem', top: '11.5rem', width: '20.5rem', padding: '0.6rem 0.8rem', pointerEvents: 'auto',
+        // Session bar (TP-04): top right, on every page; below the game's newsletter box of the main
+        // menu (at 5.2 rem it covered it, test copy).
+        return h('div', { style: hudCard({ position: 'absolute', right: '1.2rem', top: '10.8rem', width: '20.5rem', padding: '0.6rem 0.8rem', pointerEvents: 'auto',
             borderRadius: '0.6rem', fontSize: '1rem', borderLeftWidth: '0.25rem', borderLeftStyle: 'solid', borderLeftColor: TONE[status.tone] || TONE.idle }, 0.9) },
             h('div', { style: { display: 'flex', alignItems: 'center' } },
                 h('div', { style: { fontSize: '1rem', flexGrow: 1 } }, coop.role === 'host' ? 'Deine Sitzung' : 'Sitzung'),
                 list(coop.players).slice(0, SLOTS).map((p) => h('div', { key: p.sid, style: { marginLeft: '-0.3rem' } }, h(Avatar, { player: p, size: 26, pic: avatars[p.sid] })))),
             h('div', { style: { color: C('accentButtonLight'), fontSize: '0.9rem', margin: '0.3rem 0 0.4rem' } }, status.text),
             h('div', { style: { display: 'flex', justifyContent: 'flex-end' } },
-                chip('Sitzung öffnen', () => request('open')),
-                chip(coop.role === 'host' ? 'Beenden' : 'Verlassen', () => request('leave'))));
+                chip('Öffnen', () => { request('open'); openPage(); }),
+                chip(coop.role === 'host' ? 'Beenden' : 'Verlassen', () => endOrAsk(coop))));
     }
 }
 
@@ -1695,6 +1818,7 @@ function patchMenuClass(menuClass) {
 async function patchMainMenu() {
     const tabModule = await import('/js/project/modules/frontEnd/views/mainMenu/menuTabs/FrontEndStartMenuTab.js');
     const tileModule = await import('/js/project/modules/frontEnd/components/FrontEndTileButton.js');
+    tileButton = tileModule.FrontEndTileButton;
     const decorated = tabModule.FrontEndStartMenuTab;
     if (!decorated || decorated.prototype.__pc2coop) return;
     const originalRender = decorated.prototype.render;
@@ -1729,10 +1853,14 @@ function patchStartTabClass(tabClass, TileButton) {
             const at = findParent(tree, 'careerBtn');
             if (at && !at.list.some((c) => c && c.key === 'pc2coopBtn')) {
                 const title = literal('Multiplayer');
-                const description = literal('Mit Steam-Freunden live im selben Park bauen.');
+                // The state on the tile (TP-01, TP-02): an open session, or a friend with one.
+                const coop = currentState || {};
+                const friend = list(coop.friends).find((f) => f.lobby);
+                const description = literal(coop.role ? 'Sitzung offen · ' + list(coop.players).length + '/' + SLOTS
+                    : friend ? friend.name + ' hat eine Sitzung – beitreten' : 'Mit Steam-Freunden live im selben Park bauen.');
                 at.list.splice(at.index + 1, 0, preact.h(TileButton, { label: title, titleIcon: 'img/icons/collaborate.svg',
                     key: 'pc2coopBtn', description, backgroundImage: 'img/frontEnd/franchiseBG.png', outcome: 'PC2CoopMultiplayer',
-                    onSelect: () => request('open'),
+                    onSelect: () => { request('open'); openPage(); },
                     onFocusChanged: () => { if (typeof this.onButtonFocus === 'function') this.onButtonFocus(title, description); } }));
             }
         } catch (error) { log('main menu tile ' + error); }
@@ -1743,6 +1871,7 @@ function patchStartTabClass(tabClass, TileButton) {
 }
 
 let started = false;
+let lobbyFallback = false;   // the page could not open: the old window shows instead
 let log = (message) => console.log('PC2Coop: ' + message);
 export function start(logger) {
     if (logger) log = logger;
@@ -1791,8 +1920,35 @@ export function start(logger) {
     else {
         patchMainMenu().catch((e) => log('main menu import ' + e));
         Promise.all([import('/js/project/modules/frontEnd/data/FrontEndNavigation.js'), import('/js/project/modules/frontEnd/data/FrontEndNavData.js')])
-            .then(([navModule, dataModule]) => { nav = { nav: navModule, data: dataModule }; })
+            .then(([navModule, dataModule]) => {
+                nav = { nav: navModule, data: dataModule };
+                log('front end navigation ready, page ' + pageReady());
+                // Esc, a breadcrumb or a park page leaves the page: the window state follows.
+                navModule.FrontEndNav.onChange.add((screen) => {
+                    if (screen !== PAGE_ID && currentState.open && currentState.context === 'menu' && !lobbyFallback) request('close');
+                });
+            })
             .catch((e) => log('nav import ' + e));
+        // F7, the session bar or a request: the page opens when the window state turns open.
+        let wasOpen = false;
+        listeners.add((s) => {
+            const opened = !!s.open && !wasOpen;
+            const closed = !s.open && wasOpen;
+            wasOpen = !!s.open;
+            if (opened && s.context === 'menu') lobbyFallback = !openPage();
+            // Closed from Lua (F7, a QA script): back to the main menu, as Esc would.
+            if (closed && pageShown()) {
+                try { nav.nav.FrontEndNav.set(nav.data.FrontEndNavData.ScreenID.MainMenu); } catch (error) { log('page close ' + error); }
+            }
+            if (!s.open) lobbyFallback = false;
+        });
+        // QA (dev scripts, Ui._QaLook 5th field 12): open the game's sandbox page as the tile would.
+        let qaPage = '';
+        listeners.add((s) => {
+            if (!s.qaLook || s.qaLook === qaPage) return;
+            qaPage = s.qaLook;
+            if (Number(String(s.qaLook).split('|')[4]) === 12) { openGamePage('sandbox'); report('qa page sandbox'); }
+        });
     }
     import('/js/project/data/DLCDataUtil.js').then((module) => { dlcModule = module; }).catch((e) => log('dlc import ' + e));
     const root = document.createElement('div');

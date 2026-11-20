@@ -14,8 +14,8 @@ Darstellung: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js` (Kompone
 
 | Ort | Element | Wann sichtbar | Aktion | FEAT |
 |---|---|---|---|---|
-| Hauptmenü, Reiter „Spielen“ | Kachel „Multiplayer“ neben Karriere (`patchStartTabClass`) | immer | `open` | FEAT-113 |
-| Hauptmenü | Mini-Lobby-Karte (`MiniLobby`): „Sitzung öffnen“, „Beenden“/„Verlassen“ | in einer Lobby, Fenster zu | `open`, `leave` | FEAT-034 |
+| Hauptmenü, Reiter „Spielen“ | Kachel „Multiplayer“ neben Karriere (`patchStartTabClass`); Beschreibung mit Zustand („Sitzung offen · 2/8“, „<Freund> hat eine Sitzung – beitreten“); öffnet die Multiplayer-Seite | immer | `open` | FEAT-113, FEAT-119 |
+| Hauptmenü, jede Seite | Sitzungsleiste (`MiniLobby`) oben rechts unter dem Newsletter-Kasten: Avatare, Zustand, „Öffnen“, „Beenden“/„Verlassen“ | in einer Sitzung, Seite nicht offen | `open`, `leave` | FEAT-034 |
 | Park, Bauleiste unten | Reiter „Multiplayer“ rechts neben der Leiste, **nicht** in der TabBar (`patchBuildBar`, ADR-007) | im Park | `open` | FEAT-111 |
 | Park, Pausemenü (Esc) | Eintrag „Multiplayer“ (`patchMenuClass`); in einer Sitzung dazu „Sitzung verlassen“/„Sitzung beenden“ | im Park | `open`, `leave` | FEAT-112, FEAT-042 |
 | Tastatur | **F7** öffnet/schließt das Fenster (`key:menu` → `Ui.Toggle`) | überall | – | FEAT-114 |
@@ -39,9 +39,10 @@ Bauen geht weiter; der Chat-Bereich rückt rechts daneben.
 | „Neu synchronisieren“ | Gast mit Desync | `resync` |
 | „Beenden“ (Host) / „Verlassen“ (Gast) | in Sitzung | `leave` |
 
-**Im Hauptmenü** (bis P3): zentrierter Kasten (66 × 39 rem) mit drei Spalten (2.1). Fuß: „Sitzung
-starten“ (`host`), „Steam-Overlay“ (`invite_overlay`), „Beenden“/„Verlassen“ (`leave`), „Schließen“
-(`close`, auch Esc).
+**Im Hauptmenü** (UX-Overhaul P3): die Multiplayer-Seite (2.6). Der zentrierte Kasten (66 × 39 rem)
+mit drei Spalten (2.1a) ist nur noch Rückfall, wenn die Seite nicht angelegt werden kann. Fuß:
+„Sitzung starten“ (`host`), „Steam-Overlay“ (`invite_overlay`), „Beenden“/„Verlassen“ (`leave`),
+„Schließen“ (`close`, auch Esc).
 
 ### 2.1 Spieler (Park)
 
@@ -57,10 +58,21 @@ starten“ (`host`), „Steam-Overlay“ (`invite_overlay`), „Beenden“/„Ve
 |---|---|---|---|---|
 | links | „Möchte beitreten“ | Name + „Zulassen“/„Ablehnen“ (nur Host, nur bei Anfragen) | `approve`, `deny` | FEAT-027 |
 | links | „Spieler“ | Profilbild, Name, Krone (Host), Aktivität, Farbe; „Hinbringen“, „Folgen“/„Nicht folgen“; freie Plätze bis 8 | `jump`, `follow` | FEAT-043, FEAT-096, FEAT-097 |
-| Mitte | „Wo spielen wir?“ (Menü) | Reiter Gespeichert/Neu/Franchise/Karriere·später; Parkliste („aktualisieren“), Biome + Kreativ/Budget, „Franchise-Menü öffnen“, „Park öffnen“ (Host) | `choose`, `parks`, `start` | FEAT-032, FEAT-046 |
+| Mitte | „Wo spielen wir?“ (Menü, Host) | „Öffne einen Park – alle kommen mit.“; Knöpfe „Sandbox“, „Franchise“ (Spielseiten) | `choose` (franchise) | FEAT-119 |
 | Mitte | „Inhalte“ | DLC-Vergleich; Host: „Nur gemeinsame Inhalte“/„Alle Inhalte erlauben“ | `guard` | FEAT-037, FEAT-038 |
 | rechts | „Chat“ | Nachrichten, Eingabe „Nachricht an alle“ (Enter sendet) | `chat` | FEAT-035 |
 | rechts | „Freunde einladen“ / „Steam-Freunde“ | Freunde mit Status; „Einladen“/„Eingeladen“ (in Sitzung) oder „Beitreten“ (Freund hat Lobby) | `invite`, `join_friend` | FEAT-023, FEAT-024 |
+
+### 2.6 Multiplayer-Seite im Hauptmenü (`MultiplayerPage`, P3)
+
+Eigene Seite im Rahmen des Spiels (Kopf „MULTIPLAYER“, Brotkrumen „‹ Hauptmenü · Multiplayer“,
+Esc zurück, schließt das Fenster). Titel, ein Satz, zwei bis drei Spalten:
+
+| Spalte | Elemente | Aktionen | FEAT |
+|---|---|---|---|
+| „Spieler n / 8“ | Host: „Möchte beitreten“ mit „Zulassen“/„Ablehnen“; acht Plätze: Spieler (Profilbild, Name, Krone, Tätigkeit oder fehlende Inhalte), eingeladene Freunde blass, freie Plätze „+ Einladen“; Fuß: Zustand, „Sitzung starten“ bzw. „Steam-Overlay“, „Beenden“/„Verlassen“ | `approve`, `deny`, `host`, `invite_overlay`, `leave` | FEAT-119, FEAT-027 |
+| rechts | ohne Sitzung „Steam-Freunde“ (Sitzung zuerst, dann PC2, online; „Beitreten“); nach „+ Einladen“ „Freund einladen“ mit „Einladen“/„Eingeladen“, „Steam-Overlay“, „Fertig“; sonst „Chat“ mit Eingabe „Nachricht“ | `join_friend`, `invite`, `invite_overlay`, `chat` | FEAT-024, FEAT-023, FEAT-035 |
+| Host in der Lobby | Kacheln des Spiels (`FrontEndTileButton`) „Sandbox“ (öffnet die Sandbox-Seite des Spiels) und „Franchise“ (wie die Kachel des Spiels) | `choose` (franchise) | FEAT-119 |
 
 ### 2.2 Besuchen (Reiter entfallen, P2)
 
@@ -195,6 +207,6 @@ Entwickler-Seite: technische Werte und „API-Rekorder an/aus“, „Namensschil
 | `comp_start`, `comp_next`, `comp_rate` | … | Wettbewerb | ja |
 | `guard` | 1/0 | Content Guard | ja |
 | `dlc` | Liste | eigene DLCs melden | automatisch (`reportDlc`) |
-| `parks` | – | Parkliste neu laden | ja |
-| `choose` | save\|id / new\|biom\|kreativ / franchise | Park wählen | ja |
-| `start` | – | gewählten Park öffnen | ja |
+| `parks` | – | Parkliste neu laden | nein (seit P3, Park über die Spielseiten) |
+| `choose` | save\|id / new\|biom\|kreativ / franchise | Park wählen | nur franchise (Kachel) |
+| `start` | – | gewählten Park öffnen | nein (seit P3) |

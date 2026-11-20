@@ -3,6 +3,29 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-20 – UX-Overhaul P3, Schritt 1: Multiplayer-Seite im Hauptmenü
+
+- Prototyp: `FrontEndNavData.screens` ist ein offenes Objekt. `pageReady` trägt `MultiplayerPage`
+  als Seite 900 ein (Eltern Hauptmenü, `claimDefaultInputs`); `FrontEndModule` zeichnet sie samt
+  Kopf, Brotkrumen und Esc. `ScreenID[900] = 'MainMenu'`, damit die Engine bei
+  `FrontEndModeChange` einen bekannten Namen hört.
+- Fenster-Zustand ↔ Seite: Öffnen (Kachel, F7, Leiste) navigiert zur Seite; Esc, Brotkrumen oder
+  eine Spielseite schicken `close` (`FrontEndNav.onChange`); Schließen aus Lua geht ins Hauptmenü.
+  Ohne Seite bleibt das alte Fenster (`lobbyFallback`).
+- Absturz in der Testkopie beim ersten Öffnen: `openPage` rief alle Zustands-Beobachter direkt auf,
+  darunter den, der `openPage` aufruft – Rekursion bis zum Stapelüberlauf, das Spiel beendete sich
+  ohne Fehlermeldung. Jetzt `setTimeout`, und der Beobachter merkt sich den Zustand vorher.
+- Entfernt: `renderChooser`, `MODES`, `BIOMES`, `openScreen` (Mod-Parkliste, UX-A6). Neu
+  `openGamePage` wie die Spiel-Kacheln (Sandbox-Seite; Franchise über `FrontEndFranchiseSelected`,
+  wie die Kachel des Spiels, statt direkt zu navigieren).
+- Sitzungsleiste: bei 5.2 rem lag sie über dem Newsletter-Kasten, jetzt 10.8 rem. Der Chat-Bereich
+  unten links blendet sich auf der Seite aus (sie hat ihren eigenen Chat). Chat-Zeilen in einer
+  Reihe (in Gameface stand der Text sonst unter dem Namen).
+- Prüfung: Node-Rendertest (ohne Sitzung, Host, Gast, Einladen, Leiste, Rückfall-Fenster);
+  Testkopie im Hauptmenü (Bot-Schritt `inspect:qa:frontend=true`, QA-Skripte über
+  `pc2coop.frontend`): Seite ohne und mit Sitzung, Schließen, Leiste auf Hauptmenü und
+  Sandbox-Seite. Kein Klick im Hauptmenü.
+
 ## 2026-11-20 – Brett: eigene Stimme falsch angezeigt
 
 - `ui.lua` `teamState`: `myVote = mine == nil and false or (…)` ergab ohne Stimme "0" (in Lua

@@ -63,7 +63,10 @@ gleiches Steam-Konto; geprüft 2026-11-20):
   unseren Bauleisten-Reiter aus, -1 lässt einen Wert. Hover 1–8 zeigt den Tooltip dieses
   Spielers oben rechts, 9 den des ersten Fenster-Reiters (wirkt nur bei unseren Kästen, nicht
   bei Spiel-Komponenten ohne echte Maus), 10 die Nachfrage „Für alle beenden?“, 11 den Tooltip
-  am Info-Icon der Regeln. Das ändert nur die laufende HUD-Ansicht und speichert
+  am Info-Icon der Regeln, 12 im Hauptmenü die Sandbox-Seite des Spiels (wie die Kachel).
+- **Hauptmenü testen:** Bot-Schritt `inspect:qa:frontend=true` statt `new-test-park` (das Spiel
+  bleibt im Hauptmenü). QA-Skripte holen Session und UI dort über
+  `require("pc2coop.frontend").Session()` bzw. `.Ui()`. Das ändert nur die laufende HUD-Ansicht und speichert
   nichts.
 - 1440p und 4K gehen hier nicht (Bildschirm 1080p, randlos). Die Mod-Oberfläche ist ganz in
   `rem` gebaut (außer Mauskoordinaten) und skaliert wie das Spiel mit `min(B/1920, H/1080)`.

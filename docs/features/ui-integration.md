@@ -9,7 +9,8 @@ Code: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js`,
 - **Status:** Implemented · **Seit:** 1.8.0 (Reiter seit 1.12.0, Fenster links seit UX-Overhaul P2)
 - **Funktion:** Im Park ein Fenster im Look der Spiel-Fenster am linken Rand, nicht modal (Bauen
   geht weiter), mit vier Symbol-Reitern: Spieler, Planen, Verlauf, Einstellungen. „Besuchen“ ist
-  ein Knopf im Fuß. Im Hauptmenü die Lobby in drei Spalten (bis P3).
+  ein Knopf im Fuß. Im Hauptmenü zeigt die Seite FEAT-119 alles; das alte Fenster in drei Spalten
+  ist nur noch Rückfall, wenn die Seite nicht angelegt werden kann.
 - **Technik:** Klasse `Lobby` in `CoopLayer.js`: `renderParkPanel` (Park, `PARK_TABS`) baut aus den
   CSS-Klassen von `Panel` und `TabBar` des Spiels, dem Spiel-`Tab` und `CloseButton`; die
   Komponente `Panel` selbst ist nicht benutzt, weil sie Fokus und Eingabe-Kontexte übernimmt.
@@ -38,7 +39,9 @@ Code: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js`,
 
 ### FEAT-113 – Kachel „Multiplayer“ im Hauptmenü
 - **Status:** Implemented · **Seit:** 1.8.0
-- **Technik:** `patchStartTabClass` (Play-Reiter, neben Karriere, `TileButton`).
+- **Technik:** `patchStartTabClass` (Play-Reiter, neben Karriere, `TileButton`). Öffnet die Seite
+  (FEAT-119). Die Beschreibung zeigt den Zustand (TP-01, TP-02): „Sitzung offen · n/8“ oder
+  „<Freund> hat eine Sitzung – beitreten“.
 
 ### FEAT-114 – F7 öffnet Multiplayer
 - **Status:** Implemented · **Seit:** 1.4.1
@@ -74,6 +77,24 @@ Code: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js`,
 ### FEAT-117 – Banner (Abstimmung, Wettbewerb, Einladung)
 - **Status:** Implemented · **Seit:** 1.12.0
 - **Technik:** Klassen `RequestCard` (Anfragen: FEAT-027, FEAT-141, FEAT-138, FEAT-147), `ConnectionPill` (FEAT-031), Uhr in `PlayerBar` (FEAT-145).
+
+### FEAT-119 – Multiplayer-Seite im Hauptmenü
+- **Status:** Implemented · **Seit:** 1.13.0 (UX-Overhaul P3) · **Ersetzt:** FEAT-032
+- **Funktion:** Eine Seite im Rahmen des Hauptmenüs (Brotkrumen „Hauptmenü · Multiplayer“,
+  Esc zurück). Ohne Sitzung: „Sitzung starten“ und die Steam-Freunde (wer eine Sitzung hat, oben,
+  mit „Beitreten“). In der Sitzung: acht Plätze, ein freier Platz lädt ein (Freundesliste rechts,
+  eingeladene Freunde blass im Platz), Chat, und für den Host die Kacheln „Sandbox“ und
+  „Franchise“: Sie öffnen die Seiten des Spiels, der Host wählt dort den Park, alle laden mit.
+- **Technik:** `CoopLayer.js`: `pageReady` trägt die Klasse `MultiplayerPage` als Seite
+  `PAGE_ID` (900) in `FrontEndNavData.screens` ein (Eltern: Hauptmenü); für die Engine heißt sie
+  „MainMenu“ (`FrontEndModeChange`). `openPage` navigiert dorthin, sobald das Fenster aufgeht;
+  verlässt man die Seite (Esc, Brotkrumen, Spielseite), schickt `FrontEndNav.onChange` `close`.
+  `openGamePage` wie die Spiel-Kacheln (`SandboxStartMenu`, Franchise über das Engine-Ereignis
+  `FrontEndFranchiseSelected`). Rückfall ohne Seite: das alte Fenster (`lobbyFallback`).
+- **Besonderheiten:** Ein Neuzeichnen aus dem Öffnen heraus rief den Öffnen-Beobachter erneut auf
+  und ließ das Spiel abstürzen (Rekursion); deshalb `setTimeout`. Im Spiel geprüft: Seite ohne und
+  mit Sitzung, Schließen aus Lua, Sitzungsleiste auf Hauptmenü und Sandbox-Seite. Nicht geprüft:
+  ein Park über die Spielseiten mit echtem Mitspieler (zwei PCs).
 
 ### FEAT-118 – Zustandsbrücke Lua ↔ Oberfläche
 - **Status:** Implemented · **Seit:** 1.8.0

@@ -445,6 +445,15 @@ ein Schild ist eine feste Zelle im Label-Atlas des Spiels und kann nicht breiter
 P2 gebaut. Nicht im Spiel geprüft: Pausemenü (Esc nötig), Meldungs-Zeilen (Park-Meldung nötig),
 das Formular (öffnet per Klick); diese drei nur im Node-Rendertest.
 
+**P3 Schritt 1 (2026-11-20):** Prototyp „Seite im Hauptmenü-Rahmen“ gelungen: `FrontEndNavData.screens`
+ist ein offenes Objekt, eine eigene Seite (`PAGE_ID` 900, Eltern Hauptmenü) bekommt Kopf,
+Brotkrumen und Esc vom Spiel. Gebaut: Seite „Multiplayer“ (TP-03) mit acht Plätzen, Einladen über
+einen freien Platz (TP-05), Chat, Kacheln „Sandbox“/„Franchise“ in die Spielseiten statt der
+Mod-Parkliste; Sitzungsleiste oben rechts auf allen Seiten (TP-04); Zustand auf der Kachel (TP-01,
+TP-02). Fund: Neuzeichnen aus dem Öffnen heraus rekursierte und ließ das Spiel abstürzen
+(behoben). Offen in P3: Beitrittsanfrage als Karte im Platz (TP-06), „Vici öffnet ‚Seepark‘“
+(TP-08), Park über die Spielseiten mit echtem Mitspieler prüfen (zwei PCs).
+
 Prototypen zuerst (vor P2/P3/P4): `Panel` in unserer Ebene, Seite im Hauptmenü-Rahmen,
 Bauleiste im Besuch aus. Ergebnis entscheidet, ob Ziel oder Rückfall gebaut wird.
 
@@ -454,5 +463,6 @@ Bauleiste im Besuch aus. Ergebnis entscheidet, ob Ziel oder Rückfall gebaut wir
 2. Multiplayer-Fenster im Park **links** (kollidiert nicht mit den Info-Fenstern rechts) – ok?
 3. ~~Chat dauerhaft unten links, Eingabe per Taste – welche Taste?~~ Entschieden: **Enter**
    (Eigner, 2026-11-20).
-4. „Besuchen“ als eigener Knopf in der Bauleiste neben „Multiplayer“ – ok?
+4. ~~„Besuchen“ als eigener Knopf in der Bauleiste neben „Multiplayer“ – ok?~~ Entschieden:
+   im Fuß des Fensters (Eigner, 2026-11-20).
 5. Reihenfolge P0 → P6 so, oder ein Bereich zuerst (z. B. Besuch)?

@@ -35,8 +35,10 @@ Wer ein Feld hinzufügt, trägt es hier ein.
 | `ContextMenu` | Markieren-Radialmenü (`MARK_ITEMS`) | team.context | FEAT-136 |
 | `MarkHint` | Tastenhinweise „Enter Chat“, „Mittelklick Markieren“ (`keyCap`) | role, context, visitor, team.context | FEAT-095, FEAT-116 |
 | `ChatArea` | Chat, Ereignisse und Meldungen unten links, Chat-Eingabe per Enter | toasts (kind), chatKey, role, context, open | FEAT-116 |
-| `Lobby` | Multiplayer-Fenster. Park: `renderParkPanel` (links, Klassen des Spiel-Panels) mit `renderPanelPlayers`, `renderPanelFriends`, `renderPlan`, `renderHistory`, `renderSession`, `renderContentSetting`, `renderCompetition`. Hauptmenü: `renderBody` mit `renderPlayers`, `renderChooser`, `renderPlace`, `renderChat`, `renderContent`, `renderFriends` | fast alles | FEAT-110 |
-| `MiniLobby` | Lobby-Karte im Hauptmenü | role, players, open | FEAT-034 |
+| `Lobby` | Multiplayer-Fenster. Park: `renderParkPanel` (links, Klassen des Spiel-Panels) mit `renderPanelPlayers`, `renderPanelFriends`, `renderPlan`, `renderHistory`, `renderSession`, `renderContentSetting`, `renderCompetition`. Hauptmenü (nur Rückfall ohne Seite): `renderBody` mit `renderPlayers`, `renderPlace`, `renderChat`, `renderContent`, `renderFriends` | fast alles | FEAT-110 |
+| `MiniLobby` | Sitzungsleiste im Hauptmenü oben rechts (TP-04) | role, players, open | FEAT-034 |
+| `MultiplayerPage` | Seite „Multiplayer“ im Hauptmenü (TP-03): `places` (acht Plätze), `friendRows`, `chatBody`, `parkTiles` (Spiel-`FrontEndTileButton`); `pagePanel` baut die Spalten aus den `Panel_*`-Klassen | fast alles im Hauptmenü | FEAT-119 |
+| `pageReady`, `openPage`, `pageShown`, `openGamePage`, `sortedFriends` | Seite in `FrontEndNavData.screens` eintragen und öffnen, Spielseiten öffnen, Freunde sortieren | nav, currentState | FEAT-119 |
 | `JoinProgress` | Beitrittsfortschritt | join | FEAT-031 |
 | `Rejoin` | Wiederbeitritts-Dialog | join | FEAT-039 |
 | `JoinConfirm` | Beitritts-Nachfrage | join | FEAT-028 |
