@@ -17,7 +17,7 @@ Darstellung: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js` (Kompone
 | Hauptmenü, Reiter „Spielen“ | Kachel „Multiplayer“ neben Karriere (`patchStartTabClass`) | immer | `open` | FEAT-113 |
 | Hauptmenü | Mini-Lobby-Karte (`MiniLobby`): „Sitzung öffnen“, „Beenden“/„Verlassen“ | in einer Lobby, Fenster zu | `open`, `leave` | FEAT-034 |
 | Park, Bauleiste unten | Reiter „Multiplayer“ rechts neben der Leiste, **nicht** in der TabBar (`patchBuildBar`, ADR-007) | im Park | `open` | FEAT-111 |
-| Park, Pausemenü (Esc) | Eintrag „Multiplayer“ (`patchMenuClass`) | im Park | `open` | FEAT-112 |
+| Park, Pausemenü (Esc) | Eintrag „Multiplayer“ (`patchMenuClass`); in einer Sitzung dazu „Sitzung verlassen“/„Sitzung beenden“ | im Park | `open`, `leave` | FEAT-112, FEAT-042 |
 | Tastatur | **F7** öffnet/schließt das Fenster (`key:menu` → `Ui.Toggle`) | überall | – | FEAT-114 |
 | Tastatur | **Enter** öffnet die Chat-Eingabe unten links (`key:chat` → `Ui.ChatKey`) | im Park, Fenster zu, kein Textfeld des Spiels aktiv | `chatinput` | FEAT-116 |
 | Tastatur | **F8** Entwickler-Dialog (Spiel-Dialog, `menu.lua`) | nur mit Dev-Flag (`pc2coop-dev.flag`), im Park | – | FEAT-115 |
@@ -73,17 +73,16 @@ UI-Skalierung 1.0 verdeckte er die Icon-Knöpfe am Ende der Bauleiste des Spiels
 
 | Bereich | Elemente | Aktionen | FEAT |
 |---|---|---|---|
-| „Brett des Parks“ | Einträge als Zeilen (Titel, Art · von · → Zuständig, Stimmen, Notiz) mit runden Icon-Knöpfen: Haken (Erledigt/Wieder offen), Daumen hoch/runter, „Hinbringen“, Löschen | `board_done`, `board_vote`, `goto`, `board_del` | FEAT-130–135 |
-| „+ Neuer Eintrag“ → „Neuer Eintrag“ | Art (Aufgabe, Baugebiet, Vorschlag, Kommentar, Treffpunkt), Titel, Notiz, „Zuständig: … Wechseln“, Radius 10/20/40 m, „Hinzufügen“, „Abbrechen“; Ort = letzte Markierung oder Bildmitte; öffnet sich auch nach einer Brett-Aktion im Radialmenü | `board_add` | FEAT-130–134 |
+| „Brett des Parks“ (Info-Icon: auch als Marker im Park) | Einträge als Zeilen mit Typ-Icon (Aufgabe `clipboard`, Baugebiet `flag`, Vorschlag `thoughts`, Kommentar `pinActive`, Treffpunkt `marker`), Titel, Art · von · → Zuständig, Stimmen, Notiz; runde Icon-Knöpfe: Haken (Erledigt/Wieder offen), Daumen hoch/runter, Zuständig wechseln (offene Aufgaben, Baugebiete), „Hinbringen“, Löschen | `board_done`, `board_vote`, `board_assign`, `goto`, `board_del` | FEAT-130–135 |
+| „+ Neuer Eintrag“ → „Neuer Eintrag“ | Auswahl (`ListStepperRow`) „Art“, Titel, Notiz, Auswahl „Zuständig“ (alle, Spieler), Auswahl „Größe“ 10/20/40 m, „Hinzufügen“, „Abbrechen“; Ort = letzte Markierung oder Bildmitte; öffnet sich auch nach einer Brett-Aktion im Radialmenü | `board_add` | FEAT-130–134 |
 
 ### 2.4 Verlauf
 
 | Abschnitt | Elemente | Aktionen | FEAT |
 |---|---|---|---|
-| „Seit deinem letzten Besuch“ | Text | – | FEAT-139 |
-| „Meldungen des Parks“ | Pannen/Probleme mit Icon-Knopf „Hinbringen“ | `goto` | FEAT-140 |
-| „Sicherungspunkte“ | Liste; Host: „Zurückholen…“, „Sicherungspunkt erstellen“ | `restore`, `checkpoint` | FEAT-141 |
-| „Verlauf der Sitzung“ | Feed | – | FEAT-044 |
+| „Meldungen des Parks“ | Zeilen mit Icon, Text, Icon-Knöpfen „Hinbringen“ und „Ausblenden“ (nur auf diesem PC) | `goto` | FEAT-140 |
+| „Sicherungspunkte“ (Info-Icon: was Zurückholen bedeutet) | Liste oder „Noch keiner.“; Host: „Zurückholen…“, „Sicherungspunkt erstellen“ | `restore`, `checkpoint` | FEAT-141 |
+| „Verlauf der Sitzung“ | Feed, auch „Seit deinem letzten Besuch: …“ (kommt beim Beitritt einmal als Meldung) | – | FEAT-044, FEAT-139 |
 
 ### 2.5 Einstellungen
 
@@ -187,7 +186,7 @@ Entwickler-Seite: technische Werte und „API-Rekorder an/aus“, „Namensschil
 | `board_add` | art\|titel\|text\|zuständig\|radius | Brett-Eintrag | ja |
 | `board_vote` | id\|1/0 | Vorschlag abstimmen | ja |
 | `board_done` | id\|1/0 | Aufgabe erledigt | ja |
-| `board_assign` | id\|name | Zuständigen setzen | **nein** (nur beim Anlegen) |
+| `board_assign` | id\|name | Zuständigen setzen | ja (Reiter Planen, Icon-Knopf) |
 | `board_del` | id | Eintrag löschen | ja |
 | `ctx` | Punkt | Kontextmenü-Auswahl | ja |
 | `goto` | x\|z | Kamera hin | ja |

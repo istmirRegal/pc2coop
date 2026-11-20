@@ -3,6 +3,24 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-20 – UX-Overhaul P2, Schritt 4: Planen, Verlauf, Pausemenü
+
+- TP-17: `BOARD_ICON` je Art; `iconButton('footerGuests', …)` → `board_assign` reihum (die
+  UI-Aktion gab es schon, nur keinen Knopf: UX-C3). Formular: Art, Zuständig, Größe als
+  `ListStepperRow` (`AREA_SIZES`) statt Pillen und „Wechseln“. `infoTip` für Erklärungen.
+- TP-18: Meldungen des Parks als Zeilen (Icon `notifications_warning`, „Hinbringen“,
+  „Ausblenden“ über `state.dismissed`). `Session._ShowSince`: Meldung (200 Zeichen) und Zeile im
+  eigenen Feed, nicht über `addFeed` (der Host hätte seine an alle geschickt). Der Host bekam
+  bisher gar keine Meldung. „Fahrgeschaefte“ → „Fahrgeschäfte“.
+- TP-30: `patchMenuClass` setzt in einer Sitzung „Sitzung verlassen“/„Sitzung beenden“ vor
+  „Beenden“ des Spiels (`endOrAsk`).
+- Namensschilder: `DebugToolImports.js` nimmt den Punkt bei allen Mod-Schildern ab. Versuch mit
+  `nowrap`: das Schild wurde abgeschnitten. Die Schilder sind Zellen eines Atlas
+  (`CoasterLabels_cellItem`), sie können nicht breiter werden, also bleibt der Umbruch.
+- Prüfung: neuer Lua-Test (since als Meldung und im Feed); Node-Rendertest Planen mit Formular,
+  Verlauf mit ausgeblendeter Meldung, Pausemenü ohne/mit Sitzung; Testkopie: Planen, Verlauf,
+  Schilder.
+
 ## 2026-11-20 – UX-Overhaul P2, Schritt 3: Einstellungen als Spielzeilen, Nachfrage beim Beenden
 
 - TP-20: `renderSession` mit `ToggleRow` und `ListStepperRow` des Spiels, `focusable: false`

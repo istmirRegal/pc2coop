@@ -989,9 +989,18 @@ class TeamTests(SessionTests.__bases__[0]):
             rides.F2_0_2 = nil; rides.F3_0_3 = "Wilde Maus"
         ''')
         text = host.lua.eval('session._Since("200")')
-        self.assertIn('1 neue Fahrgeschaefte (Wilde Maus)', text)
+        self.assertIn('1 neue Fahrgeschäfte (Wilde Maus)', text)
         self.assertIn('1 abgerissen (Teetassen)', text)
         self.assertIsNone(host.lua.eval('session._Since("300")'))
+
+    def test_since_comes_once_as_message_and_in_the_log(self):
+        # TP-18: no section in the window any more; a message on joining and a line in the log.
+        alex = self.peers['200']
+        alex.lua.execute('session._onNet("msg|100|since|2 neue Fahrgeschäfte (Conlan, Wilde Maus)")')
+        line = 'Seit deinem letzten Besuch: 2 neue Fahrgeschäfte (Conlan, Wilde Maus)'
+        self.assertIn(line, self.toasts(alex))
+        self.assertIn(line, list(alex.lua.eval('session.View().feed').values()))
+        self.assertEqual(alex.lua.eval('session.View().since'), '2 neue Fahrgeschäfte (Conlan, Wilde Maus)')
 
     def test_checkpoint_and_vote_back(self):
         host, alex, sam = self.peers['100'], self.peers['200'], self.peers['300']

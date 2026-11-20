@@ -17,7 +17,9 @@ Gemeinsam planen, entscheiden, spielen. Konzept: `docs/KONZEPT.md`. Code:
 - **Status:** Implemented · **Seit:** 1.12.0
 - **Funktion:** To-dos ohne Ort, optional zugewiesen, offen/erledigt.
 - **Technik:** Art `task`; `Session.BoardSet` (Felder `done`, `assignee`); UI-Aktionen
-  `board_done`, `board_assign` (nur Lua, kein eigener Knopf), `board_del` → `Session.BoardRemove`.
+  `board_done`, `board_assign`, `board_del` → `Session.BoardRemove`.
+- **UI:** Zuständig nachträglich ändern (UX-C3): Icon-Knopf `footerGuests` an offenen Aufgaben
+  und Baugebieten, ein Klick wechselt reihum (alle, dann jeder Spieler), Tooltip sagt wohin.
 
 ### FEAT-132 – Brett: Kommentare
 - **Status:** Implemented · **Seit:** 1.12.0
@@ -69,11 +71,16 @@ Gemeinsam planen, entscheiden, spielen. Konzept: `docs/KONZEPT.md`. Code:
 - **Funktion:** Beim Wiederkommen: was sich im Park geändert hat (Geld, neue Fahrgeschäfte …).
 - **Technik:** Host merkt `lastVisit[sid]` beim Verlassen (`Session._RememberVisit`), Datei
   pro Park; beim Beitritt `since|text` (`Session._Since`, `Session._SetRideLister`).
+- **UI:** Einmal als Meldung „Seit deinem letzten Besuch: …“ beim Beitritt (Host: beim Laden des
+  Parks) und als Zeile im „Verlauf der Sitzung“ nur dieses Spielers (`Session._ShowSince`, TP-18).
+  Vorher ein eigener Abschnitt im Reiter Verlauf.
 
 ### FEAT-140 – Park-Meldungen mit Ort
 - **Status:** Implemented · **Seit:** 1.12.0 · **Hängt ab von:** FEAT-079
 - **Funktion:** Defekte, festsitzende Gäste, Blitzschlag … mit „Hinspringen“.
 - **Technik:** `note|x|y|z|text`; `events`, `EVENT_FRAMES`; `Session.Events`, `Session.EventLabel`.
+- **UI:** Reiter Verlauf, Zeilen wie die Meldungen des Spiels (TP-18): Icon, Text, „Hinbringen“,
+  „Ausblenden“ (nur auf diesem PC, bis das Fenster neu aufgebaut wird).
 
 ### FEAT-141 – Sicherungspunkte mit Abstimmung
 - **Status:** Implemented · **Seit:** 1.12.0

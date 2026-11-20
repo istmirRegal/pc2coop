@@ -33,6 +33,8 @@ Code: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js`,
 ### FEAT-112 – „Multiplayer“ im Pausemenü
 - **Status:** Implemented · **Seit:** 1.4.1
 - **Technik:** `patchMenuClass` fügt über `getGameMenuBtn` einen Eintrag über „Beenden“ ein.
+  In einer Sitzung zusätzlich „Sitzung verlassen“ bzw. „Sitzung beenden“ (Host, mit Nachfrage
+  „Für alle beenden?“), TP-30.
 
 ### FEAT-113 – Kachel „Multiplayer“ im Hauptmenü
 - **Status:** Implemented · **Seit:** 1.8.0

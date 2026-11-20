@@ -5,6 +5,13 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
 
 ## Unveröffentlicht
 
+- Brett: Jeder Eintrag hat ein Icon für seine Art. Wer für eine Aufgabe oder ein Baugebiet
+  zuständig ist, kannst du jetzt auch nachträglich ändern. Beim neuen Eintrag wählst du Art,
+  Zuständig und Größe mit Pfeilen wie im Optionsmenü.
+- Verlauf: Park-Meldungen haben „Hinbringen“ und „Ausblenden“. „Seit deinem letzten Besuch“
+  kommt beim Beitritt einmal als Meldung und steht danach im Verlauf.
+- Im Pausemenü kannst du die Sitzung jetzt auch verlassen oder (als Host) beenden.
+- Schilder im Park zeigen keinen Punkt mehr vor dem Text.
 - Der Reiter „Einstellungen“ sieht aus wie das Optionsmenü des Spiels: Schalter und
   Auswahl mit Pfeilen. Was eine Regel bedeutet, steht im Tooltip. Mitspieler sehen die Regeln
   gesperrt. Die Erklärtexte „Deine Rolle“ und „Abwesenheit“ sind jetzt Tooltips.

@@ -886,6 +886,11 @@ const iconButton = (icon, tip, onSelect, toggled) => h('div', { style: { marginL
         toggled: !!toggled, onSelect }));
 const BOARD_KINDS = [['task', 'Aufgabe'], ['area', 'Baugebiet'], ['proposal', 'Vorschlag'], ['comment', 'Kommentar'], ['meet', 'Treffpunkt']];
 const BOARD_WORD = { task: 'Aufgabe', area: 'Baugebiet', proposal: 'Vorschlag', comment: 'Kommentar', meet: 'Treffpunkt' };
+const BOARD_ICON = { task: 'clipboard', area: 'flag', proposal: 'thoughts', comment: 'pinActive', meet: 'marker' };
+const AREA_SIZES = [10, 20, 40];
+// A small info icon whose tooltip carries an explanation (TP-18, TP-20: no explanation texts on the page).
+const infoTip = (tip, extra) => h(HoverTip, Object.assign({ tip }, extra || {}),
+    glyph('img/icons/information.svg', '1.1rem', false, { filter: C('accentText-filter') }));
 // Rules of the session (TP-20): key, row label, values, tooltip (the explanation lives there).
 const RULES = [
     ['speed', 'Spieltempo und Pause', [['all', 'alle'], ['host', 'nur der Host']], 'Wer das Spieltempo ändern und pausieren darf.'],
@@ -1086,21 +1091,21 @@ class Lobby extends StateComponent {
         const kind = fromContext ? team.planKind : state.kind;
         const formOpen = state.planForm || fromContext;
         const needsPlace = kind !== 'task';
-        const nextAssignee = () => {
-            const names = ['', ...players.map((p) => p.name)];
-            const i = names.indexOf(state.assignee);
-            this.setState({ assignee: names[(i + 1) % names.length] });
-        };
+        const names = ['', ...players.map((p) => p.name)];
+        // Who is next on the board entry (UX-C3): everybody, then each player.
+        const nextName = (current) => names[(Math.max(0, names.indexOf(current || '')) + 1) % names.length];
         const add = () => {
             const clip = (t) => String(t || '').split('|').join(' ').trim();
             request('board_add', [kind, clip(state.title), clip(state.text), clip(state.assignee), kind === 'area' ? state.radius : 0].join('|'));
             this.setState({ title: '', text: '', kind, planSeq: team.planSeq, planForm: false });
         };
-        const out = [section('Brett des Parks', muted('auch als Marker im Park'))];
+        const out = [section('Brett des Parks', infoTip('Alles auf dem Brett steht auch als Marker im Park. Aufgaben brauchen keinen Ort.'))];
         if (items.length === 0) out.push(muted('Noch nichts geplant.', { padding: '0.2rem 0 0.4rem' }));
-        // Entries as rows with icon buttons (TP-17): tick, thumbs, take me there, delete.
+        // Entries as rows with a type icon and icon buttons (TP-17): tick, thumbs, who, take me there, delete.
         items.forEach((item) => out.push(h('div', { key: item.id, style: { display: 'flex', alignItems: 'center', padding: '0.3rem 0',
             borderBottomWidth: '0.05rem', borderBottomStyle: 'solid', borderBottomColor: ACCENT_A(0.15) } },
+            glyph('img/icons/' + (BOARD_ICON[item.kind] || 'clipboard') + '.svg', '1.2rem', false,
+                { marginRight: '0.5rem', filter: C('accentText-filter'), opacity: item.done ? 0.55 : 1 }),
             h('div', { style: { flexGrow: 1, flexShrink: 1, minWidth: 0, opacity: item.done ? 0.55 : 1 } },
                 h('div', null, (item.done ? '✓ ' : '') + item.title),
                 muted(BOARD_WORD[item.kind] + ' · ' + item.by + (item.assignee ? ' → ' + item.assignee : '')
@@ -1110,6 +1115,9 @@ class Lobby extends StateComponent {
                 () => request('board_done', item.id + '|' + (item.done ? '0' : '1')), item.done),
             item.kind === 'proposal' && iconButton('thumbsUp', 'Dafür', () => request('board_vote', item.id + '|1'), item.myVote === '1'),
             item.kind === 'proposal' && iconButton('thumbsDown', 'Dagegen', () => request('board_vote', item.id + '|0'), item.myVote === '0'),
+            (item.kind === 'task' || item.kind === 'area') && !item.done && iconButton('footerGuests',
+                'Zuständig – ' + (item.assignee || 'alle') + '. Klicken wechselt zu ' + (nextName(item.assignee) || 'alle') + '.',
+                () => request('board_assign', item.id + '|' + nextName(item.assignee))),
             item.x !== false && iconButton('takemeto', 'Hinbringen', () => request('goto', item.x + '|' + item.z)),
             iconButton('delete', 'Löschen', () => request('board_del', item.id)))));
         if (!formOpen) {
@@ -1117,11 +1125,10 @@ class Lobby extends StateComponent {
             return out;
         }
         out.push(section('Neuer Eintrag'),
-            h('div', { key: 'kinds', style: { display: 'flex', flexWrap: 'wrap', marginBottom: '0.3rem' } },
-                BOARD_KINDS.map(([key, label]) => h('div', { key, onClick: () => this.setState({ kind: key, planSeq: team.planSeq, planForm: true }),
-                    style: { padding: '0.25rem 0.6rem', margin: '0 0.3rem 0.3rem 0', borderRadius: '0.8rem', fontSize: '0.9rem', pointerEvents: 'auto',
-                        backgroundColor: kind === key ? C('accent') : C('whiteColor'), color: kind === key ? C('whiteColor') : C('accentText'),
-                        border: '0.05rem solid ' + ACCENT_A(0.45) } }, label))),
+            // Rows like the settings tab (TP-17): kind, who, size as the game's steppers.
+            h('div', { key: 'kinds' }, h(ListStepperRow, { label: literal('Art'), items: BOARD_KINDS.map(([, word]) => literal(word)),
+                listIndex: Math.max(0, BOARD_KINDS.findIndex(([key]) => key === kind)), focusable: false,
+                onChange: (i) => this.setState({ kind: BOARD_KINDS[i][0], planSeq: team.planSeq, planForm: true }) })),
             h('div', { key: 'title', style: { margin: '0.3rem 0' } }, h(InputField, { text: state.title, maxInputLength: 60, beginEditOnSelect: true,
                 promptText: literal(kind === 'area' ? 'Name des Gebiets ("Wikingerland")' : kind === 'task' ? 'Was ist zu tun?'
                     : kind === 'proposal' ? 'Idee ("Wildwasserbahn am See?")' : 'Titel'),
@@ -1129,31 +1136,41 @@ class Lobby extends StateComponent {
             h('div', { key: 'text', style: { margin: '0.3rem 0' } }, h(InputField, { text: state.text, maxInputLength: 160, beginEditOnSelect: true,
                 promptText: literal(kind === 'area' ? 'Auftrag ("Familienattraktion, Wikingerstil")' : 'Notiz (optional)'),
                 onChange: (e) => this.setState({ text: (e && e.text) || '' }), onCommit: (e) => this.setState({ text: (e && e.text) || '' }) })),
-            (kind === 'task' || kind === 'area') && row([h('div', null, 'Zuständig: ' + (state.assignee || 'alle')),
-                buttons([{ label: 'Wechseln', onSelect: nextAssignee }])], 'assignee'),
-            kind === 'area' && row([h('div', null, 'Größe: ' + state.radius + ' m'), buttons([10, 20, 40].map((n) =>
-                ({ label: n + ' m', onSelect: () => this.setState({ radius: n }) })))], 'radius'),
+            (kind === 'task' || kind === 'area') && h('div', { key: 'assignee' }, h(ListStepperRow, { label: literal('Zuständig'),
+                items: names.map((n) => literal(n || 'alle')), listIndex: Math.max(0, names.indexOf(state.assignee || '')), focusable: false,
+                onChange: (i) => this.setState({ assignee: names[i] || '' }) })),
+            kind === 'area' && h('div', { key: 'radius' }, h(ListStepperRow, { label: literal('Größe'), items: AREA_SIZES.map((n) => literal(n + ' m')),
+                listIndex: Math.max(0, AREA_SIZES.indexOf(state.radius)), focusable: false,
+                onChange: (i) => this.setState({ radius: AREA_SIZES[i] || 20 }) })),
             needsPlace && muted('Ort: deine letzte Markierung (Mittelklick), sonst die Bildmitte.', { margin: '0.3rem 0' }),
             buttons([{ label: 'Hinzufügen', onSelect: add },
                 { label: 'Abbrechen', onSelect: () => this.setState({ planForm: false, planSeq: team.planSeq, title: '', text: '' }) }]));
         return out;
     }
 
-    // Tab "Verlauf" (TP-18): one column, the newest first.
+    // Tab "Verlauf" (TP-18): park messages as rows like the game's notifications (take me there,
+    // dismiss), checkpoints, the session's log. "Seit deinem letzten Besuch" comes once as a
+    // message on joining and stands in the log, not as a section here.
     renderHistory(coop) {
         const team = coop.team || {};
         const isHost = coop.role === 'host';
+        const hidden = this.state.dismissed || {};
+        const events = list(team.events).filter((e) => !hidden[e.label + '|' + e.x + '|' + e.z]);
+        const checkTip = 'Eine Kopie des Parks beim Host. Zurückholen betrifft alle und braucht die Zustimmung aller.';
         return [
-            section('Seit deinem letzten Besuch'),
-            muted(team.since || 'Dein erster Besuch in diesem Park, oder es gibt noch nichts zu vergleichen.', team.since ? { color: C('accentText') } : undefined),
             section('Meldungen des Parks'),
-            list(team.events).length === 0 ? muted('Gerade keine Pannen oder Probleme.')
-                : h('div', { key: 'events' }, list(team.events).slice().reverse().map((e, i) => row([h('div', { style: { flexGrow: 1, flexShrink: 1, minWidth: 0 } }, e.label),
-                    iconButton('takemeto', 'Hinbringen', () => request('goto', e.x + '|' + e.z))], 'e' + i))),
-            section('Sicherungspunkte'),
-            muted('Eine Kopie des Parks beim Host. Zurückholen betrifft alle und braucht die Zustimmung aller.', { marginBottom: '0.3rem' }),
+            events.length === 0 ? muted('Gerade keine Pannen oder Probleme.')
+                : h('div', { key: 'events' }, events.slice().reverse().map((e, i) => h('div', { key: 'e' + i, style: { display: 'flex', alignItems: 'center',
+                    padding: '0.3rem 0', borderBottomWidth: '0.05rem', borderBottomStyle: 'solid', borderBottomColor: ACCENT_A(0.15) } },
+                    glyph('img/icons/notifications_warning.svg', '1.2rem', false, { marginRight: '0.5rem', filter: C('accentText-filter') }),
+                    h('div', { style: { flexGrow: 1, flexShrink: 1, minWidth: 0 } }, e.label),
+                    iconButton('takemeto', 'Hinbringen', () => request('goto', e.x + '|' + e.z)),
+                    // Only here, on this PC: the park keeps the message until the problem is gone.
+                    iconButton('close', 'Ausblenden', () => this.setState({ dismissed: Object.assign({}, hidden, { [e.label + '|' + e.x + '|' + e.z]: true }) }))))),
+            section('Sicherungspunkte', infoTip(checkTip)),
+            list(team.checkpoints).length === 0 && muted('Noch keiner.'),
             h('div', { key: 'checkpoints' }, list(team.checkpoints).map((c) => row([h('div', null, c.label),
-                isHost && buttons([{ label: 'Zurückholen…', onSelect: () => request('restore', String(c.n)) }])], 'c' + c.n))),
+                isHost && buttons([{ label: 'Zurückholen…', tip: checkTip, onSelect: () => request('restore', String(c.n)) }])], 'c' + c.n))),
             isHost && h('div', { key: 'checkpoint', style: { marginTop: '0.3rem' } }, buttons([{ label: 'Sicherungspunkt erstellen', onSelect: () => request('checkpoint') }])),
             section('Verlauf der Sitzung'),
             list(coop.log).length === 0 ? muted('Noch nichts passiert.')
@@ -1660,7 +1677,12 @@ function patchMenuClass(menuClass) {
         if (typeof id === 'string' && id.indexOf('Exit') === 0) {
             const ours = build.call(this, 'PC2CoopMultiplayer', 'collaborate', () => request('open'));
             if (ours && ours.attributes) ours.attributes.label = literal('Multiplayer');
-            return [ours, button];
+            // In a session also leave or end it here (TP-30); the host is asked first (EndConfirm).
+            const coop = currentState || {};
+            if (!coop.role) return [ours, button];
+            const leave = build.call(this, 'PC2CoopLeave', 'close', () => endOrAsk(currentState || {}));
+            if (leave && leave.attributes) leave.attributes.label = literal(coop.role === 'host' ? 'Sitzung beenden' : 'Sitzung verlassen');
+            return [ours, leave, button];
         }
         return button;
     };

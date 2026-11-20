@@ -435,7 +435,15 @@ der Spielerleiste und im Fenster. Tooltips per QA-Hover fotografiert (`_QaLook`,
 Bauten), Erklärungen als Tooltips, für Mitspieler gesperrt mit Tooltip. „Deine Rolle“ und
 „Abwesenheit“ sind Tooltips (Info-Icon, Fußknöpfe). TP-30: „Beenden“ fragt „Für alle beenden?“.
 Fund: Alle Spiel-Tooltips lagen unter unserer Ebene; `raiseTooltips` hebt nur die Tooltip-Ebene.
-Offen in P2: „Verlassen“ im Pausemenü (TP-30), Planen/Verlauf-Feinheiten (TP-17, TP-18).
+
+**P2 Schritt 4 (2026-11-20):** Planen (TP-17): Typ-Icon je Eintrag, Zuständig per Icon-Knopf
+änderbar (UX-C3), im Formular Art, Zuständig und Größe als `ListStepperRow`. Verlauf (TP-18):
+Park-Meldungen als Zeilen mit „Hinbringen“ und „Ausblenden“, „Seit deinem letzten Besuch“ einmal
+als Meldung beim Beitritt und im Verlauf statt als Abschnitt. TP-30: „Sitzung verlassen“/„Sitzung
+beenden“ im Pausemenü. Namensschilder ohne den Punkt davor (lange Schilder brachen in drei Zeilen;
+ein Schild ist eine feste Zelle im Label-Atlas des Spiels und kann nicht breiter werden). Damit ist
+P2 gebaut. Nicht im Spiel geprüft: Pausemenü (Esc nötig), Meldungs-Zeilen (Park-Meldung nötig),
+das Formular (öffnet per Klick); diese drei nur im Node-Rendertest.
 
 Prototypen zuerst (vor P2/P3/P4): `Panel` in unserer Ebene, Seite im Hauptmenü-Rahmen,
 Bauleiste im Besuch aus. Ergebnis entscheidet, ob Ziel oder Rückfall gebaut wird.

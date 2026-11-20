@@ -15,7 +15,9 @@ function coopLog(message) {
 // The co-op name tags are drawn by the game's coaster label view (it imports this module).
 // Tags of the mod start with a bullet and get a quieter look than the game's own heat-map
 // labels, which stay as they are. Inline styles only: the label elements are re-used.
-// "\u2022#rrggbb Name" (labels.lua): the bullet and colour come off, the text takes the colour.
+// "\u2022#rrggbb Name" (labels.lua): the bullet and colour come off, the text takes the colour;
+// "\u2022 Name - word": the bullet comes off (it took a line of its own on long tags). A tag is a
+// fixed cell of the game's label atlas: long text wraps, it cannot grow (one line was cut off).
 if (String(window.location.href).indexOf('CoasterLabels.html') >= 0) {
     const QUIET = { color: '#ffffff', backgroundColor: 'rgba(14, 33, 48, 0.6)', fontSize: '0.8em', lineHeight: '1.25rem',
         paddingLeft: '0.5rem', paddingRight: '0.5rem', borderTopLeftRadius: '0.65rem', borderTopRightRadius: '0.65rem',
@@ -37,7 +39,8 @@ if (String(window.location.href).indexOf('CoasterLabels.html') >= 0) {
                 if (tag[1]) item.style.color = '#' + tag[1];
                 // The text node the game's view owns: change its data, never replace it.
                 const node = item.firstChild;
-                if (node && node.nodeType === 3 && tag[1]) node.nodeValue = tag[2];
+                // The bullet is only our mark: off on every tag of the mod.
+                if (node && node.nodeType === 3) node.nodeValue = tag[2];
                 item.__pc2text = item.textContent || '';
             }
         } catch (error) { /* labels keep the game's look */ }

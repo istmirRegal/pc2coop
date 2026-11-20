@@ -1191,7 +1191,7 @@ local function onMessage(from, payload)
             if validRideKey(f[3]) then invitation = {by = clean(f[2]), key = f[3], name = clean(f[4] or "?"), frame = frames} end
         elseif kind == "since" then
             sinceText = global.string.sub(global.string.gsub(global.string.sub(payload, 7), "[\n\r]", " "), 1, 600)
-            toast("Seit deinem letzten Besuch: Multiplayer-Fenster > Verlauf", "00c6ff")
+            Session._ShowSince()
         elseif kind == "ruledeny" then
             toast(global.string.sub(global.string.gsub(global.string.sub(payload, 10), "[\n\r]", " "), 1, 160), "ff922b")
         elseif kind == "vote" then
@@ -1529,7 +1529,7 @@ local function onNet(event)
                     lastVisit[v[1]] = {cash = global.tonumber(v[2]), rides = seen}
                 end
             end
-            if me and lastVisit[me] then sinceText = Session._Since(me) end
+            if me and lastVisit[me] then sinceText = Session._Since(me); Session._ShowSince() end
         elseif ratingsFile and f[2] == ratingsFile then
             -- "key|sid|stars|ride|who|text" lines, later lines win.
             for line in global.string.gmatch(text, "[^\n]+") do
@@ -2224,7 +2224,7 @@ function Session._Since(sid)
     for key, name in global.pairs(now) do if not before.rides[key] then added[#added+1] = name end end
     for key, name in global.pairs(before.rides) do if not now[key] then gone[#gone+1] = name end end
     global.table.sort(added); global.table.sort(gone)
-    if #added > 0 then parts[#parts+1] = #added .. " neue Fahrgeschaefte (" .. global.table.concat(added, ", ", 1, global.math.min(#added, 5)) .. ")" end
+    if #added > 0 then parts[#parts+1] = #added .. " neue Fahrgeschäfte (" .. global.table.concat(added, ", ", 1, global.math.min(#added, 5)) .. ")" end
     if #gone > 0 then parts[#parts+1] = #gone .. " abgerissen (" .. global.table.concat(gone, ", ", 1, global.math.min(#gone, 5)) .. ")" end
     local numbers = World.Numbers() or {}
     if before.cash and numbers.cash and not numbers.unlimited then
@@ -2240,6 +2240,17 @@ function Session._Since(sid)
     if #problems > 0 then parts[#parts+1] = "offene Meldung: " .. problems[#problems].text end
     if #parts == 0 then return "Nichts Neues - der Park ist wie beim letzten Mal." end
     return global.table.concat(parts, "; ")
+end
+
+-- "Seit deinem letzten Besuch" once as a message when joining or loading the park (TP-18), and
+-- in the session's log for later; the window has no section for it any more.
+function Session._ShowSince()
+    if not sinceText then return end
+    local text = "Seit deinem letzten Besuch: " .. sinceText
+    toast(cut(text, 200), "00c6ff")
+    -- Only in this player's log (addFeed would send the host's to everyone).
+    feed[#feed+1] = text
+    while #feed > 30 do global.table.remove(feed, 1) end
 end
 
 function Session._SetRideLister(fn) rideLister = fn end
