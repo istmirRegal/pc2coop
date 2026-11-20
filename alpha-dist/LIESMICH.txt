@@ -142,8 +142,8 @@ Besucher-Modus (Reiter Besuchen)
   Gehen. Geschlossene Shops verkaufen nichts.
 - Tab: zurueck zum Bauen.
 - Bewerten: 1 bis 5 Sterne und ein kurzer Vorschlag; der Host speichert sie pro Park.
-- Noch nicht: anstellen, Dinge kaufen, Toiletten, Hunger/Laune (das steckt im Spiel
-  selbst und laesst sich von aussen nicht steuern).
+- Noch nicht: Toiletten, Hunger/Laune (das steckt im Spiel selbst und laesst sich von
+  aussen nicht steuern).
 
 Verbindung weg?
 - Hakt die Verbindung, siehst du "Keine Verbindung zum Host - warte ...". Kommt sie zurueck

@@ -50,6 +50,8 @@ Sicherheitslücke gefunden? Bitte als Issue melden (ohne Log-Dateien mit fremden
 
 ## Entwickeln
 
+- **Dokumentation:** `docs/README.md` (Funktionen, Architektur, Entscheidungen, UI);
+  Regeln für KI und Entwickler: `CLAUDE.md`.
 - `probe/PC2CoopProbe/` – Mod-Quellcode (Lua) und UI (`ui/UIGameface/js/pc2coop`).
 - `native/` – DLL (C++), gebaut mit `tools/build_native.py` (MSVC Build Tools).
 - `tools/build_ui.py`, `tools/build_probe.py` (Cobra Tools) – Mod-Paket bauen.
@@ -58,9 +60,7 @@ Sicherheitslücke gefunden? Bitte als Issue melden (ohne Log-Dateien mit fremden
   brauchen `lupa`).
 - `tools/game_bot.py` – steuert eine Testkopie des Spiels über feste QA-Befehle.
 
-Release: Version in `probe/.../database/pc2coopprobeluadatabase.lua`,
-`probe/.../pc2coop/session.lua` und `tools/cobra_worker.py` erhöhen, bauen,
-`tools/package_release.py` ausführen, ZIP und `.sha256` als Release-Assets hochladen.
+Release: siehe `docs/development/RELEASE.md` (alle Versionsstellen, Bauen, beide Pakete).
 
 ## Lizenz
 
