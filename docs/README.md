@@ -43,8 +43,10 @@ Regeln für die Pflege: `docs/development/AI_WORKFLOW.md`. Prüfung: `tools/chec
 | [ui-ux/UI_INVENTORY.md](ui-ux/UI_INVENTORY.md) | Jedes Bedienelement, jede UI-Aktion |
 | [ui-ux/NAVIGATION.md](ui-ux/NAVIGATION.md) | Wege zwischen den Ansichten |
 | [ui-ux/COMPONENTS.md](ui-ux/COMPONENTS.md) | Komponenten, Zustandsfelder, Eingriffe in Spiel-UI |
-| [ui-ux/DESIGN_SYSTEM.md](ui-ux/DESIGN_SYSTEM.md) | Farben, Schrift, Maße, Sprache |
-| [ui-ux/UX_AUDIT.md](ui-ux/UX_AUDIT.md) | Befunde für das UX-Overhaul |
+| [ui-ux/DESIGN_SYSTEM.md](ui-ux/DESIGN_SYSTEM.md) | Farben, Schrift, Maße, Sprache – Ziel (Overhaul) und Ist |
+| [ui-ux/NATIVE_UI.md](ui-ux/NATIVE_UI.md) | Wie Planet Coaster 2 seine Oberfläche baut (Variablen, Skalierung, Bausteine, Orte) |
+| [ui-ux/UX_OVERHAUL.md](ui-ux/UX_OVERHAUL.md) | UX-Overhaul: Inventar, Audit, Zustände, Zielbild, Phasen |
+| [ui-ux/UX_AUDIT.md](ui-ux/UX_AUDIT.md) | Erste Befunde (UX-A1 … E3), zugeordnet in UX_OVERHAUL |
 
 ## Entscheidungen
 

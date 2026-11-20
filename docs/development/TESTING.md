@@ -60,5 +60,6 @@ Registry eintragen.
 1. Unit-Tests; dann Testkopie aktualisieren und `new-test-park` starten.
 2. Log auf `hook-unavailable`, `tick-error`, `patch` Fehler prüfen.
 3. Spiel-Module aus `docs/architecture/DEPENDENCIES.md` und die UI-Eingriffe aus
-   `docs/ui-ux/COMPONENTS.md` prüfen (`bar-check`, `menu-test`, `ui-test`).
+   `docs/ui-ux/COMPONENTS.md` prüfen (`bar-check`, `menu-test`, `ui-test`). Dazu die
+   Spiel-Komponenten und CSS-Variablen aus `docs/ui-ux/NATIVE_UI.md`, die die Mod benutzt.
 4. Spielbuild in `profiles/` ergänzen (FEAT-009).

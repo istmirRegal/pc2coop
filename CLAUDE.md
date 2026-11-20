@@ -80,4 +80,6 @@ Bauen und Release: `docs/development/RELEASE.md`. Testkopie: `docs/development/T
 - Große Aufträge: alles bauen und mit Unit-Tests absichern, den Spieltest am Ende machen,
   dann beheben, was er zeigt.
 - Ehrlich berichten: was im Spiel geprüft ist und was nur in Unit-Tests.
-- Ein UX-Overhaul ist angekündigt; Ausgangslage: `docs/ui-ux/` (vor allem `UX_AUDIT.md`).
+- UX-Overhaul: Konzept in `docs/ui-ux/UX_OVERHAUL.md` (wartet auf Freigabe), Maßstab ist das
+  Spiel selbst (`docs/ui-ux/NATIVE_UI.md`, ADR-020). Neue Oberfläche benutzt Variablen,
+  `rem` und Bausteine des Spiels.

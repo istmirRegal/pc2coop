@@ -4,6 +4,10 @@ Beobachtungen aus dem Code und den Tests in der Testkopie, als Grundlage für da
 UX-Overhaul. **Nichts davon ist bisher geändert.** Jede Zeile hat eine ID (`UX-…`), damit
 Änderungen darauf verweisen können. Erledigte Punkte bleiben mit Vermerk stehen.
 
+Seit 2026-11-20 ist `docs/ui-ux/UX_OVERHAUL.md` die Arbeitsgrundlage (Inventar aller
+Berührungspunkte, Bewertung, Zielbild). Dort sind alle IDs dieser Datei einem Berührungspunkt
+`TP-nn` zugeordnet.
+
 ## A. Inhalt und Hilfetexte
 
 | ID | Befund | Ort |

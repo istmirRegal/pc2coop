@@ -44,6 +44,10 @@ Wer ein Feld hinzufügt, trägt es hier ein.
 
 | Funktion | Zweck |
 |---|---|
+| `C(name)` | Farbe aus den CSS-Variablen des Spiels (`--name`), gelesen in `refreshPalette()` alle 10 Abfragen; Rückfall `PALETTE_DEFAULT` (ADR-020) |
+| `rem(px)` | Größe in rem (`px / 20`, Entwurf bei 1080p) |
+| `remPx()` | aktuelle Pixel pro rem (für Mauskoordinaten) |
+| `HUD_BG(alpha)` | dunkler HUD-Grund (`--accentPanelBackground` des Standardthemas) |
 | `literal(text)` | Text für Spiel-Komponenten |
 | `shown(text)` | Lokalisierungs-Schlüssel übersetzen, sonst Text |
 | `section(title, extra)` | Abschnittstitel |

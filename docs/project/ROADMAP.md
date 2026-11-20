@@ -7,7 +7,7 @@ Erledigtes wandert in CHANGELOG/DEVLOG; die Funktion bekommt ihren Status in der
 
 | Punkt | Notiz |
 |---|---|
-| **UX-Overhaul** | angekündigt vom Eigner; Ausgangslage `docs/ui-ux/UX_AUDIT.md`, `DESIGN_SYSTEM.md` |
+| **UX-Overhaul** | Konzept fertig, wartet auf Freigabe: `docs/ui-ux/UX_OVERHAUL.md` (Phasen P0–P6), ADR-020; zuerst Prototypen (`Panel`, Hauptmenü-Seite, Bauleiste im Besuch) |
 | Test mit zwei (und drei) echten PCs | Abnahmebedingung aus `docs/COOP_DESIGN.md`; nach 1.5.0 nur mit nachgestelltem Mitspieler geprüft |
 | Nexus-Quarantäne klären | Eigner lädt das Nexus-Zip ohne Skripte hoch und bittet um Prüfung (ADR-010) |
 

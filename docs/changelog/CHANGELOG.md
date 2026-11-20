@@ -5,7 +5,11 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
 
 ## Unveröffentlicht
 
-- Keine Änderungen für Spieler. (Intern: Dokumentationssystem, siehe DEVLOG.)
+- Die Oberfläche der Mod benutzt die Farben des Spiels. Sie folgt deiner Akzentfarbe und den
+  Farbenblind-Modi.
+- Die Oberfläche wächst mit Auflösung und UI-Skalierung wie das Spiel (vorher feste Pixel,
+  bei 1440p und 4K zu klein).
+- Abschnittstitel im Multiplayer-Fenster ohne Großbuchstaben, wie im Spiel.
 
 ## 1.13.0 – 2026-11-19
 

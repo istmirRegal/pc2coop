@@ -3,6 +3,40 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-20 – UX-Overhaul P0, Schritt 1: Farben und Einheiten
+
+- `CoopLayer.js` hat keine festen Farben mehr (außer Spielerfarben). Alle Farben kommen über
+  `C(name)` aus den CSS-Variablen des Spiels.
+- Alle Größen sind `rem` (`px / 20`). Die Mauskoordinaten des Kontextmenüs bleiben in Pixeln,
+  der Abstand zum Rand ist über `remPx()` umgerechnet.
+- Abschnittstitel sind fett statt in Großbuchstaben.
+- Fund: Gameface ignoriert `var(--…)` im Inline-`background`. Die Mod liest die Werte deshalb
+  wie die Bible des Spiels per `getComputedStyle` aus.
+- Testkopie (1080p): Fenster, Toasts und Spielerleiste fotografiert, alles lesbar.
+- Hinweis zum Bild: Bei offenem Fenster liegt die Spielerleiste unter dem abgedunkelten
+  Hintergrund. Das war vorher genauso.
+- Noch nicht geprüft: andere Auflösungen, UI-Skalierung, Akzentfarbe, Farbenblind-Modus.
+
+## 2026-11-20 – UX-Overhaul: Analyse und Konzept
+
+- UI-Code des Spiels (entpackt, nur lokal) ausgewertet: `docs/ui-ux/NATIVE_UI.md`. Kernfunde:
+  - Das Spiel skaliert über `rem` (1 rem = 20 px bei 1080p × Auto- × Nutzer-Skalierung).
+  - Alle Farben sind CSS-Variablen mit 9 Akzentfarben und 3 Farbenblind-Modi.
+  - Fertige Bausteine: `Panel`, `DataRow`, Einstellungszeilen, Tooltips, Tastenhinweise,
+    Radialmenü, 1234 Icons.
+- Befund zur Mod: feste `px` (zehn Schriftgrößen, 13–28 px), 25 Hex-Farben, 4 von vielen
+  Spiel-Komponenten genutzt.
+- Konzept `docs/ui-ux/UX_OVERHAUL.md`:
+  - 32 Berührungspunkte bewertet
+  - Zustandsmatrix
+  - Ortsregeln
+  - Textregeln
+  - Machbarkeit
+  - Phasen P0–P6
+- Dazu ADR-020 (vorgeschlagen) und Ziel-Teil in `DESIGN_SYSTEM.md`. Code unverändert.
+- Gefunden: Endet der Host die Sitzung, bekommt der Mitspieler nur eine Verlaufszeile und
+  bleibt ohne Hinweis im Park (TP-09/TP-30).
+
 ## 2026-11-20 – Dokumentationssystem
 
 - `docs/` neu gegliedert: `project/` (Registry, Überblick, Roadmap, Glossar), `features/`
