@@ -159,8 +159,13 @@ local function cleanText(text)
     return cut(text, 120)
 end
 
-local function takeText(name, label)
-    return name .. " moechte bei \"" .. label .. "\" weitermachen - fertig bauen und freigeben?"
+-- Someone would like to go on with what this player edits (FEAT-137): since the UX overhaul a
+-- request card with "Verstanden" (TP-19), no toast. {by, label, frame}; module field, the main
+-- chunk is at its limit of locals.
+Session._takeAsk = nil
+Session.TAKE_ASK_FRAMES = 1800
+function Session._AskedToTake(name, label)
+    Session._takeAsk = {by = name, label = label, frame = frames}
 end
 
 local function validRideKey(key) return global.string.match(key or "", "^F%-?%d+_%-?%d+_%-?%d+$") ~= nil and #key <= 40 end
@@ -733,7 +738,7 @@ end
 local function timeText(name, paused, index)
     local speeds = {"x1", "x2", "x5"}
     if paused then return name .. " hat das Spiel pausiert" end
-    return name .. " laesst das Spiel laufen (" .. (speeds[index] or "x1") .. ")"
+    return name .. " lässt das Spiel laufen (" .. (speeds[index] or "x1") .. ")"
 end
 
 local function numbers(fields, from, to)
@@ -850,7 +855,7 @@ local function hostChange(sid, f)
         -- Someone would like to go on with what another player is editing: the editor is asked.
         if not lastTakeAsk[sid] or frames - lastTakeAsk[sid] >= 300 then
             lastTakeAsk[sid] = frames
-            if f[2] == me then toast(takeText(nameOf(sid), holds[f[2]].label), players[sid].color)
+            if f[2] == me then Session._AskedToTake(nameOf(sid), holds[f[2]].label)
             else send(f[2], "tk|" .. clean(nameOf(sid)) .. "|" .. clean(holds[f[2]].label)) end
             addFeed(nameOf(sid) .. " fragt " .. nameOf(f[2]) .. " nach Übernahme")
         end
@@ -1183,7 +1188,7 @@ local function onMessage(from, payload)
             Session._CompRead(payload)
         elseif kind == "tk" then
             local f = split(payload, "|")
-            toast(takeText(clean(f[2] or "?"), clean(f[3] or "?")), "ffd43b")
+            Session._AskedToTake(clean(f[2] or "?"), clean(f[3] or "?"))
         elseif kind == "iv" then
             local f = split(payload, "|")
             if validRideKey(f[3]) then invitation = {by = clean(f[2]), key = f[3], name = clean(f[4] or "?"), frame = frames} end
@@ -2003,9 +2008,9 @@ end
 function Session.BoardRemove(id) return boardWire("board|del|" .. clean(id)) end
 
 -- Short German words for the game's notification kinds (markers and labels in the park).
-local EVENT_WORDS = {RideBroken = "Panne", RideNeedsMaintenance = "Wartung faellig", RideServiceExpired = "Wartung ueberfaellig",
-    GuestsTrapped = "Gaeste eingeschlossen", GuestsStuckInPark = "Gaeste stecken fest", LightningStruckRide = "Blitzeinschlag",
-    LightningStruckParade = "Blitzeinschlag", ParadeBroken = "Parade kaputt", LowGuestsOnRides = "Wenig Fahrgaeste",
+local EVENT_WORDS = {RideBroken = "Panne", RideNeedsMaintenance = "Wartung fällig", RideServiceExpired = "Wartung überfällig",
+    GuestsTrapped = "Gäste eingeschlossen", GuestsStuckInPark = "Gäste stecken fest", LightningStruckRide = "Blitzeinschlag",
+    LightningStruckParade = "Blitzeinschlag", ParadeBroken = "Parade kaputt", LowGuestsOnRides = "Wenig Fahrgäste",
     RideNoPower = "Kein Strom", RideUntested = "Nicht getestet"}
 
 function Session.EventLabel(text)
@@ -2129,10 +2134,10 @@ function Session.CompetitionNext()
     if role ~= "host" or not comp then return false end
     if comp.phase == "build" then
         comp.phase = comp.mode == "duel" and "rate" or "done"
-        addFeed(comp.mode == "duel" and "Zeit um! Jetzt die Bauten der anderen bewerten (Multiplayer > Sitzung)" or "Zeit um!")
+        addFeed(comp.mode == "duel" and "Die Zeit ist um. Jetzt bewertet ihr die Bauten der anderen." or "Die Zeit ist um.")
     elseif comp.phase == "rate" then
         comp.phase = "done"
-        addFeed("Bewertung abgeschlossen - Ergebnis unter Multiplayer > Sitzung")
+        addFeed("Die Bewertung ist abgeschlossen, das Ergebnis steht beim Wettbewerb.")
     else
         comp = nil
     end
@@ -2187,6 +2192,15 @@ function Session.Invitation()
 end
 
 function Session.DismissInvitation() invitation = nil end
+
+-- The open takeover question to this player, or nil (it runs out after a minute).
+function Session.TakeAsk()
+    local ask = Session._takeAsk
+    if ask and frames - ask.frame > Session.TAKE_ASK_FRAMES then Session._takeAsk, ask = nil, nil end
+    return ask
+end
+
+function Session.DismissTakeAsk() Session._takeAsk = nil end
 
 -- Session rules (host): speed all|host, visitors 1|0, foreign free|ask.
 function Session.Rules() return rules end
@@ -2535,7 +2549,7 @@ function Session._HostRefused(seq, rest)
     if f[1] ~= "U" then return false end
     local gid = f[3]
     local state = sync.StateOf and sync.StateOf(gid)
-    local why = global.string.find(rest, "invalid-placement", 1, true) and "hier nicht moeglich (z. B. ausserhalb der Parkgrenze)" or "beim Host nicht moeglich"
+    local why = global.string.find(rest, "invalid-placement", 1, true) and "hier nicht möglich (z. B. außerhalb der Parkgrenze)" or "beim Host nicht möglich"
     local owner = objects[gid] and objects[gid].last or "?"
     if state then
         local current = objects[gid] or {rev = 0, creator = "Park"}
@@ -2588,6 +2602,7 @@ function Session.Leave()
     if role == "host" then for _, sid in global.ipairs(order) do global.pcall(Session._RememberVisit, sid) end end
     boardFile, visitsFile, events, sinceText, vote, checkpoints, invitation = nil, nil, {}, nil, nil, {}, nil
     pingContext, lastTakeAsk, marks = nil, {}, {}
+    Session._takeAsk = nil
     comp, compView, compMine = nil, nil, {}
     if role == "host" then remember("rules", "") end
     rules.speed, rules.visitors, rules.foreign = "all", "1", "free"
@@ -2639,8 +2654,9 @@ local function firstUseHint()
     parkFrames = parkFrames + 1
     if parkFrames ~= 600 or memory.hinted == "1" then return end
     remember("hinted", "1")
-    toast("Tipp: Kurzer Mittelklick zeigt allen eine Stelle und bietet Aktionen dafür an (Kommentar, Testfahrt, Übernahme). "
-        .. "Alles weitere: Multiplayer unten im Baumenue oder F7.", "4dabf7")
+    -- Since P6 the way in is the round button top left (ADR-021), not the build bar.
+    toast("Tipp: Markieren zeigt allen eine Stelle und bietet Aktionen dafür an (Kommentar, Testfahrt, Übernahme). "
+        .. "Alles Weitere öffnet der runde Knopf „Multiplayer“ links oben.", "4dabf7")
 end
 
 function Session.Tick()

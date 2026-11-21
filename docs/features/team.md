@@ -57,7 +57,10 @@ Gemeinsam planen, entscheiden, spielen. Konzept: `docs/KONZEPT.md`. Code:
 - **Status:** Implemented · **Seit:** 1.12.0
 - **Funktion:** Bitte an den Bearbeitenden, fertig zu bauen und freizugeben; Wegnehmen geht nicht.
 - **Technik:** `Session.AskTakeover` → `take-ask|sid` → Host → `tk|name|label` an den
-  Bearbeiter; Text aus `takeText()`; höchstens eine Frage pro Spieler alle 5 s.
+  Bearbeiter; höchstens eine Frage pro Spieler alle 5 s. Beim Bearbeiter `Session.TakeAsk()`
+  (läuft nach `Session.TAKE_ASK_FRAMES` ab), `Session.DismissTakeAsk`.
+- **UI:** seit 1.14.0 Anfrage-Karte „<Name> möchte bei „<Objekt>“ weitermachen.“ mit
+  „Verstanden“ (`take_ok`, UX TP-19); vorher ein Toast.
 
 ### FEAT-138 – Testfahrt-Einladung
 - **Status:** Implemented · **Seit:** 1.12.0

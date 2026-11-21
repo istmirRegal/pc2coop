@@ -3,6 +3,19 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-21 – UX-Overhaul gegen das Konzept geprüft
+
+- Auftrag des Eigners: prüfen, ob das UX-Overhaul wirklich richtig umgesetzt ist. Code gegen
+  `UX_OVERHAUL.md` (TP-Ziele, §5 Zustände, §6 Orte, §7 Textregeln, P0-Kriterien) gelesen.
+  P0-Kriterien halten (keine festen Farben außer Spielerfarben und neutralem Weiß, kein `px` außer
+  gemessenen Positionen). Funde und Behebung stehen in `UX_OVERHAUL.md` §9 „Prüfung 2026-11-21“:
+  13 Lua-Texte ohne Umlaute, Bedienwege („Multiplayer > Sitzung“, „unten im Baumenue oder F7“),
+  „Ping“, Übernahme-Frage als Toast statt Anfrage-Karte (jetzt `Session.TakeAsk`, `take_ok`).
+- Werte auf dem Netz bleiben ASCII-Codes (`laedt`, `geloescht`, `empfaengt`); nur Anzeigetexte
+  haben Umlaute. `cut()` kürzt UTF-8-sicher.
+- Der Hauptblock von `session.lua` ist am Limit von 200 Locals; neue Werte als Modulfelder
+  (`Session._takeAsk`, `Session.TAKE_ASK_FRAMES`, `Session._AskedToTake`).
+
 ## 2026-11-21 – „unknown park“ bei Testern (1.13.0)
 
 - Ein Tester konnte in 1.13.0 keinen gespeicherten Park über „Park öffnen“ laden, neue schon

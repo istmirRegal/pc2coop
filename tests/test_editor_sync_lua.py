@@ -59,7 +59,7 @@ class EditorSyncTests(unittest.TestCase):
         ''')
         self.tick(10)
         self.assertEqual(self.records('sync:hold|'), ['sync:hold|FR_Teacups||!FR_Teacups,109.86,-0.23,457.38,0,0,0,1,1.00'])
-        self.assertIn('|platziert ein Fahrgeschaeft|', self.records('sync:pres|')[-1])
+        self.assertIn('|platziert ein Fahrgeschäft|', self.records('sync:pres|')[-1])
 
     def test_object_held_by_someone_else_cannot_be_picked_up(self):
         part = self.shared_rock()

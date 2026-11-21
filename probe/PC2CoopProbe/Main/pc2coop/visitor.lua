@@ -299,7 +299,7 @@ function Visitor.Rides(keyOf, cache, at)
             local info = w.rides:GetRideInfo(ride) or {}
             local entry = {key = key, name = global.tostring(w.rides:GetRideName(ride) or "?"),
                 kind = info.type == "tracked" and (info.isWaterSlide and "Rutsche" or (info.isCoaster and "Achterbahn" or "Bahn"))
-                    or "Fahrgeschaeft", trains = info.numTrains}
+                    or "Fahrgeschäft", trains = info.numTrains}
             local s = stationsOf(ride)[1]
             local okS, stats = global.pcall(function() return w.ridestats:GetStationStatsLastOnly(s) end)
             if okS and global.type(stats) == "table" then
@@ -458,14 +458,14 @@ function Visitor.Interact(keyOf, findRide)
     if not ok or not target or not test then
         local okS, shop = global.pcall(shopInFront)
         if okS and shop then return openShop(shop) end
-        return false, "geh an einen Eingang oder Shop (oder Liste \"Fahrgeschaefte\")"
+        return false, "geh an einen Eingang oder Shop"
     end
     if test.sBlocker then
         local okB, text = global.pcall(function() return T.GetBlockerString(target, test, apis()) end)
         return false, okB and text or "gerade nicht"
     end
     local okT, result = global.pcall(function() return T.TriggerInteraction(target, test, apis()) end)
-    if not okT then return false, "das Spiel laesst das gerade nicht zu" end
+    if not okT then return false, "das Spiel lässt das gerade nicht zu" end
     if result and result.bModeChanged then
         local ride = target.nRideEntityID
         local name, key = "?", nil
@@ -686,7 +686,7 @@ end
 function Visitor.Activity()
     if not active then return nil end
     if guestView then return "geht als Besucher in Ich-Sicht durch den Park" end
-    if riding then return "faehrt " .. global.string.gsub(riding.name, "[|,;\n]", "") end
+    if riding then return "fährt " .. global.string.gsub(riding.name, "[|,;\n]", "") end
     return "geht als Besucher durch den Park"
 end
 

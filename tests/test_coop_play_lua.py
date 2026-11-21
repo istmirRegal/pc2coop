@@ -114,7 +114,7 @@ class CoopPlayTests(unittest.TestCase):
         self.pump(4)
         hud = self.peers['200'].lua.eval('require("pc2coop.shared").hud')
         self.assertEqual((hud['bPaused'], hud['nTimeScaleIndex']), (False, 3))
-        self.assertTrue(any('Host laesst das Spiel laufen (x5)' in t for t in self.toasts('200')))
+        self.assertTrue(any('Host lässt das Spiel laufen (x5)' in t for t in self.toasts('200')))
 
     def test_many_placements_are_one_log_line(self):
         for part in range(101, 106):

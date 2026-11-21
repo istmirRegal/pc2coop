@@ -74,7 +74,7 @@ class VisitorTests(unittest.TestCase):
         self.v.Start()
         self.assertTrue(self.v.Ride('F100_0_20', self.lua.globals().findRide))
         self.assertEqual((self.lua.eval('ui.mode'), self.lua.eval('ui.kind')), ('GamefaceCameraSettings', 'TrackedRide'))
-        self.assertEqual(self.v.Activity(), 'faehrt Conlan')
+        self.assertEqual(self.v.Activity(), 'fährt Conlan')
         self.assertIsNone(self.v.Feet(), 'on a ride the camera is in the car')
         self.tick(120)
         self.assertTrue(self.v.Riding())
@@ -101,7 +101,7 @@ class VisitorTests(unittest.TestCase):
 
     def test_rides_nearest_first_with_stats(self):
         rides = [dict(r.items()) for r in self.v.Rides(self.lua.globals().keyOf).values()]
-        self.assertEqual([(r['name'], r['kind'], r['dist']) for r in rides], [('Teetassen', 'Fahrgeschaeft', 5), ('Conlan', 'Achterbahn', 90)])
+        self.assertEqual([(r['name'], r['kind'], r['dist']) for r in rides], [('Teetassen', 'Fahrgeschäft', 5), ('Conlan', 'Achterbahn', 90)])
         self.assertEqual((rides[0]['e'], rides[0]['n']), (2.5, 1.1))
         self.assertIsNone(rides[1].get('e'), 'untested ride: no excitement yet')
         self.assertEqual((rides[1]['queue'], rides[1]['trains']), (12, 2))
@@ -295,7 +295,7 @@ class ThirdPersonTests(unittest.TestCase):
         self.lua.execute('gate.blocker = nil')
         self.assertTrue(self.v.Interact(keyOf, findRide))
         self.assertEqual((self.lua.eval('gate.triggered'), self.lua.eval('ui.mode')), (1, 'GamefaceCameraSettings'))
-        self.assertEqual(self.v.Activity(), 'faehrt Teetassen')
+        self.assertEqual(self.v.Activity(), 'fährt Teetassen')
         self.assertIsNone(self.v.Hint())
         # After the ride the game puts its walker at the exit; the figure goes on from there.
         self.lua.execute('ui.mode = "VisitorCamera"; cam.mode = "Visitor"; cam.pos = require("Vector3"):new(12, 1.65, 9)')

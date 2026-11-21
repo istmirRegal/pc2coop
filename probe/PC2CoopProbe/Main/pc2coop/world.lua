@@ -113,9 +113,9 @@ end
 -- What the local player does in the editor ---------------------------------------------------
 
 local MODE_TEXT = {
-    {"Blueprint", "platziert einen Bauplan"}, {"FlatRide", "platziert ein Fahrgeschaeft"},
+    {"Blueprint", "platziert einen Bauplan"}, {"FlatRide", "platziert ein Fahrgeschäft"},
     {"EntranceExit", "setzt Ein- und Ausgang"}, {"Track", "baut eine Strecke"}, {"Coaster", "baut eine Achterbahn"},
-    {"Path", "baut Wege"}, {"Queue", "baut Wege"}, {"Terrain", "formt das Gelaende"}, {"Water", "bearbeitet Wasser"},
+    {"Path", "baut Wege"}, {"Queue", "baut Wege"}, {"Terrain", "formt das Gelände"}, {"Water", "bearbeitet Wasser"},
     {"Pool", "baut einen Pool"}, {"Flume", "baut eine Rutsche"}, {"Scenery", "baut"}, {"Staff", "verwaltet Personal"},
     {"Park", "verwaltet den Park"},
 }

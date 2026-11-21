@@ -943,14 +943,23 @@ class TeamTests(SessionTests.__bases__[0]):
         alex.lua.execute('session.AskTakeover("300")')
         alex.lua.execute('session.AskTakeover("300")')        # once every 5 s
         self.pump()
-        asked = [t for t in self.toasts(sam) if 'weitermachen' in t]
-        self.assertEqual(len(asked), 1)
-        self.assertIn('Alex', asked[0])
-        self.assertIn('Achterbahn', asked[0])
-        self.assertFalse(any('weitermachen' in t for t in self.toasts(host)))
+        # A request card since the UX overhaul (TP-19), not a toast.
+        ask = sam.lua.eval('session.TakeAsk()')
+        self.assertEqual((ask['by'], ask['label']), ('Alex', 'Achterbahn'))
+        self.assertFalse(any('weitermachen' in t for t in self.toasts(sam)))
+        self.assertIsNone(host.lua.eval('session.TakeAsk()'))
         alex.lua.execute('session.AskTakeover("100")')        # the host edits nothing
         self.pump()
-        self.assertFalse(any('weitermachen' in t for t in self.toasts(host)))
+        self.assertIsNone(host.lua.eval('session.TakeAsk()'))
+        sam.lua.execute('session.DismissTakeAsk()')
+        self.assertIsNone(sam.lua.eval('session.TakeAsk()'))
+
+    def test_takeover_question_runs_out(self):
+        sam = self.peers['300']
+        sam.lua.execute('session._takeAsk = {by = "Alex", label = "Achterbahn", frame = 0}')
+        self.assertIsNotNone(sam.lua.eval('session.TakeAsk()'))
+        sam.lua.execute('for i = 1, 1900 do session.Tick() end')
+        self.assertIsNone(sam.lua.eval('session.TakeAsk()'))
 
     def test_rules_are_kept_in_the_dll_over_the_park_load(self):
         host = self.peers['100']

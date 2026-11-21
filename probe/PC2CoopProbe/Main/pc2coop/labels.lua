@@ -10,7 +10,7 @@ local shown = {}          -- index -> "label|value" currently set
 local count = 0
 local failed = false
 
-local ACTIVITY = {baut = "baut", schaut = "schaut zu", empfaengt = "uebernimmt", ["-"] = ""}
+local ACTIVITY = {baut = "baut", schaut = "schaut zu", empfaengt = "übernimmt", ["-"] = ""}
 
 local function widgets()
     local script = global.api.world.GetScript(global.api.world.GetActive())

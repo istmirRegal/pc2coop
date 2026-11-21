@@ -1,6 +1,7 @@
 # UX-Overhaul: Inventar, Audit, Zielbild
 
-Status: **Konzept, wartet auf Freigabe des Eigners** (2026-11-20). Noch nichts davon ist im Code.
+Status: **freigegeben und gebaut (P0–P5, P6-Funde A1–A14), Stand 1.14.0** (2026-11-21). Offen ist
+die Abnahme auf zwei echten PCs (P6). Prüfung gegen dieses Konzept: §9, „Prüfung 2026-11-21“.
 Entscheidung dazu: ADR-020. Analyse des Spiels: `docs/ui-ux/NATIVE_UI.md`.
 Ersetzt als Arbeitsgrundlage `docs/ui-ux/UX_AUDIT.md` (dessen IDs sind unten zugeordnet).
 
@@ -527,15 +528,33 @@ A13, A14. Nur in Unit-Tests: A11, A12 (Laufen, Eingänge). Nicht prüfbar ohne e
 Grundform des Spiels deckt).
 Offen zur Entscheidung: Chat bleibt unten links (der Hinweis steht jetzt in der Hinweiszeile).
 
+**Prüfung 2026-11-21 (Code gegen dieses Konzept, ohne Spiel):** Die Phasen sind gebaut wie
+beschrieben, mit den oben genannten Abweichungen. Gefunden und behoben:
+- §7 Umlaute: 13 Lua-Texte, die Spieler sehen, hatten noch „ae/oe/ue“ (Verlauf „Gaeste
+  eingeschlossen“, „Wartung faellig“, Spielerleiste „faehrt …“, „formt das Gelaende“, Hinweise).
+- §7 Bedienwege und Ausrufezeichen: „Zeit um! … (Multiplayer > Sitzung)“ und „Ergebnis unter
+  Multiplayer > Sitzung“ (den Reiter „Sitzung“ gibt es nicht mehr; das Bewerten führt die
+  Anfrage-Karte). Der Tipp beim ersten Mal nannte noch „Multiplayer unten im Baumenue oder F7“
+  (seit P6: runder Knopf links oben). „setz erst einen Ping (mittlere Maustaste)“ → „Markiere
+  zuerst eine.“; „Ort: deine letzte Markierung (Mittelklick)“ ohne Taste.
+- TP-19: Die Übernahme-Frage kam noch als Toast; jetzt Anfrage-Karte mit „Verstanden“.
+Bleibt bewusst (Abweichung): Die Übernahme-Karte hat nur „Verstanden“ – das Spiel kann ein
+Objekt nicht aus der Hand nehmen, freigeben heißt fertig bauen. TP-32 „Für dich“ hat nur
+„Mitspieler in der Welt zeigen“; die Chat-Taste ist fest Enter (Entscheidung), ein Schalter für
+Chat-Meldungen fehlt noch. Das alte mittige Fenster im Hauptmenü erscheint nur noch, wenn die
+Seite nicht öffnen kann (Titelbild, Laden) – Rückfall wie in P3 geplant.
+
 Prototypen zuerst (vor P2/P3/P4): `Panel` in unserer Ebene, Seite im Hauptmenü-Rahmen,
 Bauleiste im Besuch aus. Ergebnis entscheidet, ob Ziel oder Rückfall gebaut wird.
 
 ## 10. Offene Fragen an den Eigner
 
-1. Begriff „Sitzung“ überall (Vorschlag) – oder „Lobby“ für die Wartephase im Hauptmenü?
-2. Multiplayer-Fenster im Park **links** (kollidiert nicht mit den Info-Fenstern rechts) – ok?
+1. ~~Begriff „Sitzung“ überall (Vorschlag) – oder „Lobby“ für die Wartephase im Hauptmenü?~~
+   Gebaut mit „Sitzung“ überall (Freigabe des Konzepts, 2026-11-20).
+2. ~~Multiplayer-Fenster im Park **links** – ok?~~ Gebaut links; seit P6 klappt es unter dem
+   runden Knopf links oben auf (ADR-021).
 3. ~~Chat dauerhaft unten links, Eingabe per Taste – welche Taste?~~ Entschieden: **Enter**
    (Eigner, 2026-11-20).
 4. ~~„Besuchen“ als eigener Knopf in der Bauleiste neben „Multiplayer“ – ok?~~ Entschieden:
    im Fuß des Fensters (Eigner, 2026-11-20).
-5. Reihenfolge P0 → P6 so, oder ein Bereich zuerst (z. B. Besuch)?
+5. ~~Reihenfolge P0 → P6 so, oder ein Bereich zuerst?~~ So umgesetzt (P0 → P6).

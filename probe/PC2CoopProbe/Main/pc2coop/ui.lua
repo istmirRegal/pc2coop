@@ -15,7 +15,7 @@ local canHost = true
 local frontendMenu = nil  -- the main menu's sandbox HUD (park list, new parks); nil in a park
 local parkList = {}       -- host: saved parks to choose from
 local chosen = nil        -- host: {kind, id, biome, creative} picked in the lobby
-local BIOME_NAMES = {Temperate = "Gemaessigt", Mediterranean = "Mediterran", Taiga = "Taiga", Tropical = "Tropisch"}
+local BIOME_NAMES = {Temperate = "Gemäßigt", Mediterranean = "Mediterran", Taiga = "Taiga", Tropical = "Tropisch"}
 local frames = 0
 
 local function quote(text)
@@ -191,8 +191,10 @@ local function teamState()
     local checkpoints = {}
     for _, c in global.ipairs(view.checkpoints or {}) do checkpoints[#checkpoints+1] = {n = c.n, label = c.label} end
     local invite = session.Invitation and session.Invitation()
+    local take = session.TakeAsk and session.TakeAsk()
     return {tab = panelTab, board = board, events = events, rules = view.rules or false, since = view.since or false,
         invitation = invite and {by = invite.by, key = invite.key, name = invite.name} or false,
+        take = take and {by = take.by, label = take.label, frame = take.frame} or false,
         context = contextState(), planKind = planKind, planSeq = planSeq,
         competition = session.Competition and session.Competition() or false,
         checkpoints = checkpoints, vote = view.vote or false}
@@ -329,7 +331,7 @@ local actions = {
         local Visitor = global.require("pc2coop.visitor")
         local rules = session.Rules and session.Rules() or {}
         if arg == "1" and session.View().role == "client" and rules.visitors == "0" then
-            session.Notice("Der Host hat den Besucher-Modus fuer diese Sitzung ausgeschaltet.", "ff922b")
+            session.Notice("Der Host hat den Besucher-Modus für diese Sitzung ausgeschaltet.", "ff922b")
             return
         end
         if arg == "1" then Visitor.Start(); Ui.SetOpen(false) else Visitor.Stop() end
@@ -357,7 +359,7 @@ local actions = {
         local x, y, z
         if kind ~= "task" then
             x, y, z = anchor()
-            if not x then session.Notice("Keine Stelle gefunden - setz erst einen Ping (mittlere Maustaste).", "ff922b"); return end
+            if not x then session.Notice("Keine Stelle gefunden. Markiere zuerst eine.", "ff922b"); return end
         end
         session.BoardAdd(kind, x, y, z, global.tonumber(radius) or 0, title, text, assignee)
         planAt = nil
@@ -413,7 +415,7 @@ local actions = {
     comp_start = function(arg)
         local mode, minutes, topic = global.string.match(arg or "", "^(%a+)|(%d+)|(.*)$")
         if mode and not session.StartCompetition(mode, minutes, topic) then
-            session.Notice("Wettbewerb laeuft schon oder Angaben fehlen.", "ff922b")
+            session.Notice("Ein Wettbewerb läuft schon, oder es fehlen Angaben.", "ff922b")
         end
     end,
     comp_next = function() session.CompetitionNext() end,
@@ -437,6 +439,7 @@ local actions = {
         local key, name = global.string.match(arg or "", "^([^|]+)|(.*)$")
         if key then session.InviteRide(key, name) end
     end,
+    take_ok = function() if session.DismissTakeAsk then session.DismissTakeAsk() end end,
     invitation = function(arg)
         local invite = session.Invitation and session.Invitation()
         session.DismissInvitation()
@@ -477,7 +480,7 @@ local actions = {
             session.SetChoice("new", "Neuer Sandbox-Park", BIOME_NAMES[a] .. (b == "1" and " - Kreativ" or " - mit Budget"))
         elseif kind == "franchise" then
             chosen = {kind = "franchise"}
-            session.SetChoice("franchise", "Franchise", "Park im Franchise-Menue")
+            session.SetChoice("franchise", "Franchise", "Park im Franchise-Menü")
         elseif kind == "" then
             chosen = nil
             session.SetChoice(nil)
@@ -503,7 +506,7 @@ local actions = {
             session.MarkStarting()
             Ui.SetOpen(false)
         else
-            session.Notice("Der Park konnte nicht geoeffnet werden (" .. global.tostring(failure) .. ").", "ff922b")
+            session.Notice("Der Park konnte nicht geöffnet werden (" .. global.tostring(failure) .. ").", "ff922b")
         end
     end,
     guard = function(arg) session.SetContentGuard(arg ~= "0") end,

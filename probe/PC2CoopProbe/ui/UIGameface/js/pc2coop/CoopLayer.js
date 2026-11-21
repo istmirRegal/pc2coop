@@ -729,6 +729,10 @@ function pendingRequests(coop) {
     if (invite) out.push({ key: 'invite', text: invite.by + ' lädt zur Testfahrt auf ' + invite.name + ' ein.',
         actions: [{ label: 'Mitfahren', modifiers: 'positive', onSelect: () => request('invitation', '1') },
             { label: 'Später', onSelect: () => request('invitation', '0') }] });
+    // Someone would like to go on with what you edit (TP-19: was a toast before).
+    const take = team.take;
+    if (take) out.push({ key: 'take' + take.frame, text: take.by + ' möchte bei „' + take.label + '“ weitermachen.',
+        note: 'Bau fertig, dann ist es frei.', actions: [{ label: 'Verstanden', onSelect: () => request('take_ok') }] });
     const comp = team.competition;
     if (comp && comp.phase === 'rate' && list(comp.entries).some((e) => !e.me && !(e.d && e.t))) {
         out.push({ key: 'rate', text: 'Die Zeit ist um. Bewerte die Bauten der anderen.',
@@ -1472,7 +1476,7 @@ class Lobby extends StateComponent {
             kind === 'area' && h('div', { key: 'radius' }, h(ListStepperRow, { label: literal('Größe'), items: AREA_SIZES.map((n) => literal(n + ' m')),
                 listIndex: Math.max(0, AREA_SIZES.indexOf(state.radius)), focusable: false,
                 onChange: (i) => this.setState({ radius: AREA_SIZES[i] || 20 }) })),
-            needsPlace && muted('Ort: deine letzte Markierung (Mittelklick), sonst die Bildmitte.', { margin: '0.3rem 0' }),
+            needsPlace && muted('Ort: deine letzte Markierung, sonst die Bildmitte.', { margin: '0.3rem 0' }),
             buttons([{ label: 'Hinzufügen', onSelect: add },
                 { label: 'Abbrechen', onSelect: () => this.setState({ planForm: false, planSeq: team.planSeq, title: '', text: '' }) }]));
         return out;

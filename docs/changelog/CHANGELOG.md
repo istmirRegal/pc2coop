@@ -33,6 +33,9 @@ eigenen Test).
   sagen die Kachel und die Seite „Multiplayer“, woran es liegt und was hilft.
 - Die Freundesliste zeigt nur, wer gerade erreichbar ist. Ist keiner online, steht das da.
 - „Zurückholen…“ bei einem Sicherungspunkt fragt erst nach.
+- Fragt jemand, ob er bei deinem Objekt weitermachen darf, steht das in der Anfrage-Karte oben
+  statt in einer Meldung unten links.
+- Alle Meldungen der Mod mit Umlauten (vorher z. B. „Gaeste eingeschlossen“, „faehrt …“).
 - Die Log-Datei öffnet sich im Editor wieder als normaler Text; vorher zeigte er oft nur
   chinesische Zeichen. Dieselbe Meldung steht nicht mehr hundertfach darin.
 - Beitreten zeigt vier Schritte (Verbinden, Zustimmung, Park kommt, Park lädt) mit

@@ -118,7 +118,7 @@ UI-Skalierung 1.0 verdeckte er die Icon-Knöpfe am Ende der Bauleiste des Spiels
 | Ablehnung am Objekt: Schild „<Name> baut hier gerade“ / „war schneller“ / „hat das gerade geändert“, Objekt blinkt in der Farbe des Mitspielers | 4 m über dem Objekt (Coaster-Labels), Blinken über Sperr-Färbung | 5 s nach einer zurückgenommenen eigenen Änderung (Blinken 2 s); ohne Objekt als Karte im Chat-Bereich | – | FEAT-082 |
 | Markieren-Radialmenü (`ContextMenu`): Titel (Fahrgeschäft oder „Markierung“), Kreise mit Spiel-Icons „Testfahrt mit allen“, „Mitfahren“, „Übernahme von …“, „Kommentar“, „Vorschlag“, „Baugebiet“, „Treffpunkt“; Mitte = Schließen | um die Maus | nach eigener Markierung (kurzer Mittelklick), nicht im Besuch | `ctx` (invite, ride, take, comment, proposal, area, meet, close) | FEAT-136, FEAT-137 |
 | Hinweise „[Enter] Chat“ und „[Maus Mitte] Markieren“ in der Hinweiszeile des Spiels (`ButtonPromptHelper`, `BUILD_PROMPTS`) | Hinweiszeile über der Statusleiste | in Sitzung im Park, Fenster zu, kein Besuch, kein Radialmenü offen | – | FEAT-095 |
-| Anfrage-Karte (`RequestCard`), eine zur Zeit mit Zähler „1 von n“: Beitrittsanfrage (Host) „Zulassen“/„Ablehnen“ → `approve`/`deny`; Abstimmung „Ja“/„Nein“ → `vote`; Testfahrt „Mitfahren“/„Später“ → `invitation`; nach einem Bauduell „Bewerten“ → `paneltab` + `open` | oben Mitte, 7.5 rem | etwas wartet auf eine Antwort, Fenster zu | siehe Spalte links | FEAT-027, FEAT-141, FEAT-138, FEAT-147 |
+| Anfrage-Karte (`RequestCard`), eine zur Zeit mit Zähler „1 von n“: Beitrittsanfrage (Host) „Zulassen“/„Ablehnen“ → `approve`/`deny`; Abstimmung „Ja“/„Nein“ → `vote`; Testfahrt „Mitfahren“/„Später“ → `invitation`; Übernahme-Frage an den Bearbeitenden „Verstanden“ → `take_ok`; nach einem Bauduell „Bewerten“ → `paneltab` + `open` | oben Mitte, 7.5 rem | etwas wartet auf eine Antwort, Fenster zu | siehe Spalte links | FEAT-027, FEAT-141, FEAT-138, FEAT-137, FEAT-147 |
 | Chat-Bereich (`ChatArea`): Chat-Zeilen (Name in Spielerfarbe), Spieler-Ereignisse (hell), darüber Meldungs-Karten | unten links, ab 6 rem; bei offenem Fenster im Park rechts daneben | Zeilen 10 s (max. 6), Karten 6 s (max. 3) | – | FEAT-044, FEAT-116 |
 | Chat-Eingabe (`ChatArea`): letzte 12 Zeilen, Feld „Nachricht an alle“, Hinweise „[Enter] Senden“, „[Esc] Schließen“ | unten links | nach Enter im Park, Fenster zu | `chat`, `chatinput` | FEAT-035, FEAT-116 |
 | Park-Meldungen | Meldungen des Spiels beim Host (Pannen, Wartung, Proteste; `World.HookNotifications`) gehen als `note` an alle → Verlauf | in Sitzung | – | FEAT-140 |
@@ -204,6 +204,7 @@ Entwickler-Seite: technische Werte und „API-Rekorder an/aus“, „Namensschil
 | `rate` | key\|sterne\|text | bewerten | ja |
 | `invite_ride` | key\|name | Testfahrt-Einladung | nein (seit P2; Radialmenü „Testfahrt mit allen“ über `ctx`) |
 | `invitation` | 1/0 | Einladung annehmen/später | ja |
+| `take_ok` | – | Übernahme-Frage gelesen („Verstanden“) | ja |
 | `paneltab` | team/plan/history/session (visit veraltet, zeigt „Spieler“) | Reiter | ja |
 | `board_add` | art\|titel\|text\|zuständig\|radius | Brett-Eintrag | ja |
 | `board_vote` | id\|1/0 | Vorschlag abstimmen | ja |
