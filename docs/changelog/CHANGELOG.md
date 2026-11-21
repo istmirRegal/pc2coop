@@ -5,6 +5,8 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
 
 ## Unveröffentlicht
 
+- Die Spieler oben rechts verdecken keine Fenster des Spiels mehr (z. B. Gelände oder
+  Szeneriepinsel). Ist dort ein Fenster offen, rücken sie links daneben.
 - Fehlt die Steam-Verbindung der Mod (zum Beispiel wenn der Virenscanner die DLL blockiert),
   sagen die Kachel und die Seite „Multiplayer“, woran es liegt und was hilft.
 - Die Freundesliste zeigt nur, wer gerade erreichbar ist. Ist keiner online, steht das da.

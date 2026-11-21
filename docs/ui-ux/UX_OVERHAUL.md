@@ -497,6 +497,9 @@ Erreichbare, sonst „Gerade ist keiner deiner Steam-Freunde online.“ „Einge
 hatten schon einen Satz und die passende Aktion daneben. „Änderung abgelehnt“ ist seit P1 Schritt 4
 gebaut. Offen bleibt TP-29 (Tooltips an den gesperrten Spielknöpfen Tempo und Rückgängig; heute
 sagt eine Meldung den Grund).
+Fund beim Fotografieren: Die Spielerleiste lag über dem Kopf der Werkzeug-Fenster des Spiels
+rechts (Szeneriepinsel). Behoben: Sie rückt links neben ein offenes Fenster des Spiels
+(`trackRightPanels`), im Spiel mit dem Gelände-Werkzeug geprüft.
 
 Prototypen zuerst (vor P2/P3/P4): `Panel` in unserer Ebene, Seite im Hauptmenü-Rahmen,
 Bauleiste im Besuch aus. Ergebnis entscheidet, ob Ziel oder Rückfall gebaut wird.

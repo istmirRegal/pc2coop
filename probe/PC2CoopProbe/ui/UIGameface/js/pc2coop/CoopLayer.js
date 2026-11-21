@@ -118,10 +118,36 @@ function raiseTooltips() {
     if (el && el.style.zIndex !== '10001') el.style.zIndex = '10001';
 }
 
+// The game's own windows on the right (tool panels such as the scenery brush, info panels) use
+// the Panel classes like ours: the player bar moves left of them instead of covering their title
+// (test copy, scenery brush). Px from the right screen edge the bar keeps clear of; 0 = none.
+let rightPanels = 0;
+function trackRightPanels() {
+    const root = document.getElementById('PC2Coop_root');
+    const panels = document.getElementsByClassName('Panel_panel');
+    const width = window.innerWidth;
+    const unit = remPx();
+    let edge = 0;
+    for (let i = 0; i < panels.length; i++) {
+        const el = panels.item(i);
+        let ours = false;
+        for (let up = el; up; up = up.parentElement) if (up === root) { ours = true; break; }
+        if (ours) continue;
+        const r = el.getBoundingClientRect();
+        // Only windows at the right edge that reach up to where the bar is (top 4.2 rem, ~8 rem high).
+        if (r.width > 0 && r.height > 0 && r.right > width - 4 * unit && r.top < 12 * unit) edge = Math.max(edge, width - r.left);
+    }
+    if (Math.abs(edge - rightPanels) > 2) {
+        rightPanels = edge;
+        listeners.forEach((fn) => { try { fn(currentState); } catch (error) { log('right panels ' + error); } });
+    }
+}
+
 function poll() {
     subscribe();
     try { raiseTooltips(); } catch (error) { /* tooltips stay where the game puts them */ }
     try { syncVisitHud(); } catch (error) { /* the build bar stays */ }
+    try { trackRightPanels(); } catch (error) { /* the bar stays at the edge */ }
     try { applyState(DS.getValue(CONTEXT, 'state')); } catch (error) { /* context not created yet */ }
     try { applyAvatars(DS.getValue(CONTEXT, 'avatars')); } catch (error) { /* not there yet */ }
     polls += 1;
@@ -468,7 +494,9 @@ class PlayerBar extends StateComponent {
         const comp = coop.team && coop.team.competition;
         const s = comp ? (comp.left || 0) : 0;
         // stretch: all pills as wide as the widest, so a tooltip left of one is not under another.
-        return h('div', { style: { position: 'absolute', top: '4.2rem', right: '1rem', display: 'flex', flexDirection: 'column',
+        // Left of an open game window on the right (trackRightPanels), else at the edge.
+        const right = rightPanels > 0 ? (rightPanels / remPx() + 0.6).toFixed(2) + 'rem' : '1rem';
+        return h('div', { style: { position: 'absolute', top: '4.2rem', right, display: 'flex', flexDirection: 'column',
             alignItems: 'stretch' } },
             list(coop.players).map((p) => {
                 const following = coop.following === p.sid;

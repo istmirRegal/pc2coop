@@ -25,6 +25,7 @@ Wer ein Feld hinzufügt, trägt es hier ein.
 |---|---|---|---|
 | `CoopLayer` | Wurzel, stapelt alles | – | FEAT-110 |
 | `PlayerBar` | Sitzungs-Cluster oben rechts: Spieler mit Zustands-Icon (`stateIcon`), Tätigkeit im Tooltip, Wettbewerbs-Uhr | players, following, visitor, team.competition | FEAT-090, FEAT-145 |
+| `trackRightPanels`, `rightPanels` | misst in `poll()` die Fenster des Spiels am rechten Rand (`Panel_panel` außerhalb unserer Ebene); die Spielerleiste rückt links daneben | DOM | FEAT-090 |
 | `HoverTip` | Kasten mit Spiel-Tooltip beim Darüberfahren (`TooltipContainer`, wie `Button` mit `tooltipOnHover`) | tip, anchor, onClick, style | FEAT-090, FEAT-144 |
 | `EndConfirm` | Dialog „Für alle beenden?“ (Spiel-`Dialog`), vor `leave` des Hosts mit Mitspielern | `askEnd`, `endOrAsk` | FEAT-042 |
 | `RestoreConfirm` | Dialog „Sicherungspunkt zurückholen“ vor `restore` (allein ginge es sofort) | `askRestore`, `restoreAsked`, players | FEAT-141 |

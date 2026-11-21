@@ -3,6 +3,13 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-21 – Spielerleiste weicht Fenstern des Spiels aus
+
+- Fund: Die Spielerleiste lag über dem Szeneriepinsel-Fenster. `trackRightPanels` (in `poll()`)
+  misst `Panel_panel` außerhalb unserer Ebene am rechten Rand; `PlayerBar` rückt links daneben.
+- Testkopie: Gelände-Werkzeug per QA geöffnet (`BaseEditMode` "Terrain",
+  `GamefaceBaseUIMode` "GamefaceTerrain"), Leiste rückt aus, nach "Select" wieder am Rand.
+
 ## 2026-11-21 – UX-Overhaul P5, Schritt 3: ohne Steam, leere Listen, Zurückholen
 
 - `Session.NetProblem` (`dll`/`steam`), `net:error` setzt `Session._netError` und macht

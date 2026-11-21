@@ -110,7 +110,7 @@ UI-Skalierung 1.0 verdeckte er die Icon-Knöpfe am Ende der Bauleiste des Spiels
 
 | Element | Ort | Wann | Bedienung | FEAT |
 |---|---|---|---|---|
-| Sitzungs-Cluster (`PlayerBar`): Avatar, Name, Krone, Zustands-Icon; Tätigkeit und „Klicken zum Folgen“ im Tooltip; einmal 5 s „Alle sind da“, wenn niemand mehr lädt; darunter die Wettbewerbs-Uhr | oben rechts, ab 4.2 rem | in Sitzung im Park; beim Mitfahren nur Avatare | Klick auf Mitspieler = folgen | FEAT-090, FEAT-096 |
+| Sitzungs-Cluster (`PlayerBar`): Avatar, Name, Krone, Zustands-Icon; Tätigkeit und „Klicken zum Folgen“ im Tooltip; einmal 5 s „Alle sind da“, wenn niemand mehr lädt; darunter die Wettbewerbs-Uhr | oben rechts, ab 4.2 rem; ist rechts ein Fenster des Spiels offen (Werkzeug, Info), links daneben (`trackRightPanels`) | in Sitzung im Park; beim Mitfahren nur Avatare | Klick auf Mitspieler = folgen | FEAT-090, FEAT-096 |
 | Verbindungs-Pille (`ConnectionPill`): „Keine Verbindung zum Host · m:ss“ + „Verlassen“; „Verbindung wieder da“ (grün, 3 s); „Nicht synchron: …“ + „Neu synchronisieren“; „<Host> wählt im Hauptmenü einen Park“ + „Ins Hauptmenü“ | oben Mitte, 5 rem | nur bei Problemen (Mitspieler), Fenster zu | `leave`, `resync`, „Ins Hauptmenü“ = Spiel-Event `ExitToMainMenu` | FEAT-040, FEAT-041, FEAT-033 |
 | Namensschilder: nur der Name in der Spielerfarbe | über dem Blickpunkt der Mitspieler (Coaster-Labels des Spiels, Stil in `DebugToolImports.js`) | Mitspieler im Park, „Für dich“ an (Reiter Einstellungen) | – | FEAT-091 |
 | Bodenmarke, Sichtkegel, Geist, Sperr-Färbung, Figuren | in der Welt (`viz.lua`) | Mitspieler im Park | – | FEAT-092–094, FEAT-171 |
