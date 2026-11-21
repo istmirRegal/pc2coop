@@ -302,6 +302,8 @@ Voraussetzungen
 
 Probleme melden
 Log-Datei: <Spielordner>\Win64\ovldata\PC2CoopProbe\pc2coop-diagnostic-*.log
+Den Spielordner oeffnet Steam: Rechtsklick auf Planet Coaster 2 > Verwalten > Lokale Dateien
+durchsuchen. Jeder Spielstart legt eine neue Datei an; schick die neueste (nach Datum sortieren).
 
 Entfernen
 PC2 beenden, UNINSTALL.cmd doppelklicken.

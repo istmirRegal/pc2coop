@@ -3,6 +3,15 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-21 – Log-Datei ohne NUL-Byte
+
+- Fremde Tester sollen ihr Log schicken; der Eigner sah beim Öffnen nur chinesische Zeichen.
+  Ursache: die Kanal-Testzeile am Anfang (`pc2coopprobeluadatabase.lua`) schrieb absichtlich ein
+  NUL-Byte. Eine Datei ohne BOM mit NUL hält der Windows-Editor für UTF-16. Die Zeile hat jetzt
+  kein NUL mehr; NUL durch den Kanal prüft weiter `tools/verify_native.py`.
+- Chat-Texte stehen nicht im Log, Bewertungskommentare schon (`session:feed`), dazu Steam-Namen
+  und Steam-IDs. Logs bleiben außerhalb des Repositorys.
+
 ## 2026-11-21 – P6: Funde aus dem ersten Test des Eigners
 
 - Eigner testete 1.14.0 aus dem Nexus-Paket auf einem PC; 14 Funde (UX_OVERHAUL.md, Tabelle P6).

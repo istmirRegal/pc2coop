@@ -117,7 +117,9 @@ function LuaDB.Init()
         diagnostic = value
         diagnostic.Init()
         if diagnostic.ready then
-            diagnostic.Write("channel-test:ASCII|UTF8:Grüße|NUL:\0:end")
+            -- No NUL byte in the file (it was here up to 1.14.0): editors then took the whole
+            -- log for UTF-16 and showed Chinese characters. The DLL test covers NUL bytes.
+            diagnostic.Write("channel-test:ASCII|UTF8:Grüße|end")
         end
     end
     trace("begin; phase=database-init; world-api-not-tested")
