@@ -3,6 +3,13 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-21 – TP-29: Tooltips an gesperrten Spielknöpfen
+
+- `patchStatusControls` wie beim Pausemenü (`Focusable.decorateEx`, `nodeName` ist die echte
+  Klasse); `wrapStatusTooltips` umhüllt die Tooltip-Funktionen der Instanz einmal und ändert nur
+  `attributes.label`, die Taste im Tooltip bleibt. Entscheidet beim Darüberfahren (`statusLockText`).
+- QA-Look-Feld 14 schreibt die Texte ins Log. „Nur der Host ändert das Spieltempo“ mit Umlaut.
+
 ## 2026-11-21 – Spielerleiste weicht Fenstern des Spiels aus
 
 - Fund: Die Spielerleiste lag über dem Szeneriepinsel-Fenster. `trackRightPanels` (in `poll()`)

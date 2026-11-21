@@ -134,6 +134,8 @@ Host-Logik in `probe/PC2CoopProbe/Main/pc2coop/session.lua`.
 - **Funktion:** Strg+Z nimmt nur den eigenen letzten Schritt zurück; stammt der neueste von
   einem Mitspieler, ist Rückgängig gesperrt.
 - **Technik:** `Sync.MayUndo`, `Handlers.AfterUndo`; Ereignis `undo-blocked` → Toast.
+- **UI:** In einer Sitzung mit Mitspielern sagt der Tooltip des Rückgängig-Knopfs des Spiels die
+  Regel (`wrapStatusTooltips`, UX-Overhaul TP-29).
 
 ### FEAT-075 – Beim Host unmögliche Änderungen überall entfernen
 - **Status:** Implemented · **Seit:** 1.6.0
@@ -160,6 +162,8 @@ Host-Logik in `probe/PC2CoopProbe/Main/pc2coop/session.lua`.
   Regel „nur der Host“ möglich.
 - **Technik:** `World.Time`, `World.SetTime`, `World.HookHUD`; Nachricht `time`;
   `Session._LocalTime`; `Sync.SetPaused`.
+- **UI:** Bei der Regel „nur der Host“ sagen die Tooltips der Spielknöpfe Pause und Tempo beim
+  Mitspieler den Grund (`wrapStatusTooltips`, UX-Overhaul TP-29).
 
 ### FEAT-079 – Zahlen und Meldungen des Host-Parks
 - **Status:** Implemented · **Seit:** 1.6.0

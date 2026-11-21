@@ -5,6 +5,8 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
 
 ## Unveröffentlicht
 
+- Die Knöpfe des Spiels für Pause, Tempo und Rückgängig sagen im Tooltip, warum sie in der
+  Sitzung gesperrt sind (Regel „nur der Host“, nur der eigene letzte Schritt).
 - Die Spieler oben rechts verdecken keine Fenster des Spiels mehr (z. B. Gelände oder
   Szeneriepinsel). Ist dort ein Fenster offen, rücken sie links daneben.
 - Fehlt die Steam-Verbindung der Mod (zum Beispiel wenn der Virenscanner die DLL blockiert),

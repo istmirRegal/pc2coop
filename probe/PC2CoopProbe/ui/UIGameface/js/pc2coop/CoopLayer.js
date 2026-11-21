@@ -1984,6 +1984,61 @@ async function patchPauseMenu() {
     decorated.prototype.__pc2coop = true;
 }
 
+// Tooltips at the game's own pause, speed and undo buttons (UX_OVERHAUL.md TP-29): what the
+// session locks says why. The tooltips are functions of each StatusControls instance (class
+// fields); they are wrapped once and decide when the mouse is on the button, so a rule change
+// needs no redraw. The game's tooltip keeps its key icon; only its label changes.
+const SPEED_TIP = 'Nur der Host pausiert und ändert das Spieltempo. So ist es in dieser Sitzung eingestellt.';
+const UNDO_TIP = 'Rückgängig nimmt nur deinen eigenen letzten Schritt zurück. Stammt der neueste von einem Mitspieler, geht es nicht.';
+function statusLockText(kind) {
+    const coop = currentState || {};
+    if (!coop.role || coop.context !== 'park') return null;
+    if (kind === 'undo') return list(coop.players).length > 1 ? UNDO_TIP : null;
+    const rules = (coop.team && coop.team.rules) || {};
+    return coop.role === 'client' && rules.speed === 'host' ? SPEED_TIP : null;
+}
+let statusControls = null;   // the wrapped instance (QA look field 14 reads its tooltips)
+function wrapStatusTooltips(inst) {
+    if (!inst || inst.__pc2coopTips) return;
+    inst.__pc2coopTips = true;
+    statusControls = inst;
+    [['getPauseTooltip', 'speed'], ['getGameSpeedTooltip', 'speed'], ['getUndoTooltip', 'undo']].forEach(([name, kind]) => {
+        const original = inst[name];
+        if (typeof original !== 'function') return;
+        inst[name] = (target) => {
+            const node = original(target);
+            const why = statusLockText(kind);
+            if (why && node && node.attributes) node.attributes.label = literal(why);
+            return node;
+        };
+    });
+}
+function patchStatusClass(cls) {
+    const proto = cls && cls.prototype;
+    if (!proto || proto.__pc2coop || typeof proto.render !== 'function') return;
+    const render = proto.render;
+    proto.render = function (...args) {
+        try { wrapStatusTooltips(this); } catch (error) { report('status tooltips ' + error); }
+        return render.apply(this, args);
+    };
+    proto.__pc2coop = true;
+    log('status bar patched');
+}
+// StatusControls is wrapped by Focusable.decorateEx; its render returns a vnode whose nodeName is
+// the real class (as with the pause menu).
+async function patchStatusControls() {
+    const module = await import('/js/project/modules/statusBar/components/StatusControls.js');
+    const decorated = module.StatusControls;
+    if (!decorated || decorated.prototype.__pc2coop) return;
+    const originalRender = decorated.prototype.render;
+    decorated.prototype.render = function (...args) {
+        const vnode = originalRender.apply(this, args);
+        try { patchStatusClass(vnode && vnode.nodeName); } catch (error) { report('status bar patch ' + error); }
+        return vnode;
+    };
+    decorated.prototype.__pc2coop = true;
+}
+
 // The build bar at the bottom: an icon tab "Multiplayer" after the multi-select tab.
 async function patchBuildBar() {
     const [browserModule, tabModule] = await Promise.all([import('/js/project/modules/browser/components/Browser.js'),
@@ -2155,6 +2210,7 @@ export function start(logger) {
     if (app.indexOf('HUD.html') >= 0) {
         patchPauseMenu().catch((e) => console.log('PC2Coop: ' + e));
         patchBuildBar().catch((e) => report('build bar import ' + e));
+        patchStatusControls().catch((e) => report('status bar import ' + e));
         // "Alle sind da" once (TP-08): after someone was still loading the park and now nobody is.
         listeners.add((s) => {
             const players = list(s.players);
@@ -2186,10 +2242,16 @@ export function start(logger) {
             // 10: the question "Für alle beenden?", 11: the tooltip of the rules' info icon.
             if (tip === 10) askEnd(true);
             if (tip === 13) askRestore(list((s.team || {}).checkpoints)[0]);
+            if (tip === 14) {
+                const label = (name) => { try { const n = statusControls && statusControls[name](null); return n && n.attributes ? n.attributes.label : '-'; }
+                    catch (error) { return 'error ' + error; } };
+                report('qa status tips wrapped=' + !!statusControls + ' pause=' + label('getPauseTooltip') + ' speed=' + label('getGameSpeedTooltip')
+                    + ' undo=' + label('getUndoTooltip'));
+            }
             const hovered = tip >= 1 && tip <= 8 ? document.querySelectorAll('.pc2coopTip')[tip - 1]
                 : tip === 9 ? document.querySelector('.pc2coopPanel .Tab_root') : tip === 11 ? document.querySelector('.pc2coopRoleTip') : null;
             if (hovered) hovered.dispatchEvent(new MouseEvent('mouseenter', { bubbles: false }));
-            if (tip > 0 && tip !== 10 && tip !== 13) report('qa hover ' + (hovered ? 'found' : 'missing'));
+            if (tip > 0 && tip !== 10 && tip < 13) report('qa hover ' + (hovered ? 'found' : 'missing'));
             // tab 0: our build bar tab hidden (does the game's bar fit without it?)
             document.querySelectorAll('.pc2coopTabBar').forEach((el) => { el.style.display = tab === 0 ? 'none' : ''; });
             Promise.all([import('/js/config/ThemeConfig.js'), import('/js/common/core/UIScale.js')]).then(([themes, ui]) => {

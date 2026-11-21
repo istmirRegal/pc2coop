@@ -121,8 +121,8 @@ UI-Skalierung 1.0 verdeckte er die Icon-Knöpfe am Ende der Bauleiste des Spiels
 | Chat-Bereich (`ChatArea`): Chat-Zeilen (Name in Spielerfarbe), Spieler-Ereignisse (hell), darüber Meldungs-Karten | unten links, ab 6 rem; bei offenem Fenster im Park rechts daneben | Zeilen 10 s (max. 6), Karten 6 s (max. 3) | – | FEAT-044, FEAT-116 |
 | Chat-Eingabe (`ChatArea`): letzte 12 Zeilen, Feld „Nachricht an alle“, Hinweise „[Enter] Senden“, „[Esc] Schließen“ | unten links | nach Enter im Park, Fenster zu | `chat`, `chatinput` | FEAT-035, FEAT-116 |
 | Park-Meldungen | Meldungen des Spiels beim Host (Pannen, Wartung, Proteste; `World.HookNotifications`) gehen als `note` an alle → Verlauf | in Sitzung | – | FEAT-140 |
-| Undo/Redo | Spielknopf und Strg+Z (`World.HookHUD`) | immer; gesperrt für fremde Schritte | – | FEAT-074 |
-| Spieltempo/Pause | Spielknöpfe (`World.HookHUD`) | Regel „nur Host“ sperrt Gäste | – | FEAT-078 |
+| Undo/Redo | Spielknopf und Strg+Z (`World.HookHUD`); in einer Sitzung mit Mitspielern sagt der Tooltip des Spielknopfs, dass nur der eigene letzte Schritt geht (`patchStatusControls`, TP-29) | immer; gesperrt für fremde Schritte | – | FEAT-074 |
+| Spieltempo/Pause | Spielknöpfe (`World.HookHUD`); bei Regel „nur Host“ sagt ihr Tooltip beim Mitspieler den Grund (TP-29) | Regel „nur Host“ sperrt Gäste | – | FEAT-078 |
 | Mittelklick kurz | Welt | im Park | Ping (DLL `key:mup`) | FEAT-095 |
 
 ## 4. Besucher-Modus (`VisitorHud`, `VisitorRides`, `EmoteWheel`)

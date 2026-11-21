@@ -87,6 +87,7 @@ Wer ein Feld hinzufügt, trägt es hier ein.
 |---|---|---|---|
 | `patchBuildBar` | `/js/project/modules/browser/components/Browser.js`, `BrowserTab.js` | Reiter „Multiplayer“ neben der Bauleiste | ADR-007 |
 | `patchPauseMenu` / `patchMenuClass` | `/js/project/modules/gameMenu/components/GameMenuModule.js` | Eintrag im Pausemenü | – |
+| `patchStatusControls` / `patchStatusClass` / `wrapStatusTooltips` | `/js/project/modules/statusBar/components/StatusControls.js` | Tooltips an Pause, Tempo, Rückgängig nennen die Sperre der Sitzung (`SPEED_TIP`, `UNDO_TIP`, `statusLockText`; TP-29) | – |
 | `patchStartTabClass` | `/js/project/modules/frontEnd/views/mainMenu/menuTabs/FrontEndStartMenuTab.js`, `FrontEndTileButton.js` | Kachel im Hauptmenü | – |
 | `DebugToolImports.js` | ersetzt `/js/common/debug/DebugToolImports.js` | startet die Ebene, Stil der Namensschilder (`•`-Präfix, `•#rrggbb` färbt den Namen) | ADR-001 |
 

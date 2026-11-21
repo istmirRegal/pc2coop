@@ -807,7 +807,7 @@ local function hostChange(sid, f)
         -- Only the host sets the game speed: the player's game goes back to the host's.
         local hostPaused, hostIndex = World.Time()
         if hostPaused ~= nil then send(sid, "time|" .. (hostPaused and "1" or "0") .. "|" .. hostIndex .. "|") end
-        send(sid, "ruledeny|Nur der Host aendert das Spieltempo (Sitzungsregel).")
+        send(sid, "ruledeny|Nur der Host ändert das Spieltempo (Sitzungsregel).")
     elseif f[1] == "time" and players[sid] then
         local paused, index = f[2] == "1", global.tonumber(f[3]) or 1
         if sid ~= me then World.SetTime(paused, index) end

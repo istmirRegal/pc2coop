@@ -495,8 +495,9 @@ könnte nichts ändern; die Kachel öffnet die Seite mit der Erklärung. Freunde
 Erreichbare, sonst „Gerade ist keiner deiner Steam-Freunde online.“ „Eingeladen“ hat einen Tooltip.
 „Zurückholen…“ fragt erst. Leere Listen (Brett, Verlauf, Sicherungspunkte, Fahrgeschäfte, Chat)
 hatten schon einen Satz und die passende Aktion daneben. „Änderung abgelehnt“ ist seit P1 Schritt 4
-gebaut. Offen bleibt TP-29 (Tooltips an den gesperrten Spielknöpfen Tempo und Rückgängig; heute
-sagt eine Meldung den Grund).
+gebaut. TP-29 danach erledigt: Die Tooltips der Spielknöpfe Pause und Tempo nennen beim
+Mitspieler die Regel „nur der Host“, der von Rückgängig in einer Sitzung, dass nur der eigene
+letzte Schritt geht (Eingriff in die Statusleiste des Spiels, nur das Label des Tooltips).
 Fund beim Fotografieren: Die Spielerleiste lag über dem Kopf der Werkzeug-Fenster des Spiels
 rechts (Szeneriepinsel). Behoben: Sie rückt links neben ein offenes Fenster des Spiels
 (`trackRightPanels`), im Spiel mit dem Gelände-Werkzeug geprüft.
