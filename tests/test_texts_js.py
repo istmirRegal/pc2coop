@@ -57,6 +57,9 @@ CASES = {
     'Änderung von Vici zurückgenommen: hier nicht möglich (z. B. außerhalb der Parkgrenze)':
         'Vici’s change undone: not possible here (e.g. outside the park boundary)',
     'fährt Conlan': 'is riding Conlan',
+    'Vici kauft Burger (4,50 €)': 'Vici buys Burger (4,50 €)',
+    'Gekauft: Burger (4,50 €)': 'Bought: Burger (4,50 €)',
+    'Chat unten links einblenden': 'Show chat bottom left',
     'Stand 3': 'Checkpoint 3',
     # what players wrote, names and keys stay
     'Hallo zusammen': 'Hallo zusammen',

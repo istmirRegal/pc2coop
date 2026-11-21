@@ -1014,8 +1014,10 @@ class ChatArea extends StateComponent {
             const talk = (t) => t.kind === 'chat' || t.kind === 'event';
             const lines = fresh.filter(talk);
             this._history = [...this._history, ...lines].slice(-30);
+            // "Für dich" (TP-32): without the fading lines; Enter still shows the history.
+            const shown = coop.chatLines === false ? [] : lines;
             this.setState({
-                lines: [...this.state.lines, ...lines.map((t) => ({ ...t, until: now + CHAT_SHOW_MS }))].slice(-6),
+                lines: [...this.state.lines, ...shown.map((t) => ({ ...t, until: now + CHAT_SHOW_MS }))].slice(-6),
                 notices: [...this.state.notices, ...fresh.filter((t) => !talk(t)).map((t) => ({ ...t, until: now + NOTICE_SHOW_MS }))].slice(-3) });
         }
         const key = coop.chatKey || 0;
@@ -1296,51 +1298,10 @@ class Lobby extends StateComponent {
         const coop = state.coop || {};
         if (!coop.open) { this._slid = false; return null; }   // the next opening slides in again
         if (coop.context === 'park') return this.renderParkPanel(coop, state);
-        if (pageShown()) return null;
-        const status = statusOf(coop);
-        const host = hostOf(coop);
-        const title = !coop.role ? 'Multiplayer'
-            : coop.role === 'host' ? 'Deine Sitzung' : 'Sitzung von ' + (host ? host.name : 'Host');
-        const footer = [];
-        if (!coop.available) {
-            // Nothing to do without Steam.
-        } else if (!coop.role) {
-            footer.push(hostButton(coop));
-        } else {
-            if (coop.desync && coop.role === 'client') footer.push({ label: 'Neu synchronisieren', onSelect: () => request('resync') });
-            footer.push({ label: 'Steam-Overlay', onSelect: () => request('invite_overlay') });
-            footer.push({ label: coop.role === 'host' ? 'Beenden' : 'Verlassen', tip: coop.role === 'host' ? END_TIP : LEAVE_TIP,
-                onSelect: () => endOrAsk(coop) });
-        }
-        footer.push({ label: 'Schließen', onSelect: () => request('close'), inputName: 'UI_Cancel' });
-        const column = (width, children, last) => h('div', { style: { width: rem(width), height: '31.8rem', padding: '0 0.9rem',
-            borderRight: last ? 'none' : '0.05rem solid ' + ACCENT_A(0.18) } }, children);
-        return h('div', { style: { position: 'absolute', left: 0, top: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0, 0, 0, 0.5)' } },
-            h('div', { style: { position: 'absolute', left: '50%', top: '50%', width: '66rem', height: '39rem', marginLeft: '-33rem',
-                marginTop: '-19.5rem', borderRadius: '0.7rem', overflow: 'hidden', backgroundColor: C('panel'), color: C('accentText'), fontSize: '1rem',
-                boxShadow: '0 0.6rem 2rem rgba(0, 0, 0, 0.45)' } },
-                h('div', { style: { display: 'flex', alignItems: 'center', height: '3.2rem', padding: '0 1.2rem', backgroundColor: C('accent'), color: C('whiteColor') } },
-                    glyph('img/icons/collaborate.svg', '1.4rem', true, { marginRight: '0.6rem' }),
-                    h('div', { style: { fontSize: '1.2rem', flexGrow: 1 } }, title),
-                    coop.role && h('div', { style: { color: C('accentButtonLight'), fontSize: '1rem' } },
-                        list(coop.players).length + ' / ' + SLOTS + ' Spieler' + (coop.stage === 'park' && coop.parkTitle ? ' · ' + coop.parkTitle : ''))),
-                this.renderBody(coop, state, column),
-                h('div', { style: { display: 'flex', alignItems: 'center', height: '4rem', padding: '0 1.2rem', backgroundColor: C('area'),
-                    borderTop: '0.05rem solid ' + ACCENT_A(0.2) } },
-                    h('div', { style: { width: '0.6rem', height: '0.6rem', borderRadius: '0.3rem', backgroundColor: TONE[status.tone] || TONE.idle,
-                        marginRight: '0.5rem', flexShrink: 0 } }),
-                    h('div', { style: { width: '32rem', fontSize: '1rem' } }, status.text),
-                    h('div', { style: { width: '31rem' } }, buttons(footer)))));
-    }
-
-    // In a park with a session: five tabs; everywhere else the lobby as before.
-    // Main menu: the lobby in three columns (the park has its own panel, renderParkPanel).
-    renderBody(coop, state, column) {
-        return h('div', { style: { height: '31.8rem' } },
-            h('div', { style: { display: 'flex', height: rem(636) } },
-                column(360, this.renderPlayers(coop)),
-                column(540, [this.renderPlace(coop, state), this.renderContent(coop)]),
-                column(420, [this.renderChat(coop, state), this.renderFriends(coop)], true)));
+        // Main menu: only the page (FEAT-119). The old window in the middle was the fallback when
+        // the page could not open; it had the pre-overhaul look (UX review 2026-11-21). The page
+        // opens as soon as the game's menu allows it (pendingPage).
+        return null;
     }
 
     // The window in a park (TP-11): the game's panel look on the left edge, not modal - building
@@ -1610,6 +1571,9 @@ class Lobby extends StateComponent {
             section('Für dich', muted('nur auf deinem PC')),
             h('div', { key: 'labels' }, h(ToggleRow, { label: literal('Mitspieler in der Welt zeigen'), toggled: !!coop.labels, focusable: false,
                 tooltip: literal('Name, Blickrichtung, gehaltenes Objekt und Sperr-Färbung'), onToggle: (on) => request('labels', on ? '1' : '0') })),
+            h('div', { key: 'chatlines' }, h(ToggleRow, { label: literal('Chat unten links einblenden'), toggled: coop.chatLines !== false, focusable: false,
+                tooltip: literal('Neue Nachrichten und was Mitspieler tun, kurz unten links. Enter öffnet den Chat trotzdem.'),
+                onToggle: (on) => request('chatlines', on ? '1' : '0') })),
             section('Regeln dieser Sitzung', h(HoverTip, { tip: role, className: 'pc2coopRoleTip' },
                 glyph('img/icons/information.svg', '1.1rem', false, { filter: C('accentText-filter') }))),
             h('div', { key: 'preset' }, h(ListStepperRow, { label: literal('Schnellwahl'), items: presetItems.map(literal),
@@ -1643,128 +1607,6 @@ class Lobby extends StateComponent {
                 tooltip: literal('Aus Inhalten, die nicht alle haben, wird dann nichts gebaut.'), onToggle: (on) => request('guard', on ? '1' : '0') }));
     }
 
-    renderPlayers(coop) {
-        const players = list(coop.players);
-        const requests = coop.role === 'host' ? list(coop.requests) : [];
-        const slots = [];
-        players.forEach((p) => {
-            const content = contentLine(coop, p);
-            const canLook = coop.stage === 'park' && coop.context === 'park' && !p.me && p.x !== undefined && p.act !== 'lobby';
-            // Buttons on their own line under name and activity: next to the avatar they ran out of
-            // the column ("Folgen" cut off, acceptance pictures 2026-11-20).
-            slots.push(h('div', { key: 'p' + p.sid, style: { display: 'flex', flexDirection: 'column', padding: '0.35rem 0.5rem', margin: '0.25rem 0',
-                borderRadius: '0.5rem', backgroundColor: C('whiteColor'), border: '0.05rem solid ' + ACCENT_A(0.18) } },
-                h('div', { style: { display: 'flex', alignItems: 'center' } },
-                    h(Avatar, { player: p, size: 40, pic: avatars[p.sid] }),
-                    h('div', { style: { flexGrow: 1, minWidth: 0, marginLeft: '0.6rem' } },
-                        h('div', { style: { display: 'flex', alignItems: 'center', fontSize: '1rem', fontWeight: 'bold' } },
-                            p.name + (p.me ? ' (du)' : ''),
-                            // The crown is white: tinted like the game's icons on light ground.
-                            p.host && glyph('img/icons/crown.svg', '0.8rem', false, { marginLeft: '0.3rem', filter: C('accentText-filter') })),
-                        h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } }, playerActivity(coop, p)),
-                        content && h('div', { style: { color: content.warn ? C('warningDark') : C('positiveDark'), fontSize: '0.9rem' } }, content.text))),
-                canLook && h('div', { style: { marginTop: '0.25rem' } }, buttons([
-                    { label: 'Hinbringen', onSelect: () => request('jump', p.sid) },
-                    { label: coop.following === p.sid ? 'Nicht folgen' : 'Folgen', onSelect: () => request('follow', p.sid) }]))));
-        });
-        if (coop.role) {
-            for (let i = players.length; i < SLOTS; i++) {
-                slots.push(h('div', { key: 'e' + i, style: { padding: '0.6rem', margin: '0.25rem 0', borderRadius: '0.5rem', color: C('accentButtonDesaturatedDark'),
-                    backgroundColor: C('area'), fontSize: '0.9rem' } }, 'Freier Platz'));
-            }
-        }
-        return box(636, [
-            requests.length > 0 && section('Möchte beitreten'),
-            ...requests.map((r) => row([h('div', null, r.name), buttons([
-                { label: 'Zulassen', onSelect: () => request('approve', r.sid) },
-                { label: 'Ablehnen', onSelect: () => request('deny', r.sid) }])], 'r' + r.sid)),
-            section('Spieler'),
-            !coop.role && h('div', { style: { color: C('accentButtonDesaturatedDark'), padding: '0.3rem 0' } },
-                coop.context === 'menu' ? 'Noch keine Sitzung. Starte eine oder tritt rechts einem Freund bei.'
-                    : 'Noch keine Sitzung. Starte eine, um diesen Park mit Freunden zu teilen.'),
-            ...slots]);
-    }
-
-    renderPlace(coop, state) {
-        if (!coop.role) return box(470, null);
-        if (coop.stage === 'lobby') {
-            if (coop.role === 'host') return box(470, [section('Wo spielen wir?'), muted('Öffne einen Park – alle kommen mit.', { marginBottom: '0.5rem' }),
-                buttons([{ label: 'Sandbox', onSelect: () => openGamePage('sandbox') }, { label: 'Franchise', onSelect: () => openGamePage('franchise') }])]);
-            const choice = coop.choice;
-            const host = hostOf(coop);
-            return box(470, [section('Wo spielen wir?'),
-                h('div', { key: 'c', style: { padding: '0.7rem', borderRadius: '0.5rem', backgroundColor: choice ? C('accentFaint') : C('area') } },
-                    choice ? [h('div', { key: 'l', style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } }, (host ? host.name : 'Der Host') + ' hat gewählt'),
-                        h('div', { key: 't', style: { fontSize: '1.1rem', fontWeight: 'bold' } }, choice.title),
-                        h('div', { key: 'd', style: { color: C('accentButtonDesaturatedDark') } }, choice.detail),
-                        h('div', { key: 's', style: { marginTop: '0.4rem' } }, choice.starting ? 'Wird geöffnet - der Park lädt gleich bei dir.' : 'Wartet auf den Start durch den Host.')]
-                        : h('div', { style: { color: C('accentButtonDesaturatedDark') } }, coop.role === 'host' ? 'Geh ins Hauptmenü, um einen Park zu wählen.'
-                            : 'Der Host wählt noch. Sobald der Park offen ist, lädt er bei dir automatisch.'))]);
-        }
-        const out = [section('Park des Hosts', coop.parkTitle ? h('span', { style: { color: C('accentButtonDesaturatedDark'), textTransform: 'none', letterSpacing: 0 } }, coop.parkTitle) : null)];
-        if (coop.park) out.push(h('div', { key: 'n' }, (coop.park.guests || 0).toLocaleString('de-DE') + ' Besucher · ' + money(coop.park)));
-        list(coop.stats).forEach((s) => out.push(h('div', { key: 's' + s.name, style: { padding: '0.1rem 0', color: C('accentButtonDesaturatedDark') } },
-            s.name + ': ' + s.created + ' platziert, ' + s.edited + ' bearbeitet, ' + s.deleted + ' gelöscht')));
-        if (list(coop.log).length) {
-            out.push(section('Verlauf'));
-            list(coop.log).slice(-7).forEach((line, i) => out.push(h('div', { key: 'l' + i, style: { padding: '0.1rem 0', color: C('accentButtonDesaturatedDark') } }, line)));
-        }
-        return box(470, out);
-    }
-
-    renderChat(coop, state) {
-        if (!coop.role) return null;
-        const chat = list(coop.chat).slice(-30);
-        return h('div', { key: 'chat', style: { height: '16.5rem' } },
-            section('Chat'),
-            scroller('10.7rem', [
-                chat.length === 0 ? h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } }, 'Noch keine Nachrichten.')
-                    : chat.map((c, i) => h('div', { key: 'c' + i, style: { display: 'flex', flexDirection: 'row', flexWrap: 'wrap', padding: '0.1rem 0', fontSize: '0.9rem' } },
-                        h('span', { style: { color: '#' + (c.color || '20435a'), fontWeight: 'bold' } }, c.name + ': '), keep(c.text)))],
-                { borderRadius: '0.4rem', backgroundColor: C('whiteColor'), border: '0.05rem solid ' + ACCENT_A(0.18) }, { padding: '0.3rem 0.5rem' }, true),
-            h('div', { style: { marginTop: '0.4rem' } },
-                h(InputField, { text: state.draft, promptText: literal('Nachricht an alle'), maxInputLength: 200,
-                    beginEditOnSelect: true, onChange: (e) => this.setState({ draft: (e && e.text) || '' }), onCommit: (e) => {
-                        const text = String((e && e.text) || '').trim();
-                        this.setState({ draft: '' });
-                        if (text) request('chat', text);
-                    }, onCancel: () => this.setState({ draft: '' }) })));
-    }
-
-    renderContent(coop) {
-        const players = list(coop.players);
-        if (!coop.role || players.length < 2) return null;
-        const known = players.filter((p) => p.dlc !== undefined);
-        const uneven = dlcPacks().filter((pack) => known.some((p) => owns(p.dlc, pack.id)) && known.some((p) => !owns(p.dlc, pack.id)));
-        const text = known.length < players.length ? 'DLCs der Mitspieler werden geprüft ...'
-            : uneven.length === 0 ? 'Alle haben dieselben DLCs.'
-            : 'Nicht alle haben: ' + uneven.map(packName).join(', ') + (coop.guard ? ' - daraus wird nichts gebaut.' : ' - wird trotzdem gebaut.');
-        return h('div', { key: 'content', style: { height: '6.5rem' } },
-            section('Inhalte'),
-            h('div', { style: { color: uneven.length ? C('warningDark') : C('positiveDark'), fontSize: '0.9rem' } }, text),
-            coop.role === 'host' && uneven.length > 0 && buttons([{ label: coop.guard ? 'Alle Inhalte erlauben' : 'Nur gemeinsame Inhalte',
-                onSelect: () => request('guard', coop.guard ? '0' : '1') }]));
-    }
-
-    renderFriends(coop) {
-        if (!coop.available) return null;
-        const friends = list(coop.friends).slice(0, 60);
-        const inSession = {};
-        list(coop.players).forEach((p) => { inSession[p.sid] = true; });
-        return h('div', { key: 'friends', style: { height: coop.role ? '15.3rem' : '31.8rem' } },
-            section(coop.role ? 'Freunde einladen' : 'Steam-Freunde'),
-            scroller(coop.role ? '12.8rem' : '29.3rem', [
-                friends.length === 0 ? h('div', { style: { color: C('accentButtonDesaturatedDark') } }, 'Lade Freundesliste ...')
-                    : friends.map((f) => row([
-                        h('div', { style: { width: '11.5rem' } },
-                            h('div', { style: { fontSize: '1rem' } }, f.name),
-                            h('div', { style: { color: f.lobby ? C('positiveDark') : f.pc2 ? C('positiveDark') : C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } },
-                                f.lobby ? 'hat eine offene Sitzung' : f.pc2 ? 'spielt Planet Coaster 2' : (FRIEND_STATE[f.state] || ''))),
-                        inSession[f.sid] ? h('span', { style: { color: C('positiveDark'), fontSize: '0.9rem' } }, 'ist dabei')
-                            : coop.role ? buttons([{ label: f.invited ? 'Eingeladen' : 'Einladen', disabled: f.invited, tip: f.invited ? INVITED_TIP : undefined, onSelect: () => request('invite', f.sid) }])
-                            : f.lobby ? buttons([{ label: 'Beitreten', onSelect: () => request('join_friend', f.sid) }]) : null,
-                    ], 'f' + f.sid))]));
-    }
 }
 
 // The page itself (TP-03, TP-05): players in eight places, a free place invites, chat; the host
@@ -2386,7 +2228,7 @@ function patchStartTabClass(tabClass, TileButton) {
 
 let started = false;
 const allHere = { seen: false, shown: false, until: 0 };   // TP-08, once per park view
-let lobbyFallback = false;   // the page could not open: the old window shows instead
+let pendingPage = false;     // asked to open while the game's menu did not allow the page yet
 let log = (message) => console.log('PC2Coop: ' + message);
 export function start(logger) {
     if (logger) log = logger;
@@ -2503,7 +2345,9 @@ export function start(logger) {
                 // Esc, a breadcrumb or a park page leaves the page: the window state follows.
                 navModule.FrontEndNav.onChange.add((screen) => {
                     notifyLater();   // session bar text and the hint on the game's pages follow the page
-                    if (screen !== PAGE_ID && currentState.open && currentState.context === 'menu' && !lobbyFallback) request('close');
+                    // Asked to open while the game did not allow it (title, loading): now, if it can.
+                    if (pendingPage && currentState.open && currentState.context === 'menu') { pendingPage = !openPage(); return; }
+                    if (screen !== PAGE_ID && currentState.open && currentState.context === 'menu') request('close');
                     // The host opens a park on the game's pages: the spinner screens come up. Everyone
                     // sees it in the session bar before the loading screen (TP-08).
                     const ids = dataModule.FrontEndNavData.ScreenID;
@@ -2518,12 +2362,12 @@ export function start(logger) {
             const opened = !!s.open && !wasOpen;
             const closed = !s.open && wasOpen;
             wasOpen = !!s.open;
-            if (opened && s.context === 'menu') lobbyFallback = !openPage();
+            if (opened && s.context === 'menu') pendingPage = !openPage();
             // Closed from Lua (F7, a QA script): back to the main menu, as Esc would.
             if (closed && pageShown()) {
                 try { nav.nav.FrontEndNav.set(nav.data.FrontEndNavData.ScreenID.MainMenu); } catch (error) { log('page close ' + error); }
             }
-            if (!s.open) lobbyFallback = false;
+            if (!s.open) pendingPage = false;
         });
         // QA (dev scripts, Ui._QaLook 5th field 12): open the game's sandbox page as the tile would.
         let qaPage = '';

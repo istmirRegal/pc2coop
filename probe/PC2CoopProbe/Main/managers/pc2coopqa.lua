@@ -94,8 +94,16 @@ Manager.Advance=function(self,delta)
             for _,ping in global.ipairs(self.session.Pings()) do
                 local who=names[ping.sid]
                 if who then
+                    -- A mark on an object: that object is outlined (viz.lua), the tag stands above it.
+                    local lx,ly,lz=ping.x,ping.y+3,ping.z
+                    if ping.gid then
+                        local okE,entity=global.pcall(self.sync.GidToEntity,ping.gid)
+                        ping.entity=okE and entity or nil
+                        local okP,at=global.pcall(function() return global.api.transform.CalculateWorldPosition(ping.entity) end)
+                        if ping.entity and okP and at then lx,ly,lz=at:GetX(),at:GetY()+3,at:GetZ() end
+                    end
                     pings[#pings+1]=ping
-                    tags[#tags+1]={key="ping:" .. ping.sid,name=who.name,activity="hier!",color=who.color,x=ping.x,y=ping.y+6,z=ping.z}   -- above the smaller column (P6 A9)
+                    tags[#tags+1]={key="ping:" .. ping.sid,name=who.name,activity=self.lang.World("hier!"),color=who.color,x=lx,y=ly,z=lz}
                     colour=colour or who.color
                 end
             end
@@ -116,13 +124,13 @@ Manager.Advance=function(self,delta)
             for i=1,global.math.min(15,#near) do
                 local item=near[i].item
                 pings[#pings+1]={sid="board:" .. item.id,x=item.x,y=item.y,z=item.z,age=0,radius=item.kind=="area" and item.radius or nil}
-                local what=words[item.kind] or ""
+                local what=self.lang.World(words[item.kind] or "")
                 if item.assignee and item.assignee~="" then what=what .. " - " .. item.assignee end
                 tags[#tags+1]={key="board:" .. item.id,name=item.title,activity=what,x=item.x,y=item.y+9,z=item.z}
             end
             for i,e in global.ipairs(view.events or {}) do
                 pings[#pings+1]={sid="event:" .. i,x=e.x,y=e.y,z=e.z,age=e.age}
-                tags[#tags+1]={key="event:" .. i,name=e.label or "Meldung",activity="Meldung des Parks",x=e.x,y=e.y+12,z=e.z}
+                tags[#tags+1]={key="event:" .. i,name=self.lang.World(e.label or "Meldung"),activity=self.lang.World("Meldung des Parks"),x=e.x,y=e.y+12,z=e.z}
             end
         end
         -- Author of what the local player selects or holds.

@@ -524,8 +524,10 @@ rechts (Szeneriepinsel). Behoben: Sie rückt links neben ein offenes Fenster des
 
 Stand (2026-11-21, lokal): gebaut A1–A14. Im Spiel gesehen (Testkopie, nachgestellt): A1–A9,
 A13, A14. Nur in Unit-Tests: A11, A12 (Laufen, Eingänge). Nicht prüfbar ohne echte Maus: A10
-(Zeiger). A9 nur teilweise: kleiner und nach Abstand, aber nicht wirklich durchsichtig (die
-Grundform des Spiels deckt).
+(Zeiger). A9 zweite Runde (2026-11-21, Wunsch des Eigners: darf nichts verdecken, nur
+unterstützen): Auf einem Objekt blinkt dessen Umriss (Highlight des Spiels), sonst ein Ring
+kleiner Punkte am Boden mit freier Mitte; Baugebiete als ruhender Punktring statt Scheibe
+(FEAT-095).
 Offen zur Entscheidung: Chat bleibt unten links (der Hinweis steht jetzt in der Hinweiszeile).
 
 **Prüfung 2026-11-21 (Code gegen dieses Konzept, ohne Spiel):** Die Phasen sind gebaut wie
@@ -539,10 +541,9 @@ beschrieben, mit den oben genannten Abweichungen. Gefunden und behoben:
   zuerst eine.“; „Ort: deine letzte Markierung (Mittelklick)“ ohne Taste.
 - TP-19: Die Übernahme-Frage kam noch als Toast; jetzt Anfrage-Karte mit „Verstanden“.
 Bleibt bewusst (Abweichung): Die Übernahme-Karte hat nur „Verstanden“ – das Spiel kann ein
-Objekt nicht aus der Hand nehmen, freigeben heißt fertig bauen. TP-32 „Für dich“ hat nur
-„Mitspieler in der Welt zeigen“; die Chat-Taste ist fest Enter (Entscheidung), ein Schalter für
-Chat-Meldungen fehlt noch. Das alte mittige Fenster im Hauptmenü erscheint nur noch, wenn die
-Seite nicht öffnen kann (Titelbild, Laden) – Rückfall wie in P3 geplant.
+Objekt nicht aus der Hand nehmen, freigeben heißt fertig bauen. Die Chat-Taste ist fest Enter
+(Entscheidung). Danach erledigt: TP-32 „Chat unten links einblenden“ (FEAT-122); das alte
+mittige Fenster im Hauptmenü ist entfernt, die Seite öffnet, sobald das Menü es erlaubt.
 
 Prototypen zuerst (vor P2/P3/P4): `Panel` in unserer Ebene, Seite im Hauptmenü-Rahmen,
 Bauleiste im Besuch aus. Ergebnis entscheidet, ob Ziel oder Rückfall gebaut wird.

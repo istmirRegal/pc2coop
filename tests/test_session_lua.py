@@ -922,6 +922,30 @@ class TeamTests(SessionTests.__bases__[0]):
             votes = dict(peer.lua.eval('session.View().board[1].votes').items())
             self.assertEqual(votes, {'Alex': True, 'Sam': False})
 
+    def test_a_mark_carries_the_object_and_odd_ids_are_dropped(self):
+        # P6 A9: the others outline the marked object; ride ids and odd text never go along.
+        host, sam = self.peers['100'], self.peers['300']
+        host.event('msg|200|ping|1|2|3|P5')
+        self.pump()
+        for peer in (host, sam):
+            pings = {p['sid']: p for p in peer.lua.eval('session.Pings()').values()}
+            self.assertEqual(pings['200']['gid'], 'P5')
+        for frame, bad in enumerate(('F1_2_3', '../x', 'a b', 'nan')):
+            host.lua.execute('for i = 1, 61 do session.Tick() end')      # one mark per second
+            host.event(f'msg|200|ping|1|2|3|{bad}')
+            self.pump()
+            pings = {p['sid']: p for p in sam.lua.eval('session.Pings()').values()}
+            if bad == 'nan':
+                self.assertEqual(pings['200']['gid'], 'nan')               # a plain id, harmless
+            else:
+                self.assertIsNone(pings['200']['gid'], bad)
+        host.lua.execute('for i = 1, 61 do session.Tick() end')
+        host.event('msg|200|ping|inf|2|3|P5')                              # no place: no mark
+        self.pump()
+        pings = {p['sid']: p['x'] for p in sam.lua.eval('session.Pings()').values()}
+        self.assertNotEqual(pings.get('200'), float('inf'))
+        self.assertEqual(pings.get('200'), 1)                              # still the mark from before
+
     def test_test_ride_invitation_reaches_the_others_and_runs_out(self):
         host, alex, sam = self.peers['100'], self.peers['200'], self.peers['300']
         self.assertTrue(alex.lua.eval('session.InviteRide("F1_2_3", "Donnerkeil")'))

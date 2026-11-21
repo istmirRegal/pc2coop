@@ -23,8 +23,20 @@ local WORLD = {
     {"^(.+) hat das gerade geändert$", "%1 just changed this"},
 }
 
+-- Words on the labels of marks, the board and park events.
+local WORDS = {["hier!"] = "here!", Baugebiet = "Build zone", Aufgabe = "Task", Kommentar = "Comment",
+    Treffpunkt = "Meeting point", Meldung = "Notification", ["Meldung des Parks"] = "Park notification",
+    Panne = "Breakdown", ["Wartung fällig"] = "Maintenance due", ["Wartung überfällig"] = "Maintenance overdue",
+    ["Gäste eingeschlossen"] = "Guests trapped", ["Gäste stecken fest"] = "Guests stuck", Blitzeinschlag = "Lightning strike",
+    ["Parade kaputt"] = "Parade broken", ["Wenig Fahrgäste"] = "Few riders", ["Kein Strom"] = "No power",
+    ["Nicht getestet"] = "Not tested"}
+
 function Lang.World(text)
     if Lang.Code() ~= "en" or global.type(text) ~= "string" then return text end
+    if WORDS[text] then return WORDS[text] end
+    -- A park event with the ride's name: "Panne: Conlan".
+    local word, name = global.string.match(text, "^([^:]+): (.+)$")
+    if word and WORDS[word] then return WORDS[word] .. ": " .. name end
     text = global.string.gsub(text, "^Ein Mitspieler ", "A player ")
     for _, p in global.ipairs(WORLD) do
         local out, n = global.string.gsub(text, p[1], p[2])

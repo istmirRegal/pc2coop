@@ -36,6 +36,12 @@ class LangTests(unittest.TestCase):
             'Host war schneller': 'Host was faster',
             'Sam hat das gerade geändert': 'Sam just changed this',
             'Vici': 'Vici',
+            'hier!': 'here!',
+            'Baugebiet': 'Build zone',
+            'Meldung des Parks': 'Park notification',
+            'Panne: Conlan': 'Breakdown: Conlan',
+            'Wartung fällig: Conlan': 'Maintenance due: Conlan',
+            'Wikingerland: Vici': 'Wikingerland: Vici',
         }
         for german, english in cases.items():
             self.assertEqual(self.lang.World(german), english)

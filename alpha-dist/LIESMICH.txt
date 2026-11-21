@@ -72,7 +72,9 @@ Die anderen sehen
   es trotzdem auf, wird dein Werkzeug zurueckgesetzt und du siehst, wer es bearbeitet.
   Legt er es ab, ist es wieder frei.
 - Ping: kurz mit der mittleren Maustaste klicken setzt an der Stelle unter dem Mauszeiger
-  eine Markierung ("hier!") fuer alle, sichtbar etwa 8 Sekunden. Gedrueckt halten dreht wie
+  eine Markierung ("hier!") fuer alle, sichtbar etwa 8 Sekunden. Auf einem Objekt blinkt
+  dessen Umriss in deiner Farbe, sonst liegt ein Kreis aus kleinen Punkten am Boden - die
+  Markierung verdeckt nichts. Gedrueckt halten dreht wie
   gewohnt die Kamera und pingt nicht. "Hinbringen" im Multiplayer-Fenster fliegt zum Ping.
 - Folgen: Mitspieler oben rechts anklicken (oder "Folgen" im Multiplayer-Fenster) - deine
   Kamera zeigt, was er sieht. Bewegst du die Kamera selbst, endet das Folgen.

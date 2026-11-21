@@ -101,7 +101,7 @@ UI-Skalierung 1.0 verdeckte er die Icon-Knöpfe am Ende der Bauleiste des Spiels
 
 | Abschnitt | Elemente | Aktionen | FEAT |
 |---|---|---|---|
-| „Für dich“ (nur auf deinem PC) | Schalter (`ToggleRow`) „Mitspieler in der Welt zeigen“; Tooltip: Name, Blickrichtung, gehaltenes Objekt, Sperr-Färbung | `labels` | FEAT-091 |
+| „Für dich“ (nur auf deinem PC) | Schalter (`ToggleRow`) „Mitspieler in der Welt zeigen“; Tooltip: Name, Blickrichtung, gehaltenes Objekt, Sperr-Färbung. Schalter „Chat unten links einblenden“ (TP-32, seit 1.14.0; aus: keine einblendenden Zeilen, Enter zeigt den Verlauf trotzdem) | `labels`, `chatlines` | FEAT-091, FEAT-122 |
 | „Inhalte“ | nur mit Mitspielern: DLC-Vergleich; Host: Schalter „Nur gemeinsame Inhalte“ | `guard` | FEAT-037, FEAT-038 |
 | „Wettbewerb“ | Host: Thema, Bauduell/Koop gegen die Uhr je 15/30/60 Min.; laufend: Uhr, Bewertung Gestaltung/Technik 1–5, Ergebnis; Host: „Zeit beenden, bewerten“/„Bewertung abschließen“/„Wettbewerb schließen“ | `comp_start`, `comp_rate`, `comp_next`, `goto` | FEAT-145–147 |
 | „Regeln dieser Sitzung“, Info-Icon mit der Rolle im Tooltip | Auswahl (`ListStepperRow`) „Schnellwahl“ Locker/Geordnet/Nur bauen (+ „Eigene“), „Spieltempo und Pause“ alle/nur der Host, „Fremde Bauten abreißen“ erlaubt/erst fragen; Schalter „Besucher-Modus“; Erklärung je Zeile im Tooltip; Mitspieler: gesperrt, Tooltip „Nur der Host ändert Regeln.“ | `rule_preset`, `rule` | FEAT-142–144 |
@@ -190,6 +190,7 @@ Entwickler-Seite: technische Werte und „API-Rekorder an/aus“, „Namensschil
 | `chat` | Text | Chat senden | ja |
 | `chatinput` | 1/0 | Chat-Eingabe offen/zu (`Session.SetTyping`) | ja (automatisch beim Öffnen/Schließen) |
 | `labels` | 1/0 | Mitspieler in der Welt zeigen an/aus (`Menu.labelsEnabled`) | ja |
+| `chatlines` | 1/0 | Chat unten links einblenden an/aus (`shared.chatLinesOff`, bis zum Spielende) | ja |
 | `jump` | sid | Kamera zum Spieler | ja |
 | `follow` | sid | folgen an/aus | ja |
 | `ping` | – | Ping unter dem Mauszeiger (`Session.Ping`) | **nein** (Ping kommt über Mittelklick) |

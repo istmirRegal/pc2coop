@@ -16,7 +16,9 @@ from pc2coop.alpha import (Controller, GameBridge, MAX_FRAME, ProtocolError,
                            RoomClient, RoomHost, Wire, coordinates, serve)
 
 
-def wait_for(predicate, timeout=4):
+# 15 s: only a failing run waits that long. With 4 s the test failed now and then while the
+# machine was busy (a test copy of the game running next to the suite, 2026-11-21).
+def wait_for(predicate, timeout=15):
     end = time.monotonic() + timeout
     while time.monotonic() < end:
         # Windows: a file the bridge is writing at this moment cannot be opened (PermissionError);
@@ -289,6 +291,7 @@ class BridgeTests(unittest.TestCase):
                     self.assertFalse(bridge.ready, "Old readiness must not activate this session")
                     bridge.start_park()
                     inbox = mod / f"pc2coop-inbox-{os.getpid()}.txt"
+                    wait_for(lambda: inbox.is_file() and inbox.read_text().endswith("|new-test-park"))
                     self.assertRegex(inbox.read_text(), r"^[0-9]+\|new-test-park$")
                     self.assertFalse(bridge.ready)
                     with log.open("a", encoding="utf-8") as f:

@@ -3,6 +3,23 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-21 – Markierung ohne Verdecken, Restpunkte aus dem UX-Konzept
+
+- Wunsch des Eigners: die Markierung darf keine Spielelemente verdecken, nur unterstützen
+  (halb durchsichtig, Umrisse o. Ä.). Umsetzung mit dem, was das Spiel schon kann: der
+  Highlight-Kanal 3 (wie gesperrte Objekte) blinkt auf dem markierten Objekt; gefunden wird es
+  am Maus-Strahl (`Sync.PartOnRay`, der Boden-Strahl ging durch Objekte hindurch), die Id geht
+  mit `ping`/`pg`. Ohne Objekt: zehn kleine Punkte im Kreis am Boden. Baugebiete waren eine
+  Scheibe mit dem Durchmesser des Gebiets über allem darin – jetzt ein Punktring. Keine
+  schwebenden Scheiben mehr. `spawn` ohne Entität bricht die Schleife ab (sonst hinge sie).
+- Schilder in der Welt (Ping „hier!“, Brett, Park-Meldungen) über `Lang.World` auf Englisch.
+- TP-32: Schalter „Chat unten links einblenden“ (FEAT-122). Das alte mittige Fenster des
+  Hauptmenüs (Rückfall mit dem Look vor dem Overhaul) und `renderBody`/`renderPlayers`/
+  `renderPlace`/`renderChat`/`renderFriends` sind entfernt; `pendingPage` öffnet die Seite nach.
+- `tests/test_alpha.py`: `wait_for` 15 s statt 4 s (scheiterte unter Last), Inbox-Lesen über
+  `wait_for`.
+- Fehlende englische Muster: „… kauft … (…)“, „Gekauft: …“.
+
 ## 2026-11-21 – Englisch nach der Sprache des Spiels (FEAT-121, ADR-022)
 
 - Wunsch eines englischsprachigen Testers, vom Eigner freigegeben. Die Texte bleiben im Code

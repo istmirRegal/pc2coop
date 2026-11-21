@@ -204,6 +204,17 @@ class UiTests(unittest.TestCase):
         self.ui._Request('3|lang|de')
         self.assertEqual(self.state()['lang'], 'de')
 
+    def test_chat_lines_bottom_left_can_be_switched_off(self):
+        # TP-32 "Für dich": on by default, the switch holds for this game start (shared table).
+        source = (SOURCE.parent / 'shared.lua').read_text(encoding='utf8')
+        self.lua.eval('function(s) package.preload["pc2coop.shared"] = function() return assert(load(s, "shared", "t", _G))() end end')(source)
+        self.assertTrue(self.state()['chatLines'])
+        self.ui._Request('1|chatlines|0')
+        self.assertFalse(self.state()['chatLines'])
+        self.assertTrue(self.lua.eval('require("pc2coop.shared").chatLinesOff'))
+        self.ui._Request('2|chatlines|1')
+        self.assertTrue(self.state()['chatLines'])
+
     def test_guests_cannot_pick_or_start(self):
         self.lua.execute('ui.SetFrontend(menuHud); view.role, view.stage = "client", "lobby"')
         self.lua.execute('ui._Request("1|choose|save|1"); ui._Request("2|start|")')

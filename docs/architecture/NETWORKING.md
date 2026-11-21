@@ -25,7 +25,7 @@ geprüft (`clean`, `cleanText`, `validGid`, `validRideKey`, `Figure.ParseLook` �
 | `base` | Anzahl | Baseline nach dem Laden | FEAT-030 |
 | `pres` | Kamera, Blickpunkt, Aktivität, Fokus | Anwesenheit (mehrmals pro Sekunde) | FEAT-090–099 |
 | `hold` | label, gids, items | Objekt in der Hand (leer = losgelassen) | FEAT-062 |
-| `ping` | x, y, z | Ping | FEAT-095 |
+| `ping` | x, y, z, gid (leer oder Teil-Id, seit 1.14.0) | Ping | FEAT-095 |
 | `who` | gid | Urheber erfragen | FEAT-098 |
 | `time` | paused, index | Pause/Tempo | FEAT-078 |
 | `board` | add/set/del … | Brett ändern | FEAT-130–135 |
@@ -58,7 +58,7 @@ geprüft (`clean`, `cleanText`, `validGid`, `validRideKey`, `Figure.ParseLook` �
 | `deny` | name, gid | dein Halten abgelehnt (gid für die Meldung am Objekt) | FEAT-062, FEAT-082 |
 | `time` | paused, index | Pause/Tempo | FEAT-078 |
 | `note` | x, y, z, text | Park-Meldung mit Ort | FEAT-140 |
-| `pg` | sid, x, y, z | Ping eines anderen | FEAT-095 |
+| `pg` | sid, x, y, z, gid | Ping eines anderen (gid: Objekt zum Umranden) | FEAT-095 |
 | `who` | gid, creator, last | Urheber-Antwort | FEAT-098 |
 | `em` | sid, kind, [q] | Emote/Essen (q = ohne Toast) | FEAT-168, FEAT-170 |
 | `sold` | ok/no, kind/grund, name, preis | Antwort auf `buy` | FEAT-169 |

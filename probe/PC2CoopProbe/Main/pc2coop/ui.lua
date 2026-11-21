@@ -108,6 +108,15 @@ local function langModule()
     return ok and global.type(Lang) == "table" and Lang or nil
 end
 
+-- "Für dich": chat and player events bottom left (TP-32). Kept for this game start in the
+-- shared table (a park load starts the modules anew); on unless switched off.
+local chatLinesOff = false
+local function chatLinesShown()
+    local ok, shared = global.pcall(global.require, "pc2coop.shared")
+    if ok and global.type(shared) == "table" then return shared.chatLinesOff ~= true end
+    return not chatLinesOff
+end
+
 function Ui.ChatKey() chatKeys = chatKeys + 1; lastState = nil end
 
 -- Hosting: a lobby in the main menu, or the loaded park.
@@ -279,6 +288,7 @@ local function buildState()
         following = session.Following and session.Following() or false,
         chat = session.Chat(), toasts = session.Toasts(), chatKey = chatKeys,
         labels = menu ~= nil and menu.labelsEnabled == true,
+        chatLines = chatLinesShown(),
         stage = view.stage or false, parkTitle = view.parkTitle or "", guard = view.guard ~= false,
         context = view.context or false, dlc = view.dlc,
         choice = view.choice or false, canChoose = choosing(), parks = choosing() and parkList or {},
@@ -447,6 +457,11 @@ local actions = {
         if key then session.InviteRide(key, name) end
     end,
     take_ok = function() if session.DismissTakeAsk then session.DismissTakeAsk() end end,
+    chatlines = function(arg)
+        chatLinesOff = arg == "0"
+        global.pcall(function() global.require("pc2coop.shared").chatLinesOff = chatLinesOff end)
+        lastState = nil
+    end,
     -- The game's language as CoopLayer.js sees it ("de"/"en", ADR-022), for labels Lua draws.
     lang = function(arg)
         local Lang = langModule()

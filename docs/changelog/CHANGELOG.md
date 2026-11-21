@@ -23,7 +23,12 @@ eigenen Test).
 - Die Sitzungsleiste im Hauptmenü sieht aus wie der Newsletter-Kasten und hat dieselben Kanten.
 - Auf den Spielseiten (Sandbox, Franchise …) steht oben, dass der Park für alle öffnet.
 - „+ Einladen“ markiert den Platz, bis du rechts einen Freund wählst.
-- Pings sind kleiner, weniger kräftig und richten sich nach dem Abstand der Kamera.
+- Markierungen (Ping) verdecken nichts mehr: Auf einem Objekt blinkt dessen Umriss in deiner
+  Farbe, auf dem Boden liegt ein kleiner Punktkreis mit freier Mitte. Baugebiete sind ein
+  Punktkreis statt einer großen Scheibe.
+- „Für dich“: Der Chat unten links lässt sich ausblenden; Enter öffnet ihn trotzdem.
+- Das alte Multiplayer-Fenster in der Mitte des Hauptmenüs ist weg; die Seite „Multiplayer“
+  öffnet, sobald das Menü es erlaubt.
 - Besuch: Die Figur fährt an, bremst und dreht sich weich. Eingänge und Läden werden auch in
   Blickrichtung der Kamera und etwas zur Seite gefunden. Der Mauszeiger ist beim Umsehen weg.
   Die Tastenhinweise sehen aus wie die des Spiels. Zahlentasten tun im Besuch nichts mehr

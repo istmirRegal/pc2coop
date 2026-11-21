@@ -344,33 +344,79 @@ function Viz.Enabled() return enabled end
 
 -- remote: list of the other players (see update); lockedEntities: entity -> true for
 -- objects somebody else is editing; hex: colour for all of it.
--- A ping: a softly pulsing ring on the ground and three small discs above it, sized by the
--- camera's distance (P6 A9; before: a ring growing to six metres and six discs).
+-- A mark must never cover anything of the park (P6 A9, second round; before: a filled disc
+-- and three discs floating above it, a build area as one big filled disc):
+--   * on a shared object (ping.entity): that object gets the game's highlight in the player's
+--     colour, blinking while the mark lasts - nothing is drawn over it;
+--   * on the ground, for park events and build areas: a ring of small dots flat on the ground
+--     around the spot, the middle stays free. Sized by the camera's distance; a build area's
+--     ring has the area's size and stands still, a mark widens a little and turns slowly.
+local RING_DOTS = 10
+
+local function dropDots(state)
+    for _, item in global.ipairs(state.dots or {}) do destroy(item.entity) end
+    state.dots, state.heights = {}, nil
+end
+
+local function unlight(state)
+    if state.entity and not tinted[state.entity] then
+        global.pcall(global.api.model.SetHighlighted, state.entity, CHANNEL, false, true)
+    end
+    state.entity, state.lit = nil, nil
+end
+
 local function beacon(sid, ping, dt)
     local state = beacons[sid]
-    if not state then
-        state = {ring = spawn(DISC, 1), column = {}}
-        for i = 1, 3 do state.column[i] = spawn(DISC, 0.35) end
-        beacons[sid] = state
+    if not state then state = {dots = {}}; beacons[sid] = state end
+    if state.entity ~= ping.entity then unlight(state) end
+    if ping.entity then
+        state.entity = ping.entity
+        -- On for two thirds of every half second: a signal, not a lasting tint.
+        local on = frames % 30 < 20
+        if on ~= state.lit then
+            global.pcall(global.api.model.SetHighlighted, ping.entity, CHANNEL, on or tinted[ping.entity] == true, true)
+            state.lit = on
+        end
+        if #state.dots > 0 then dropDots(state) end
+        return
     end
-    local y = ground(ping.x, ping.z, ping.y)
-    local k = sizeAt(ping.x, y, ping.z)
-    place(state.ring, ping.x, y + 0.15, ping.z, 1)
-    if state.ring and state.ring.ready then
-        -- Build areas: a ring the size of the area; pings and events pulse a little.
-        local scale = (ping.radius and ping.radius > 0) and ping.radius * 2 or (1 + 0.5 * ((ping.age * 2) % 1)) * k
-        global.pcall(X().SetScale, state.ring.entity, scale)
+    local area = ping.radius and ping.radius > 0
+    local count = area and global.math.max(12, global.math.min(40, global.math.floor(ping.radius * 1.2))) or RING_DOTS
+    while #state.dots < count do
+        local item = spawn(DISC, 0.12)
+        if not item then break end   -- the game made no entity: fewer dots, never a stuck loop
+        state.dots[#state.dots+1] = item
     end
-    for i, item in global.ipairs(state.column) do
-        local bob = global.math.sin(frames / 12 + i) * 0.15 * k
-        place(item, ping.x, y + (0.6 + 1.1 * i) * k + bob, ping.z, 1)
-        resize(item, 0.35 * k)
+    while #state.dots > count do destroy(global.table.remove(state.dots).entity) end
+    local key = global.string.format("%.1f,%.1f,%.1f", ping.x, ping.z, area and ping.radius or 0)
+    if state.key ~= key then
+        -- The ground under every dot of a build area (once per place); a small ring sits on the
+        -- height of its middle.
+        state.key, state.heights = key, {}
+        state.y = ground(ping.x, ping.z, ping.y)
+    end
+    local k = sizeAt(ping.x, state.y, ping.z)
+    local radius = area and ping.radius or (0.9 + 0.25 * global.math.sin((ping.age or 0) * 50)) * k
+    local turn = area and 0 or frames / 240
+    local Vector3 = global.require("Vector3")
+    for i, item in global.ipairs(state.dots) do
+        if item and ready(item) then
+            local a = turn + (i - 1) * 2 * global.math.pi / count
+            local x, z = ping.x + global.math.cos(a) * radius, ping.z + global.math.sin(a) * radius
+            local y = state.y
+            if area then
+                state.heights[i] = state.heights[i] or ground(x, z, state.y)
+                y = state.heights[i]
+            end
+            X().SetPosition(item.entity, Vector3:new(x, y + 0.06, z))
+            resize(item, (area and 0.22 or 0.12) * k)
+        end
     end
 end
 
 local function dropBeacon(state)
-    destroy(state.ring and state.ring.entity)
-    for _, item in global.ipairs(state.column or {}) do destroy(item.entity) end
+    dropDots(state)
+    unlight(state)
 end
 
 function Viz.Update(remote, lockedEntities, hex, dt, pings)

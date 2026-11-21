@@ -206,6 +206,24 @@ function World.CursorPoint()
     return nil
 end
 
+-- The mouse ray: start, unit direction and how far it reaches the ground (2000 when it does
+-- not). For a mark on an object (the ground ray goes through objects).
+function World.CursorRay()
+    local ok, sx, sy, sz, dx, dy, dz, reach = global.pcall(function()
+        local _, start, direction = global.api.input.GetMouseRay()
+        if not (start and direction) then return nil end
+        local terrain = global.api.world.GetWorldAPIs().voxelterrain
+        local distance = terrain:RayCast(terrain:GetPrimaryVoxelTerrainEntityID(), start, direction, 2000)
+        local x, y, z = direction:GetX(), direction:GetY(), direction:GetZ()
+        local length = global.math.sqrt(x * x + y * y + z * z)
+        if length < 1e-6 then return nil end
+        return start:GetX(), start:GetY(), start:GetZ(), x / length, y / length, z / length,
+            (distance and distance > 0.5) and distance or 2000
+    end)
+    if ok and global.type(sx) == "number" then return sx, sy, sz, dx, dy, dz, reach end
+    return nil
+end
+
 -- DLC bit mask a placed part needs (0: base game or unknown).
 function World.RequiredDLC(part)
     if not part then return 0 end

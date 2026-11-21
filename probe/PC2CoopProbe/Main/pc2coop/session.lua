@@ -792,8 +792,9 @@ local function hostChange(sid, f)
         local at = numbers(f, 2, 4)
         if at and (not lastPing[sid] or frames - lastPing[sid] >= 60) then
             lastPing[sid] = frames
-            pings[sid] = {x = at[1], y = at[2], z = at[3], frame = frames}
-            local line = "pg|" .. sid .. "|" .. num(at[1]) .. "|" .. num(at[2]) .. "|" .. num(at[3])
+            local gid = Session._PingGid(f[5]) and f[5] or nil
+            pings[sid] = {x = at[1], y = at[2], z = at[3], frame = frames, gid = gid}
+            local line = "pg|" .. sid .. "|" .. num(at[1]) .. "|" .. num(at[2]) .. "|" .. num(at[3]) .. "|" .. (gid or "")
             for _, other in global.ipairs(order) do
                 if other ~= me and other ~= sid and players[other] and not players[other].pending then send(other, line) end
             end
@@ -1214,9 +1215,9 @@ local function onMessage(from, payload)
             end
         elseif kind == "pg" then
             local f = split(payload, "|")
-            local x, y, z = global.tonumber(f[3]), global.tonumber(f[4]), global.tonumber(f[5])
-            if x and y and z then
-                pings[f[2]] = {x = x, y = y, z = z, frame = frames}
+            local at = numbers(f, 3, 5)
+            if at then
+                pings[f[2]] = {x = at[1], y = at[2], z = at[3], frame = frames, gid = Session._PingGid(f[6]) and f[6] or nil}
                 for _, pl in global.ipairs(roster.players or {}) do
                     if pl.sid == f[2] then toast(pl.name .. " zeigt auf etwas", pl.color, false, "event") end
                 end
@@ -1893,10 +1894,22 @@ function Session.Ping()
     if not role then return end
     local x, y, z = World.CursorPoint()
     if not x then return end
-    pings[me] = {x = x, y = y, z = z, frame = frames}
-    local wire = "ping|" .. num(x) .. "|" .. num(y) .. "|" .. num(z)
+    -- On an object: its shared id goes along, so everyone sees that object outlined (P6 A9).
+    local gid = ""
+    if sync.PartOnRay and World.CursorRay then
+        local ok, found = global.pcall(function() return sync.PartOnRay(World.CursorRay()) end)
+        if ok and Session._PingGid(found) then gid = found end
+    end
+    pings[me] = {x = x, y = y, z = z, frame = frames, gid = gid ~= "" and gid or nil}
+    local wire = "ping|" .. num(x) .. "|" .. num(y) .. "|" .. num(z) .. "|" .. gid
     if role == "host" then hostChange(me, split(wire, "|")) else send(hostId, wire) end
     return true
+end
+
+-- A shared id a mark may carry: a scenery part, never a ride (F/S) or anything odd.
+function Session._PingGid(gid)
+    return global.type(gid) == "string" and gid ~= "" and #gid <= 64 and global.string.match(gid, "^[%w_%.%-]+$") ~= nil
+        and not global.string.match(gid, "^[FS]")
 end
 
 -- Visitor mode: wave, cheer ... (EMOTES) for everyone.
@@ -2436,7 +2449,7 @@ function Session.Pings()
     for sid, ping in global.pairs(pings) do
         local age = (frames - ping.frame) / PING_FRAMES
         if age >= 1 then pings[sid] = nil
-        else list[#list+1] = {sid = sid, x = ping.x, y = ping.y, z = ping.z, age = age} end
+        else list[#list+1] = {sid = sid, x = ping.x, y = ping.y, z = ping.z, age = age, gid = ping.gid} end
     end
     return list
 end

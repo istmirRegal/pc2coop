@@ -280,6 +280,17 @@ class SyncTests(unittest.TestCase):
         ''')
         self.tick()
 
+    def test_a_mark_finds_the_object_on_the_mouse_ray(self):
+        # P6 A9: a mark on an object carries its shared id, so the others outline that object.
+        self.local_build()                                   # a rock at (10, 5, 10)
+        gid = self.lua.eval('sync.PartOnRay(0, 5, 10.5, 1, 0, 0, 50)')
+        self.assertTrue(gid and self.lua.eval('function(g) return sync.PingGid(g) end')(gid), gid)
+        self.assertIsNone(self.lua.eval('sync.PartOnRay(0, 5, 30, 1, 0, 0, 50)'))     # ray passes far off
+        self.assertIsNone(self.lua.eval('sync.PartOnRay(0, 5, 10, 1, 0, 0, 4)'))      # behind the ground
+        self.assertIsNone(self.lua.eval('sync.PartOnRay(20, 5, 10, 1, 0, 0, 50)'))    # behind the camera
+        for bad in ('F1_2_3', 'S1_2_3', '../x', 'a b', '', 'x' * 65):
+            self.assertFalse(self.lua.eval('function(g) return sync.PingGid(g) end')(bad), bad)
+
     def test_local_create_is_reported_once(self):
         self.local_build()
         ups = self.records('sync:up|')

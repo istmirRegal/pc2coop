@@ -418,6 +418,40 @@ function Sync.RideKey(entity)
     return ok and key or nil
 end
 
+-- The shared scenery part a mark points at (P6 A9: the others see that object outlined): the
+-- part whose position lies closest to the mouse ray, within 2 m plus 3 % of the distance and
+-- not behind the ground. Its shared id, or nil. No ride ids (F/S): rides are found by place,
+-- which is too slow to do every frame on the other machines.
+function Sync.PartOnRay(sx, sy, sz, dx, dy, dz, reach)
+    if not (sx and dx) then return nil end
+    local best, bestScore
+    for part, print in global.pairs(known) do
+        local px, py, pz = global.string.match(print, "^[^|]*|([^|]*)|([^|]*)|([^|]*)|")
+        px, py, pz = global.tonumber(px), global.tonumber(py), global.tonumber(pz)
+        if px and py and pz then
+            local vx, vy, vz = px - sx, py - sy, pz - sz
+            local t = vx * dx + vy * dy + vz * dz
+            if t > 0 and t <= (reach or 2000) + 4 then
+                local off = vx * vx + vy * vy + vz * vz - t * t
+                local limit = 2 + 0.03 * t
+                if off <= limit * limit then
+                    local score = off / (limit * limit) + t / 4000
+                    if not bestScore or score < bestScore then best, bestScore = part, score end
+                end
+            end
+        end
+    end
+    if not best then return nil end
+    local gid = localToGlobal[best] or ("P" .. global.tostring(best))
+    return Sync.PingGid(gid) and gid or nil
+end
+
+-- A shared id a mark may carry: a scenery part, never a ride (F/S) or anything odd.
+function Sync.PingGid(gid)
+    return global.type(gid) == "string" and #gid <= 64 and global.string.match(gid, "^[%w_%.%-]+$") ~= nil
+        and not global.string.match(gid, "^[FS]")
+end
+
 function Sync.EntityToGid(entity)
     if global.type(entity) ~= "number" then return nil end
     local w = apis()

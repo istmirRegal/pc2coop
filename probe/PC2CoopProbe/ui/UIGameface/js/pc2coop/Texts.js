@@ -136,6 +136,9 @@ const EXACT = {
     'Bewertung läuft': 'Rating in progress', 'Ergebnis': 'Result', 'Gestaltung': 'Design', 'Technik': 'Engineering',
     'Zeit beenden, bewerten': 'End time, rate', 'Bewertung abschließen': 'Finish rating', 'Wettbewerb schließen': 'Close competition',
     'Für dich': 'For you', 'nur auf deinem PC': 'only on your PC', 'Mitspieler in der Welt zeigen': 'Show players in the world',
+    'Chat unten links einblenden': 'Show chat bottom left',
+    'Neue Nachrichten und was Mitspieler tun, kurz unten links. Enter öffnet den Chat trotzdem.':
+        'New messages and what players do, briefly at the bottom left. Enter still opens the chat.',
     'Name, Blickrichtung, gehaltenes Objekt und Sperr-Färbung': 'Name, view direction, held object and lock colouring',
     'Regeln dieser Sitzung': 'Rules of this session', 'Schnellwahl': 'Preset', 'Eigene': 'Custom',
     'Locker': 'Relaxed', 'Geordnet': 'Orderly', 'Nur bauen': 'Build only', 'Locker zusammen bauen': 'Relaxed building together',
@@ -391,6 +394,8 @@ function englishTexts(tr) {
         [/^Kasse ([+-]?\d+) EUR$/, (m, n) => 'Cash ' + n + ' EUR'],
         [/^Aufgaben: (\d+) erledigt, (\d+) offen$/, (m, a, b) => 'Tasks: ' + a + ' done, ' + b + ' open'],
         [/^offene Meldung: (.+)$/, (m, what) => 'open notification: ' + tr(what)],
+        [/^(.+) kauft (.+) \((.+)\)$/, (m, who, item, price) => named(who) + ' buys ' + item + ' (' + price + ')'],
+        [/^Gekauft: (.+) \((.+)\)$/, (m, item, price) => 'Bought: ' + item + ' (' + price + ')'],
         // Single objects last: "<name> hat <object> platziert" (the object's name stays)
         [/^(.+?) hat (.+) (platziert|bearbeitet|gelöscht)$/, (m, who, what, verb) => named(who) + ' ' + VERB[verb] + ' ' + what],
         // "<name> – <activity>" (own entry in the player bar): the activity, when it is known.

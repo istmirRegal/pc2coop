@@ -9,12 +9,13 @@ Code: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js`,
 - **Status:** Implemented · **Seit:** 1.8.0 (Reiter seit 1.12.0, Fenster links seit UX-Overhaul P2)
 - **Funktion:** Im Park ein Fenster im Look der Spiel-Fenster am linken Rand, nicht modal (Bauen
   geht weiter), mit vier Symbol-Reitern: Spieler, Planen, Verlauf, Einstellungen. „Besuchen“ ist
-  ein Knopf im Fuß. Im Hauptmenü zeigt die Seite FEAT-119 alles; das alte Fenster in drei Spalten
-  ist nur noch Rückfall, wenn die Seite nicht angelegt werden kann.
+  ein Knopf im Fuß. Im Hauptmenü zeigt die Seite FEAT-119 alles. Das alte Fenster in drei
+  Spalten (Rückfall, wenn die Seite nicht öffnen konnte) ist seit 1.14.0 entfernt: Erlaubt das
+  Menü die Seite gerade nicht (Titelbild, Laden), öffnet sie, sobald es geht (`pendingPage`).
 - **Technik:** Klasse `Lobby` in `CoopLayer.js`: `renderParkPanel` (Park, `PARK_TABS`) baut aus den
   CSS-Klassen von `Panel` und `TabBar` des Spiels, dem Spiel-`Tab` und `CloseButton`; die
   Komponente `Panel` selbst ist nicht benutzt, weil sie Fokus und Eingabe-Kontexte übernimmt.
-  `renderBody` (Hauptmenü). `ui.lua` `TABS`, UI-Aktionen `open`, `close`, `paneltab`;
+  Im Hauptmenü zeichnet `Lobby` nichts (die Seite, FEAT-119). `ui.lua` `TABS`, UI-Aktionen `open`, `close`, `paneltab`;
   `Ui.SetOpen`, `Ui.Toggle`.
 - **Besonderheiten:** Gameface bricht Knopfreihen in schmalen Spalten unzuverlässig um; lange
   Knöpfe stehen deshalb untereinander (`buttons(items, wide)`, Schnellwahl). Breite 23.5 rem wie
@@ -109,6 +110,14 @@ Code: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js`,
   Aktionen in `ui.lua`. Log-Kanal `PC2Coop_Log` (`js|...`).
 - **Besonderheiten:** Der Regex für Anfragen braucht ein abschließendes `|`. Die HUD-Ansicht
   wird erst kurz nach dem Start gehört; frühe Logzeilen gehen verloren (deshalb 4 s Verzögerung).
+
+### FEAT-122 – Chat unten links abschaltbar („Für dich“)
+- **Status:** Implemented · **Seit:** 1.14.0 (UX-Overhaul TP-32)
+- **Funktion:** Schalter „Chat unten links einblenden“ im Reiter Einstellungen, Abschnitt „Für
+  dich“. Aus: neue Nachrichten und Ereignisse erscheinen nicht mehr kurz unten links; Enter
+  öffnet den Chat mit dem Verlauf trotzdem. Hinweise (Karten über dem Chat) bleiben.
+- **Technik:** UI-Aktion `chatlines`, Zustand `chatLines`; `shared.chatLinesOff` (gilt bis zum
+  Spielende, auch über das Laden eines Parks). `ChatArea.onCoop` nimmt dann keine Zeilen auf.
 
 ### FEAT-121 – Englisch nach der Sprache des Spiels
 - **Status:** Implemented · **Seit:** 1.14.0
