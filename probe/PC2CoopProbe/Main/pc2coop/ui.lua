@@ -253,6 +253,7 @@ local function buildState()
     end
     return {
         available = session.Available() == true, role = view.role or false, me = view.me, open = open, qaClickTab = qaClick, qaLook = qaLook,
+        netProblem = session.NetProblem and session.NetProblem() or false,
         canHost = canHost, franchise = franchise, players = players, friends = friends,
         join = session.JoinState and session.JoinState() or false,
         desync = session.Desync and session.Desync() or false,

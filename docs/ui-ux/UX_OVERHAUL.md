@@ -488,6 +488,16 @@ nicht, sagt ein Dialog es (vorher nur eine Logzeile). Einladungen warten blass i
 2 Minuten „keine Antwort“ mit „Noch einmal einladen“. Fehlertexte ohne Doppelpunkt, mit Umlauten,
 ohne „Bitte“.
 
+**P5 Schritt 3 (2026-11-21):** Ohne Steam-Verbindung nennen Kachel, Seite und Statuszeile den
+Grund (DLL fehlt oder Steam antwortet nicht) und was hilft. Abweichung: kein „Erneut prüfen“ und
+keine gesperrte Kachel – die DLL lädt und bindet Steam einmal pro Spielstart, ein neuer Versuch
+könnte nichts ändern; die Kachel öffnet die Seite mit der Erklärung. Freundeslisten zeigen nur
+Erreichbare, sonst „Gerade ist keiner deiner Steam-Freunde online.“ „Eingeladen“ hat einen Tooltip.
+„Zurückholen…“ fragt erst. Leere Listen (Brett, Verlauf, Sicherungspunkte, Fahrgeschäfte, Chat)
+hatten schon einen Satz und die passende Aktion daneben. „Änderung abgelehnt“ ist seit P1 Schritt 4
+gebaut. Offen bleibt TP-29 (Tooltips an den gesperrten Spielknöpfen Tempo und Rückgängig; heute
+sagt eine Meldung den Grund).
+
 Prototypen zuerst (vor P2/P3/P4): `Panel` in unserer Ebene, Seite im Hauptmenü-Rahmen,
 Bauleiste im Besuch aus. Ergebnis entscheidet, ob Ziel oder Rückfall gebaut wird.
 

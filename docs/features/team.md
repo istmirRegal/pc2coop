@@ -88,7 +88,8 @@ Gemeinsam planen, entscheiden, spielen. Konzept: `docs/KONZEPT.md`. Code:
 - **Technik:** `Session.Checkpoint`, `Session.Propose`, `Session.Vote`, `Session._VoteCheck`,
   `Session.VoteView`; Nachrichten `vote`, `vote-answer`; Wiederherstellen lädt den
   gespeicherten Park für alle. UI-Aktionen `checkpoint`, `restore`, `vote`.
-- **UI:** Reiter Verlauf „Sicherungspunkte“, Anfrage-Karte `RequestCard`.
+- **UI:** Reiter Verlauf „Sicherungspunkte“, Anfrage-Karte `RequestCard`. „Zurückholen…“ fragt
+  erst (`RestoreConfirm`): allein im Park wäre die Abstimmung sofort durch.
 
 ### FEAT-142 – Sitzungsregeln und Schnellwahl
 - **Status:** Implemented · **Seit:** 1.12.0

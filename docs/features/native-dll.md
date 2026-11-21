@@ -14,6 +14,10 @@ und Maus, Dateien im Spielordner. Lua spricht sie über `probe/PC2CoopProbe/Main
   Ereignisse `net:ready|sid|name`, `lobby:*`, `member:join/leave`, `msg|sid|text`,
   `net:error`, `net:refused`. Lobby: nur Freunde, höchstens 8 Spieler. Steam Networking
   Messages über die bereits geladene `steam_api64.dll` des Spiels (`GetProcAddress`).
+- **Ohne Verbindung:** `Session.NetProblem` sagt warum: `dll` (DLL nicht geladen) oder `steam`
+  (`net:error`, Steam-Schnittstellen nicht gebunden; dann ist `Session.Available` falsch).
+  Beides gilt bis zum Neustart des Spiels; die Oberfläche nennt den Grund und was hilft, ohne
+  Knopf „Erneut prüfen“ (UX-Overhaul P5).
 
 ### FEAT-191 – Dateiübertragung
 - **Status:** Implemented · **Seit:** 1.4.1

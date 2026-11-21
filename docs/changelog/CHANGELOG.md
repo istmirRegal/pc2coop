@@ -5,6 +5,11 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
 
 ## Unveröffentlicht
 
+- Fehlt die Steam-Verbindung der Mod (zum Beispiel wenn der Virenscanner die DLL blockiert),
+  sagen die Kachel und die Seite „Multiplayer“, woran es liegt und was hilft.
+- Die Freundesliste zeigt nur, wer gerade erreichbar ist. Ist keiner online, steht das da.
+- „Zurückholen…“ bei einem Sicherungspunkt fragt erst nach.
+
 ## 1.14.0 – 2026-11-21
 
 Neue Oberfläche im Stil des Spiels (UX-Overhaul P0 bis P5).

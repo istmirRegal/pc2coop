@@ -371,11 +371,26 @@ function contentLine(coop, p) {
     return { text: 'Inhalte wie der Host', warn: false };
 }
 
+// Why the multiplayer is off (UX_OVERHAUL.md §5 "Steam fehlt"), and what helps. No "Erneut
+// prüfen": the DLL loads once per game start and binds Steam once, a retry could not help.
+const NET_PROBLEM = {
+    dll: ['Die Steam-Verbindung der Mod fehlt.', 'PC2CoopDiagnostic.dll fehlt im Mod-Ordner oder wurde vom Virenscanner blockiert. '
+        + 'Installiere die Mod neu und starte das Spiel neu.'],
+    steam: ['Steam antwortet der Mod nicht.', 'Starte Steam und das Spiel neu. Hilft das nicht, schick die Log-Datei aus dem Mod-Ordner.'],
+};
+const netProblem = (coop) => NET_PROBLEM[coop.netProblem] || NET_PROBLEM.dll;
+
+// Friends worth listing (§5 Empty): online, playing, with a session, or invited and waiting.
+const onlineFriends = (friends) => friends.filter((f) => f.state > 0 || f.pc2 || f.lobby || f.asked);
+const noFriendsText = (coop) => (coop.available === false ? 'Ohne Steam-Verbindung keine Freundesliste.'
+    : list(coop.friends).length === 0 ? 'Lade Freundesliste …' : 'Gerade ist keiner deiner Steam-Freunde online.');
+const INVITED_TIP = 'Die Einladung ist raus. Nach einer halben Minute kannst du noch einmal einladen.';
+
 function statusOf(coop) {
     const join = coop.join || {};
     const players = list(coop.players);
     const host = hostOf(coop);
-    if (!coop.available) return { text: 'Steam ist nicht verfügbar.', tone: 'warn' };
+    if (!coop.available) return { text: netProblem(coop)[0], tone: 'warn' };
     if (join.phase === 'failed') return { text: join.reason, tone: 'warn' };
     if (join.phase === 'starting') return { text: 'Die Sitzung wird erstellt …', tone: 'busy' };
     if (join.phase === 'hostlobby') return { text: (join.host || 'Der Host') + ' wählt im Hauptmenü einen Park.', tone: 'wait' };
@@ -1106,6 +1121,25 @@ class EndConfirm extends preact.Component {
     }
 }
 
+// "Zurückholen…" asks first (UX_OVERHAUL.md P5): with nobody else in the session the vote passes
+// at once, and everything built since is gone.
+let restoreAsked = null;
+function askRestore(checkpoint) { restoreAsked = checkpoint || null; endListeners.forEach((fn) => fn()); }
+class RestoreConfirm extends preact.Component {
+    componentDidMount() { this.update = () => this.forceUpdate(); endListeners.add(this.update); }
+    componentWillUnmount() { endListeners.delete(this.update); }
+    render() {
+        const c = restoreAsked;
+        if (!c) return null;
+        const others = list((currentState || {}).players).length > 1;
+        return h(Dialog, { modifiers: 'dialogApp', title: literal('Sicherungspunkt zurückholen'),
+            description: literal('Park auf „' + c.label + '“ zurücksetzen? Was seitdem gebaut wurde, ist dann weg.'
+                + (others ? ' Erst stimmen alle ab, dann laden alle den Park neu.' : '')),
+            buttons: [{ label: literal('Zurückholen'), onSelect: () => { askRestore(null); request('restore', String(c.n)); } },
+                { label: literal('Abbrechen'), onSelect: () => askRestore(null), inputName: 'UI_Cancel' }] });
+    }
+}
+
 class Lobby extends StateComponent {
     state = { draft: '', tab: 'save', creative: true, kind: 'task', title: '', text: '', assignee: '', radius: 20 };
     render(props, state) {
@@ -1249,15 +1283,15 @@ class Lobby extends StateComponent {
     renderPanelFriends(coop) {
         const inSession = {};
         list(coop.players).forEach((p) => { inSession[p.sid] = true; });
-        const friends = list(coop.friends).filter((f) => !inSession[f.sid]).slice(0, 60);
+        const friends = onlineFriends(list(coop.friends).filter((f) => !inSession[f.sid])).slice(0, 60);
         return [section('Freunde einladen'),
-            friends.length === 0 ? muted(coop.available ? 'Lade Freundesliste …' : 'Steam ist nicht bereit.')
+            friends.length === 0 ? muted(noFriendsText(coop))
                 : h('div', { key: 'friends' }, friends.map((f) => row([
                     h('div', { style: { flexGrow: 1, flexShrink: 1, minWidth: 0 } },
                         h('div', null, f.name),
                         muted(f.lobby ? 'hat eine offene Sitzung' : f.pc2 ? 'spielt Planet Coaster 2' : (FRIEND_STATE[f.state] || ''),
                             f.lobby || f.pc2 ? { color: C('positiveDark') } : undefined)),
-                    buttons([{ label: f.invited ? 'Eingeladen' : 'Einladen', disabled: f.invited, onSelect: () => request('invite', f.sid) }])], 'f' + f.sid))),
+                    buttons([{ label: f.invited ? 'Eingeladen' : 'Einladen', disabled: f.invited, tip: f.invited ? INVITED_TIP : undefined, onSelect: () => request('invite', f.sid) }])], 'f' + f.sid))),
             h('div', { key: 'overlay', style: { marginTop: '0.4rem' } }, buttons([{ label: 'Steam-Overlay', onSelect: () => request('invite_overlay') }]))];
     }
 
@@ -1350,7 +1384,7 @@ class Lobby extends StateComponent {
             section('Sicherungspunkte', infoTip(checkTip)),
             list(team.checkpoints).length === 0 && muted('Noch keiner.'),
             h('div', { key: 'checkpoints' }, list(team.checkpoints).map((c) => row([h('div', null, c.label),
-                isHost && buttons([{ label: 'Zurückholen…', tip: checkTip, onSelect: () => request('restore', String(c.n)) }])], 'c' + c.n))),
+                isHost && buttons([{ label: 'Zurückholen…', tip: checkTip, onSelect: () => askRestore(c) }])], 'c' + c.n))),
             isHost && h('div', { key: 'checkpoint', style: { marginTop: '0.3rem' } }, buttons([{ label: 'Sicherungspunkt erstellen', onSelect: () => request('checkpoint') }])),
             section('Verlauf der Sitzung'),
             list(coop.log).length === 0 ? muted('Noch nichts passiert.')
@@ -1574,7 +1608,7 @@ class Lobby extends StateComponent {
                             h('div', { style: { color: f.lobby ? C('positiveDark') : f.pc2 ? C('positiveDark') : C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } },
                                 f.lobby ? 'hat eine offene Sitzung' : f.pc2 ? 'spielt Planet Coaster 2' : (FRIEND_STATE[f.state] || ''))),
                         inSession[f.sid] ? h('span', { style: { color: C('positiveDark'), fontSize: '0.9rem' } }, 'ist dabei')
-                            : coop.role ? buttons([{ label: f.invited ? 'Eingeladen' : 'Einladen', disabled: f.invited, onSelect: () => request('invite', f.sid) }])
+                            : coop.role ? buttons([{ label: f.invited ? 'Eingeladen' : 'Einladen', disabled: f.invited, tip: f.invited ? INVITED_TIP : undefined, onSelect: () => request('invite', f.sid) }])
                             : f.lobby ? buttons([{ label: 'Beitreten', onSelect: () => request('join_friend', f.sid) }]) : null,
                     ], 'f' + f.sid))));
     }
@@ -1631,7 +1665,8 @@ class MultiplayerPage extends StateComponent {
             h('div', { style: { display: 'flex', alignItems: 'flex-start' } },
                 pagePanel('Spieler' + (coop.role && !steps ? '  ' + list(coop.players).length + ' / ' + SLOTS : ''), 30,
                     steps ? joinSteps(coop.join, 0.8) : this.places(coop),
-                    steps ? null : [statusLine, footer.length > 0 && h('div', { key: 'f' }, buttons(footer))]),
+                    // Without Steam the panel itself says why; no status line repeating it.
+                    steps || coop.available === false ? null : [statusLine, footer.length > 0 && h('div', { key: 'f' }, buttons(footer))]),
                 right,
                 isHost && coop.stage === 'lobby' && this.parkTiles()));
     }
@@ -1641,6 +1676,13 @@ class MultiplayerPage extends StateComponent {
         const players = list(coop.players);
         const requests = coop.role === 'host' ? list(coop.requests) : [];
         const out = [];
+        if (coop.available === false) {
+            const [what, help] = netProblem(coop);
+            out.push(h('div', { key: 'net', style: { display: 'flex', alignItems: 'flex-start', padding: '0.4rem 0' } },
+                glyph('img/icons/warning.svg', '1.3rem', false, { marginRight: '0.6rem', filter: C('accentText-filter') }),
+                h('div', { style: { flexGrow: 1, flexShrink: 1, minWidth: 0 } }, h('div', { style: { fontWeight: 'bold' } }, what), muted(help))));
+            return out;
+        }
         if (!coop.role) {
             out.push(muted('Noch keine Sitzung.', { padding: '0.3rem 0' }));
             return out;
@@ -1684,14 +1726,14 @@ class MultiplayerPage extends StateComponent {
     }
 
     friendRows(coop) {
-        const friends = sortedFriends(coop);
-        if (friends.length === 0) return muted(coop.available ? 'Gerade ist keiner deiner Steam-Freunde online.' : 'Steam ist nicht bereit.');
+        const friends = onlineFriends(sortedFriends(coop));
+        if (friends.length === 0) return muted(noFriendsText(coop));
         return friends.map((f) => row([
             h('div', { style: { flexGrow: 1, flexShrink: 1, minWidth: 0 } },
                 h('div', null, f.name),
                 muted(f.lobby ? 'hat eine offene Sitzung' : f.pc2 ? 'spielt Planet Coaster 2' : (FRIEND_STATE[f.state] || ''),
                     f.lobby || f.pc2 ? { color: C('positiveDark') } : undefined)),
-            coop.role ? buttons([{ label: f.invited ? 'Eingeladen' : 'Einladen', disabled: f.invited, onSelect: () => request('invite', f.sid) }])
+            coop.role ? buttons([{ label: f.invited ? 'Eingeladen' : 'Einladen', disabled: f.invited, tip: f.invited ? INVITED_TIP : undefined, onSelect: () => request('invite', f.sid) }])
                 : f.lobby ? buttons([{ label: 'Beitreten', onSelect: () => request('join_friend', f.sid) }]) : null], 'f' + f.sid));
     }
 
@@ -1891,6 +1933,7 @@ class CoopLayer extends preact.Component {
             h('div', { style: { pointerEvents: 'auto' } }, h(JoinFailed, null)),
             h('div', { style: { pointerEvents: 'auto' } }, h(JoinConfirm, null)),
             h('div', { style: { pointerEvents: 'auto' } }, h(EndConfirm, null)),
+            h('div', { style: { pointerEvents: 'auto' } }, h(RestoreConfirm, null)),
             h('div', { style: { pointerEvents: 'auto' } }, h(Rejoin, null)),
             h('div', { style: { pointerEvents: 'auto' } }, h(ConnectionDialog, null)),
             h('div', { style: { pointerEvents: 'auto' } }, h(SessionEnded, null)));
@@ -2056,7 +2099,8 @@ function patchStartTabClass(tabClass, TileButton) {
                 // The state on the tile (TP-01, TP-02): an open session, or a friend with one.
                 const coop = currentState || {};
                 const friend = list(coop.friends).find((f) => f.lobby);
-                const description = literal(coop.role ? 'Sitzung offen · ' + list(coop.players).length + '/' + SLOTS
+                const description = literal(coop.available === false ? 'Gerade nicht verfügbar – ' + netProblem(coop)[0]
+                    : coop.role ? 'Sitzung offen · ' + list(coop.players).length + '/' + SLOTS
                     : friend ? friend.name + ' hat eine Sitzung – beitreten' : 'Mit Steam-Freunden live im selben Park bauen.');
                 at.list.splice(at.index + 1, 0, preact.h(TileButton, { label: title, titleIcon: 'img/icons/collaborate.svg',
                     key: 'pc2coopBtn', description, backgroundImage: 'img/frontEnd/franchiseBG.png', outcome: 'PC2CoopMultiplayer',
@@ -2113,10 +2157,11 @@ export function start(logger) {
             // tip 1-8: that player in the cluster, 9: the first tab of the window - as if the mouse were on it;
             // 10: the question "Für alle beenden?", 11: the tooltip of the rules' info icon.
             if (tip === 10) askEnd(true);
+            if (tip === 13) askRestore(list((s.team || {}).checkpoints)[0]);
             const hovered = tip >= 1 && tip <= 8 ? document.querySelectorAll('.pc2coopTip')[tip - 1]
                 : tip === 9 ? document.querySelector('.pc2coopPanel .Tab_root') : tip === 11 ? document.querySelector('.pc2coopRoleTip') : null;
             if (hovered) hovered.dispatchEvent(new MouseEvent('mouseenter', { bubbles: false }));
-            if (tip > 0 && tip !== 10) report('qa hover ' + (hovered ? 'found' : 'missing'));
+            if (tip > 0 && tip !== 10 && tip !== 13) report('qa hover ' + (hovered ? 'found' : 'missing'));
             // tab 0: our build bar tab hidden (does the game's bar fit without it?)
             document.querySelectorAll('.pc2coopTabBar').forEach((el) => { el.style.display = tab === 0 ? 'none' : ''; });
             Promise.all([import('/js/config/ThemeConfig.js'), import('/js/common/core/UIScale.js')]).then(([themes, ui]) => {

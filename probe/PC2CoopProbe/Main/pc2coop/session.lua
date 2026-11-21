@@ -1584,6 +1584,9 @@ local function onNet(event)
         local who = players[f[2]] and players[f[2]].name or "Ein Mitspieler"
         addFeed("Verbindung zu " .. who .. " hängt - bitte neu beitreten")
         emit("session:peer-stalled|" .. f[2] .. "|" .. global.tostring(f[3]))
+    elseif kind == "net:error" then
+        Session._netError = f[2] or "?"   -- the DLL could not bind Steam: multiplayer stays off
+        emit("session:" .. event)
     elseif kind == "lobby:error" then
         emit("session:" .. event)
         if f[2] == "create-failed" and Session._starting then
@@ -1646,7 +1649,16 @@ function Session._TryLoad()
     end
 end
 
-function Session.Available() return net and net.HasNet() end
+function Session.Available() return net and net.HasNet() and not Session._netError end
+
+-- Why the multiplayer is off (UX_OVERHAUL.md §5 "Steam fehlt"): "dll" when the mod's DLL did not
+-- load, "steam" when the DLL could not bind Steam's interfaces; nil when all is well. Both are
+-- final for this game start (the DLL loads and binds once), so the UI offers no retry.
+function Session.NetProblem()
+    if Session._netError then return "steam" end
+    if not (net and net.HasNet()) then return "dll" end
+    return nil
+end
 
 -- "Eingeladen" wears off, so a friend who missed the invite can be invited again.
 function Session.Friends()
@@ -2313,7 +2325,7 @@ function Session.Propose(kind, arg)
     if not target then return false end
     voteSerial = voteSerial + 1
     vote = {id = "v" .. voteSerial, kind = kind, arg = global.tostring(target.n), by = nameOf(me), answers = {[me] = true},
-        text = "Park auf " .. target.label .. " zuruecksetzen? Alle laden den Park dann neu."}
+        text = "Park auf " .. target.label .. " zurücksetzen? Alle laden den Park dann neu."}
     broadcastVote()
     Session._VoteCheck()
     return true

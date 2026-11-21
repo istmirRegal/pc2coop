@@ -3,6 +3,13 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-21 – UX-Overhaul P5, Schritt 3: ohne Steam, leere Listen, Zurückholen
+
+- `Session.NetProblem` (`dll`/`steam`), `net:error` setzt `Session._netError` und macht
+  `Session.Available` falsch; UI-Feld `netProblem`. `NET_PROBLEM` für Kachel, Seite, Statuszeile.
+- `onlineFriends`, `noFriendsText`, `INVITED_TIP`; `RestoreConfirm` (QA-Look-Feld 13).
+- Abstimmungstext „zurücksetzen“ mit Umlaut.
+
 ## 2026-11-21 – UX-Overhaul P5, Schritt 2: Beitritt, Start, Einladungen
 
 - `joinSteps` mit Spiel-`ProgressSteps` (`hideLabels`; auf der Seite `scale(0.8)` und absolut

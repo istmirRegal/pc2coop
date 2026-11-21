@@ -14,7 +14,7 @@ Darstellung: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js` (Kompone
 
 | Ort | Element | Wann sichtbar | Aktion | FEAT |
 |---|---|---|---|---|
-| Hauptmenü, Reiter „Spielen“ | Kachel „Multiplayer“ neben Karriere (`patchStartTabClass`); Beschreibung mit Zustand („Sitzung offen · 2/8“, „<Freund> hat eine Sitzung – beitreten“); öffnet die Multiplayer-Seite | immer | `open` | FEAT-113, FEAT-119 |
+| Hauptmenü, Reiter „Spielen“ | Kachel „Multiplayer“ neben Karriere (`patchStartTabClass`); Beschreibung mit Zustand („Sitzung offen · 2/8“, „<Freund> hat eine Sitzung – beitreten“, ohne Steam-Verbindung „Gerade nicht verfügbar – <Grund>“); öffnet die Multiplayer-Seite (auch ohne Steam: dort steht, was hilft) | immer | `open` | FEAT-113, FEAT-119 |
 | Hauptmenü, jede Seite | Sitzungsleiste (`MiniLobby`) oben rechts unter dem Newsletter-Kasten: Avatare, Zustand, „Öffnen“, „Beenden“/„Verlassen“ | in einer Sitzung, Seite nicht offen | `open`, `leave` | FEAT-034 |
 | Park, Bauleiste unten | Reiter „Multiplayer“ rechts neben der Leiste, **nicht** in der TabBar (`patchBuildBar`, ADR-007) | im Park | `open` | FEAT-111 |
 | Park, Pausemenü (Esc) | Eintrag „Multiplayer“ (`patchMenuClass`); in einer Sitzung dazu „Sitzung verlassen“/„Sitzung beenden“ | im Park | `open`, `leave` | FEAT-112, FEAT-042 |
@@ -71,7 +71,7 @@ Esc zurück, schließt das Fenster). Titel, ein Satz, zwei bis drei Spalten:
 | Spalte | Elemente | Aktionen | FEAT |
 |---|---|---|---|
 | „Spieler n / 8“ | acht Plätze: Spieler (Profilbild, Name, Krone, Tätigkeit oder fehlende Inhalte), Beitrittsanfragen als wartende Karte „<Name> möchte beitreten“ mit Icon-Knöpfen Haken (Zulassen) und X (Ablehnen), eingeladene Freunde blass „eingeladen“, nach 2 Minuten „keine Antwort“ mit Icon-Knopf „Noch einmal einladen“, freie Plätze „+ Einladen“; Fuß: Zustand (dreht sich, solange etwas läuft), „Sitzung starten“ (bis Steam antwortet gesperrt als „Startet …“) bzw. „Steam-Overlay“, „Beenden“/„Verlassen“. Während eines Beitritts stehen hier die vier Schritte (`joinSteps`) | `approve`, `deny`, `host`, `invite`, `invite_overlay`, `leave`, `cancel_join` | FEAT-119, FEAT-027, FEAT-023, FEAT-031 |
-| rechts | ohne Sitzung „Steam-Freunde“ (Sitzung zuerst, dann PC2, online; „Beitreten“); nach „+ Einladen“ „Freund einladen“ mit „Einladen“/„Eingeladen“, „Steam-Overlay“, „Fertig“; sonst „Chat“ mit Eingabe „Nachricht“ | `join_friend`, `invite`, `invite_overlay`, `chat` | FEAT-024, FEAT-023, FEAT-035 |
+| rechts | ohne Sitzung „Steam-Freunde“ (Sitzung zuerst, dann PC2, online; „Beitreten“; nur wer online ist, sonst „Gerade ist keiner deiner Steam-Freunde online.“); nach „+ Einladen“ „Freund einladen“ mit „Einladen“/„Eingeladen“ (Tooltip: wann wieder), „Steam-Overlay“, „Fertig“; sonst „Chat“ mit Eingabe „Nachricht“. Ohne Steam-Verbindung steht im Spieler-Kasten der Grund und was hilft (`NET_PROBLEM`) | `join_friend`, `invite`, `invite_overlay`, `chat` | FEAT-024, FEAT-023, FEAT-035 |
 | Host in der Lobby | Kacheln des Spiels (`FrontEndTileButton`) „Sandbox“ (öffnet die Sandbox-Seite des Spiels) und „Franchise“ (wie die Kachel des Spiels) | `choose` (franchise) | FEAT-119 |
 
 ### 2.2 Besuchen (Reiter entfallen, P2)
@@ -93,7 +93,7 @@ UI-Skalierung 1.0 verdeckte er die Icon-Knöpfe am Ende der Bauleiste des Spiels
 | Abschnitt | Elemente | Aktionen | FEAT |
 |---|---|---|---|
 | „Meldungen des Parks“ | Zeilen mit Icon, Text, Icon-Knöpfen „Hinbringen“ und „Ausblenden“ (nur auf diesem PC) | `goto` | FEAT-140 |
-| „Sicherungspunkte“ (Info-Icon: was Zurückholen bedeutet) | Liste oder „Noch keiner.“; Host: „Zurückholen…“, „Sicherungspunkt erstellen“ | `restore`, `checkpoint` | FEAT-141 |
+| „Sicherungspunkte“ (Info-Icon: was Zurückholen bedeutet) | Liste oder „Noch keiner.“; Host: „Zurückholen…“ (fragt erst, `RestoreConfirm`), „Sicherungspunkt erstellen“ | `restore`, `checkpoint` | FEAT-141 |
 | „Verlauf der Sitzung“ | Feed, auch „Seit deinem letzten Besuch: …“ (kommt beim Beitritt einmal als Meldung) | – | FEAT-044, FEAT-139 |
 
 ### 2.5 Einstellungen
@@ -156,6 +156,7 @@ des Spiels (Alt springen, Strg ducken, L Lampe).
 | `Rejoin` „Du warst eben noch in der Sitzung von …“ | nach Absturz | „Wieder beitreten“ `rejoin`, „Nein“ `forget_rejoin` | FEAT-039 |
 | `ConnectionDialog` „Keine Verbindung zum Host“ | Mitspieler im Park, Host 30 s still (nicht im Besuch) | „Warten“ (schließt, Pille bleibt), „Verlassen“ `leave` | FEAT-040 |
 | `ConnectionDialog` „Der Host ist im Hauptmenü“ | Mitspieler im Park, Host zurück im Hauptmenü (nicht im Besuch) | „Ins Hauptmenü“ (`ExitToMainMenu`), „Hier warten“ (Pille bleibt) | FEAT-033 |
+| `RestoreConfirm` „Sicherungspunkt zurückholen“ | Host klickt „Zurückholen…“ | „Zurückholen“ `restore`, „Abbrechen“ | FEAT-141 |
 | `SessionEnded` „Die Sitzung ist beendet“ | Host weg (Park oder Hauptmenü) | Park: „Weiterspielen“ `ended_ok`, „Hauptmenü“ `ended_ok` + `ExitToMainMenu`; Hauptmenü: „OK“ `ended_ok` | FEAT-042 |
 
 ## 6. F8-Dialog (`menu.lua`, Dialog des Spiels)

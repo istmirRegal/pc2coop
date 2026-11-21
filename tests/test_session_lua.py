@@ -424,6 +424,16 @@ class JoinRobustnessTests(SessionTests):
         new.lua.execute('session.DismissJoin()')
         self.assertIsNone(self.join_state(new))
 
+    def test_why_the_multiplayer_is_off(self):
+        new = Peer('870', 'Vici')
+        self.assertIsNone(new.lua.eval('session.NetProblem()'))
+        new.event('net:error|steam-api-unavailable')
+        new.tick()
+        self.assertEqual(new.lua.eval('session.NetProblem()'), 'steam')
+        self.assertFalse(new.lua.eval('session.Available()'))
+        new.lua.execute('net.HasNet = function() return false end; session._netError = nil')
+        self.assertEqual(new.lua.eval('session.NetProblem()'), 'dll')
+
     def test_cancel_while_steam_joins_leaves_the_lobby_when_it_comes(self):
         new = Peer('830', 'Vici')
         new.event('invite:accepted|L9|100|invite')
@@ -1067,7 +1077,7 @@ class TeamTests(SessionTests.__bases__[0]):
         self.assertEqual(len(host.lua.eval('session.View().checkpoints')), 1)
         self.assertTrue(host.lua.eval('session.Propose("restore", 1)'))
         self.pump()
-        self.assertIn('zuruecksetzen', alex.lua.eval('session.VoteView().text'))
+        self.assertIn('zurücksetzen', alex.lua.eval('session.VoteView().text'))
         alex.lua.execute('session.Vote(true)')
         self.pump()
         self.assertEqual(len(host.lua.eval('loads')), 0, 'Sam has not answered yet')

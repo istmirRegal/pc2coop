@@ -53,7 +53,9 @@ Hauptcode: `probe/PC2CoopProbe/Main/pc2coop/session.lua` (Rolle, Nachrichten, Zu
 - **Technik:** `Session.RefreshFriends` → DLL `friends` → `friends:begin`, `friend`,
   `friends:end`; `Session.Friends`. „hat eine offene Lobby“ → `Session.JoinFriend`
   (UI-Aktion `join_friend`).
-- **UI:** Lobby rechte Spalte.
+- **UI:** Seite „Multiplayer“ rechts, im Park Reiter Spieler. Seit UX-Overhaul P5 nur wer
+  erreichbar ist (online, spielt, hat eine Sitzung, wartet auf eine Einladung); sonst „Gerade ist
+  keiner deiner Steam-Freunde online.“ (`onlineFriends`). „Eingeladen“ hat einen Tooltip.
 
 ### FEAT-025 – Beitritt über Steam-Einladung
 - **Status:** Implemented · **Seit:** 1.4.1 · **Hängt ab von:** FEAT-026, FEAT-029, FEAT-030

@@ -27,6 +27,8 @@ Wer ein Feld hinzufügt, trägt es hier ein.
 | `PlayerBar` | Sitzungs-Cluster oben rechts: Spieler mit Zustands-Icon (`stateIcon`), Tätigkeit im Tooltip, Wettbewerbs-Uhr | players, following, visitor, team.competition | FEAT-090, FEAT-145 |
 | `HoverTip` | Kasten mit Spiel-Tooltip beim Darüberfahren (`TooltipContainer`, wie `Button` mit `tooltipOnHover`) | tip, anchor, onClick, style | FEAT-090, FEAT-144 |
 | `EndConfirm` | Dialog „Für alle beenden?“ (Spiel-`Dialog`), vor `leave` des Hosts mit Mitspielern | `askEnd`, `endOrAsk` | FEAT-042 |
+| `RestoreConfirm` | Dialog „Sicherungspunkt zurückholen“ vor `restore` (allein ginge es sofort) | `askRestore`, `restoreAsked`, players | FEAT-141 |
+| `NET_PROBLEM`, `netProblem`, `onlineFriends`, `noFriendsText`, `INVITED_TIP` | Grund ohne Steam-Verbindung (Kachel, Seite, Statuszeile), nur erreichbare Freunde, Satz bei leerer Liste, Tooltip an „Eingeladen“ | available, netProblem, friends | FEAT-190, FEAT-024 |
 | `raiseTooltips` (in `poll`) | hebt die Tooltip-Ebene des Spiels (`Layer_root` mit `.TooltipContainer`) auf z-index 10001 über unsere Ebene (10000) | – | – |
 | `VisitorHud` | Besuch (TP-24, TP-25): Tastenhinweise unten rechts (`visitKeys`), E-Hinweis unter der Bildmitte, Kauf-Panel; beim Mitfahren nur „Du fährst …“ | visitor | FEAT-160, FEAT-165, FEAT-169 |
 | `VisitorRides` | Fahrgeschäfte-Panel links (Klassen `Panel_*`), Mitfahren, Bewertung mit Spiel-`Stars`, eigene Wertung als fünf Stern-Icons (`accent-filter`), Vorschlag | visitor.list, visitor.rides, role | FEAT-166, FEAT-167 |
