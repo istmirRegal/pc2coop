@@ -66,7 +66,9 @@ Was ein Spieler von den anderen sieht. Code: `probe/PC2CoopProbe/Main/pc2coop/vi
   F/S-Ids, `Session._PingGid`). Sonst ein Ring aus zehn kleinen Punkten flach am Boden, Mitte
   frei, nach Abstand skaliert; Baugebiete ein ruhender Punktring in ihrer Größe (12–40
   Punkte, Boden je Punkt). Vorher: gefüllte Scheibe mit drei Scheiben darüber, Baugebiet als
-  große Scheibe. Test: `tests/test_viz_lua.py`.
+  große Scheibe. Test: `tests/test_viz_lua.py`. Füllung des Kanals 0.2 statt 0.45 (Testkopie:
+  bei 0.45 war ein markierter Fels ganz rot zugedeckt); Umriss voll. Gilt auch für gesperrte
+  Objekte und Geister. Im Spiel geprüft: Fels blinkt (Pixel rot 166 ↔ 46), Punktringe am Boden.
 - **Besonderheiten:** Der Zweig `key:ping` in `session.lua` stammt von einer früheren Taste;
   die DLL sendet ihn nicht mehr (siehe DEVLOG, Aufräumkandidat).
 

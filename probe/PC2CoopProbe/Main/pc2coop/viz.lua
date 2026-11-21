@@ -159,7 +159,9 @@ local function setColour(hex)
         -- The editor rewrites channel settings when the player changes tools: set them often.
         model.SetHighlightBehaviour(CHANNEL, model.HighlightDefault)
         model.SetHighlightEdgeColour(CHANNEL, Vector3:new(r, g, b), 1)
-        model.SetHighlightFillColour(CHANNEL, Vector3:new(r, g, b), 0.45)  -- see-through (P6 A9)
+        -- Mostly the outline: a marked or locked object stays visible under its tint (P6 A9;
+        -- at 0.45 a marked rock was covered in red, test copy 2026-11-21).
+        model.SetHighlightFillColour(CHANNEL, Vector3:new(r, g, b), 0.2)
     end)
 end
 
