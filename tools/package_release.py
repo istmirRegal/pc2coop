@@ -19,7 +19,9 @@ import zipfile
 
 PROJECT = Path(__file__).resolve().parents[1]
 WORKSPACE = PROJECT.parents[1]
-EXE_HASH = "9da90ae2611bf41af532a30611082bd90cdda6b325e570ac63a469051e736c12"
+# The game EXE the release was tested with (Steam build TESTED_BUILD; informational in the manifest).
+EXE_HASH = "4082bd57eeccfda54824409e9be32e952461cfb422caa201662c00deb54217f3"
+TESTED_BUILD = "26494896"
 INSTALLER_FILES = ("INSTALL.cmd", "UNINSTALL.cmd", "UPDATE.cmd", "install.ps1", "update.ps1", "LIESMICH.txt", "README-EN.txt")
 # GitHub repository whose releases UPDATE.cmd reads ("owner/name"); set in release.json.
 RELEASE_CONFIG = PROJECT / "release.json"
@@ -149,7 +151,7 @@ def main() -> int:
             copy(PROJECT / name, stage / "source" / name)
         files = [{"path": f.relative_to(stage / "payload").as_posix(), "sha256": sha(f), "bytes": f.stat().st_size}
                  for f in sorted((stage / "payload").rglob("*")) if f.is_file()]
-        manifest = {"schema": 1, "version": version, "tested_steam_build": "26255360",
+        manifest = {"schema": 1, "version": version, "tested_steam_build": TESTED_BUILD,
                     "tested_exe_sha256": EXE_HASH, "acse_commit": "external", "files": files}
         (stage / "payload-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf8")
         temp_zip = out.with_suffix(".tmp.zip")

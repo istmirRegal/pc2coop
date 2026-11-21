@@ -87,7 +87,8 @@ Vorlage je Funktion: Funktion · Technik · UI · Besonderheiten.
 - **Funktion:** Die Mod sucht die benötigte Spielroutine selbst; fehlt sie, bleibt der
   Multiplayer aus und das Log enthält „game build not supported“.
 - **Technik:** DLL sucht die String-Routine des Spiels per Byte-Muster (`native/string_probe.cpp`, genau ein Treffer nötig);
-  `tools/scan_exe.py` prüft eine EXE mit denselben Regeln. Getestet: Steam-Build 26255360.
+  `tools/scan_exe.py` prüft eine EXE mit denselben Regeln. Getestet: Steam-Build 26255360 und
+  26494896 (Update vom 2026-11-17; RVA `0x1e29f50` bzw. `0x1e2d910`).
 - **Besonderheiten:** Spieler mit unterschiedlicher Spielversion werden abgewiesen (FEAT-029).
 
 ### FEAT-010 – Startskript der Python-Alpha (`START.cmd`)

@@ -16,7 +16,7 @@ selben Park, über Steam-Einladungen, ohne Portfreigabe oder Zusatzprogramm.
 4. Neue Version: Spiel beenden, `UPDATE.cmd` doppelklicken.
 
 Alle Mitspieler brauchen dieselbe Mod-Version und dieselbe Spielversion
-(Steam-Build 26255360). Details, Stand der Synchronisation und bekannte Lücken:
+(getestet mit Steam-Build 26494896). Details, Stand der Synchronisation und bekannte Lücken:
 [alpha-dist/LIESMICH.txt](alpha-dist/LIESMICH.txt).
 
 ## Wie es funktioniert

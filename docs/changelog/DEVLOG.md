@@ -19,6 +19,13 @@ Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
   englischen Spalte), `tests/test_lang_lua.py`, `lang` in `tests/test_ui_lua.py`.
 - Nebenbei: weitere Textregeln in Lua (kein „bitte“, kein „oben rechts anklicken“, „Sie können“
   → kurzer Satz, „abreissen“ → „abreißen“).
+- Testkopie auf Build 26494896 gebracht (robocopy aus der Installation des Eigners, nur lesen;
+  Mod-Ordner, ACSE und Testdateien ausgenommen; 124 Dateien, 2,2 GB). Dort geprüft (QA-Feld 6):
+  Hauptmenü-Seite und Fenster im Park auf Englisch, „Enter Chat“/„Mark“ in der Hinweiszeile,
+  Meldungen aus Lua („Undone: …“, „Vici placed 3 objects“), „Super“ im Chat bleibt. Log ohne
+  NUL-Byte, Stringroutine bei RVA `0x1e2d910` wie beim Tester. Fund dabei: Zurück auf Deutsch
+  blieb „Mark“ stehen – `promptsShown` wird beim Sprachwechsel `null`, damit die Zeile neu gesetzt
+  oder geleert wird. Komponenten des Spiels (Schalter „Ein“, Brotkrumen) folgen dessen Sprache.
 
 ## 2026-11-21 – UX-Overhaul gegen das Konzept geprüft
 

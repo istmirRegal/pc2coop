@@ -60,12 +60,13 @@ function applyLanguage() {
     langWanted = german ? 'de' : 'en';
     langSentAt = Date.now();
     request('lang', langWanted);
+    // promptsShown null: the hint row is set again (shown or cleared) in the new language.
     if (german) {
-        if (translator) { translator = null; promptsShown = ''; notifyLater(); }
+        if (translator) { translator = null; promptsShown = null; notifyLater(); }
         return;
     }
     if (translator) return;
-    import('./Texts.js').then((m) => { translator = m.createTranslator(); promptsShown = ''; notifyLater(); })
+    import('./Texts.js').then((m) => { translator = m.createTranslator(); promptsShown = null; notifyLater(); })
         .catch((e) => log('texts import ' + e));
 }
 

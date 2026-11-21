@@ -68,7 +68,9 @@ gleiches Steam-Konto; geprüft 2026-11-20):
   Tooltips an Pause, Tempo und Rückgängig ins Log (`qa status tips …`; zeigen geht nur mit echter Maus),
   15 dreht das Mausrad drei Schritte in jedem unserer Scroll-Kästen (`.pc2coopScroll`, Park und
   Hauptmenü), 16 klickt im Hauptmenü den ersten freien Platz an. Reiter 0 blendet seit P6 den
-  runden Knopf links oben aus; `Ui._QaClickTab` drückt ihn.
+  runden Knopf links oben aus; `Ui._QaClickTab` drückt ihn. Ein 6. Feld wählt die Sprache der
+  Mod (ADR-022): 1 Englisch, 2 Deutsch, 0 wieder die des Spiels – nie die Spracheinstellung des
+  Spiels ändern. Beispiel nur Englisch, sonst nichts: `_QaLook("-1|-1|0|1|0|1")`.
 - **Hauptmenü testen:** Bot-Schritt `inspect:qa:frontend=true` statt `new-test-park` (das Spiel
   bleibt im Hauptmenü). QA-Skripte holen Session und UI dort über
   `require("pc2coop.frontend").Session()` bzw. `.Ui()`.
