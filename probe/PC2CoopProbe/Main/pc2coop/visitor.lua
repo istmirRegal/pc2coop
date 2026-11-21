@@ -25,6 +25,10 @@ Visitor.EMOTES = {"wave", "cheer", "laugh", "up", "down", "sick"}
 
 local EYE = 1.65               -- WalkingCamera.Height of the game
 local WALK, RUN = 3.2, 7.5     -- metres per second
+-- Smooth steering (P6 finding A11: abrupt): how fast speed and facing follow the keys, per
+-- second; the gait follows the real speed, with a margin so it does not flicker.
+local ACCEL, DECEL, TURN = 9, 12, 10
+local vel = {x = 0, z = 0}      -- metres per frame
 local STEP = 0.6               -- highest step the figure climbs
 local active = false
 local mode = "third"           -- "third" or "first"
@@ -218,7 +222,7 @@ end
 local function keepInput()
     if frames - lastNet >= 60 then
         lastNet = frames
-        net("visitor|1|" .. ((active and not riding and not guestView and not wheel and not listOpen) and "1" or "0"))
+        net("visitor|1|" .. ((active and not riding and not guestView and not wheel and not listOpen and not shopMenu) and "1" or "0"))
     end
 end
 
@@ -243,6 +247,7 @@ function Visitor.Stop()
     global.pcall(function() camera():RequestDefaultMode() end)
     dropFigure()
     pos, active, riding, guestView, wheel, shopMenu, toFigure, listOpen = nil, false, nil, false, nil, nil, nil, false
+    vel.x, vel.z, gait = 0, 0, "idle"
     net("visitor|0|0")
 end
 
@@ -332,13 +337,30 @@ end
 -- within 30 degrees. In third person we ask from the figure's eyes along its facing, so the
 -- figure uses an entrance the way the game's own walker does, with the game's checks
 -- (waiting for the train, broken down, paused) and wording.
+-- More forgiving than one ray (P6 finding A12: only from odd spots): the figure's facing and the
+-- way the camera looks, each also 35 degrees to both sides, from a step behind the figure (an
+-- entrance right at its feet is ahead of that step).
+local function lookYaws()
+    local yaws = {facing}
+    local okC, cam = global.pcall(function() return camera():GetPosYPRZoom() end)
+    if okC and cam and pos then
+        local cx, cz = pos.x - cam:GetX(), pos.z - cam:GetZ()
+        if cx * cx + cz * cz > 0.01 then yaws[#yaws+1] = global.math.atan(cx, cz) end
+    end
+    local n = #yaws
+    for i = 1, n do yaws[#yaws+1] = yaws[i] + 0.6; yaws[#yaws+1] = yaws[i] - 0.6 end
+    return yaws
+end
+
 local function nativeTarget()
     if not pos then return nil end
     local T = global.require("Helpers.VisitorCameraTargetUtils")
-    local target = T.FindInteractionTarget(V(pos.x, pos.y + EYE, pos.z),
-        V(global.math.sin(facing), 0, global.math.cos(facing)), apis())
-    if not target then return nil end
-    return target, T.TestInteraction(target, apis()), T
+    for _, yaw in global.ipairs(lookYaws()) do
+        local dx, dz = global.math.sin(yaw), global.math.cos(yaw)
+        local target = T.FindInteractionTarget(V(pos.x - dx * 0.8, pos.y + EYE, pos.z - dz * 0.8), V(dx, 0, dz), apis())
+        if target then return target, T.TestInteraction(target, apis()), T end
+    end
+    return nil
 end
 
 -- Where the player looks from: the figure's eyes in third person, the camera otherwise.
@@ -350,7 +372,16 @@ end
 
 local function shopInFront()
     local x, y, z, yaw = viewer()
-    return global.require("pc2coop.shop").InFront(x, y - 0.5, z, yaw, ownsEntity)
+    local Shop = global.require("pc2coop.shop")
+    if mode == "third" and pos and not guestView then
+        -- In third person also where the camera looks (A12).
+        for _, a in global.ipairs(lookYaws()) do
+            local found = Shop.InFront(x, y - 0.5, z, a, ownsEntity)
+            if found then return found end
+        end
+        return nil
+    end
+    return Shop.InFront(x, y - 0.5, z, yaw, ownsEntity)
 end
 
 -- The game's walker target in front of the camera (first person: the game's key uses it).
@@ -367,10 +398,11 @@ local function openShop(entity)
     local items = global.require("pc2coop.shop").Items(entity)
     if #items == 0 then return false, "der Shop verkauft gerade nichts" end
     shopMenu, wheel = {entity = entity, items = items}, nil
+    lastNet = -1000; keepInput()   -- the mouse is free to click an item
     return true
 end
 
--- 1-6 in the buy list: the shop and the item; the list closes.
+-- A click in the buy list (UI action "buy"): the shop and the item; the list closes.
 function Visitor.Pick(n)
     local menu = shopMenu
     local item = menu and menu.items[global.tonumber(n) or 0]
@@ -482,8 +514,8 @@ function Visitor.OnKey(name, down)
         return "stop"
     end
     if name == "e" and down and not riding then return "interact" end
-    local number = global.tonumber(name)
-    if shopMenu and number and down then return "buy", number end
+    -- No number keys (P6 A14): the game handles them too, so they did two things at once. The
+    -- wheel goes by the mouse, the shop list by a click.
     if name == "v" and down and not riding and not wheel then return "view" end
     if name == "f" and down and not riding and not wheel and not shopMenu then return "list" end
     if name == "t" then
@@ -499,8 +531,6 @@ function Visitor.OnKey(name, down)
         end
         return nil
     end
-    local digit = global.tonumber(name)
-    if digit and down and wheel and Visitor.EMOTES[digit] then wheel.selected = digit end
     return nil
 end
 
@@ -553,26 +583,39 @@ local function advanceFigure()
     fx, fz = fx / len, fz / len
     local rx, rz = fz, -fx
     local ix, iz = 0, 0
-    gait = "idle"
     if down(keys.Forward) then iz = iz + 1 end
     if down(keys.Backward) then iz = iz - 1 end
     if down(keys.Right) then ix = ix + 1 end
     if down(keys.Left) then ix = ix - 1 end
+    -- Where the keys want to go; the figure's speed follows it smoothly.
+    local tx, tz = 0, 0
     if ix ~= 0 or iz ~= 0 then
-        local running = down(keys.SpeedMod)
-        gait = running and "run" or "walk"
         emote = nil
-        local speed = (running and RUN or WALK) / 60
+        local speed = (down(keys.SpeedMod) and RUN or WALK) / 60
         local mx, mz = fx * iz + rx * ix, fz * iz + rz * ix
         local m = global.math.sqrt(mx * mx + mz * mz)
-        mx, mz = mx / m * speed, mz / m * speed
-        facing = global.math.atan(mx, mz)
-        local nx, nz = pos.x + mx, pos.z + mz
+        tx, tz = mx / m * speed, mz / m * speed
+    end
+    local k = 1 - global.math.exp(-((tx ~= 0 or tz ~= 0) and ACCEL or DECEL) / 60)
+    vel.x, vel.z = vel.x + (tx - vel.x) * k, vel.z + (tz - vel.z) * k
+    local speed = global.math.sqrt(vel.x * vel.x + vel.z * vel.z) * 60
+    if speed < 0.05 and tx == 0 and tz == 0 then vel.x, vel.z, speed = 0, 0, 0 end
+    -- Gait by the real speed: run above the middle of walk and run, back to walk a bit lower.
+    local mid = (WALK + RUN) / 2
+    if speed < (gait == "idle" and 0.6 or 0.3) then gait = "idle"
+    elseif speed > (gait == "run" and mid - 0.8 or mid + 0.4) then gait = "run"
+    else gait = "walk" end
+    if speed > 0.2 then
+        -- Turn towards where it goes, the short way round, not at once.
+        local want = global.math.atan(vel.x, vel.z)
+        local diff = (want - facing + global.math.pi) % (2 * global.math.pi) - global.math.pi
+        facing = facing + diff * (1 - global.math.exp(-TURN / 60))
+        local nx, nz = pos.x + vel.x, pos.z + vel.z
         if blocked(pos.x, pos.y, pos.z, nx, nz) then
-            -- slide along the wall
-            if not blocked(pos.x, pos.y, pos.z, nx, pos.z) then nz = pos.z
-            elseif not blocked(pos.x, pos.y, pos.z, pos.x, nz) then nx = pos.x
-            else nx, nz = pos.x, pos.z end
+            -- slide along the wall; no speed is kept into it
+            if not blocked(pos.x, pos.y, pos.z, nx, pos.z) then nz = pos.z; vel.z = 0
+            elseif not blocked(pos.x, pos.y, pos.z, pos.x, nz) then nx = pos.x; vel.x = 0
+            else nx, nz = pos.x, pos.z; vel.x, vel.z = 0, 0 end
         end
         local ny = groundAt(nx, pos.y, nz)
         if ny then pos.x, pos.y, pos.z = nx, ny, nz end
@@ -658,6 +701,7 @@ end
 
 -- QA: walk without a keyboard (the game's own cameras read the real InputManager).
 function Visitor._TestKeys(keys) testKeys = keys end
+function Visitor._Facing() return facing end   -- test seam
 
 function Visitor._Reset()
     active, riding, guestView, frames, lastList, listFrame = false, nil, false, 0, {}, -1000

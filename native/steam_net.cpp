@@ -839,17 +839,28 @@ void poll_middle_button() {
 }
 
 // Visitor mode (switched on by Lua with "visitor|<keys>|<mouse look>", renewed every second):
-// Tab, T, E, V, F and 1-6 go to Lua as "key:v|<name>|<1 down, 0 up>". With mouse look the cursor
-// is kept in the middle of the game window and its travel goes to Lua as "mouse|dx|dy".
+// Tab, T, E, V, F and 1-6 go to Lua as "key:v|<name>|<1 down, 0 up>" (Lua ignores 1-6 since P6).
+// With mouse look the cursor is hidden, kept in the middle of the game window and its travel
+// goes to Lua as "mouse|dx|dy".
 // Without a renewal for two seconds everything switches off, so the cursor is never caught.
 
+// The cursor is hidden while mouse look holds it in the middle (P6 finding A10): before, it stood
+// visible in the centre of the screen. ShowCursor keeps a counter: hidden once, shown once.
+void set_cursor_hidden(bool hide) {
+    static bool hidden = false;
+    if (hide == hidden) return;
+    hidden = hide;
+    ShowCursor(hide ? FALSE : TRUE);
+}
+
 void poll_visitor() {
-    if (!visitor_keys && !mouse_look) return;
-    if (GetTickCount64() > visitor_until) { visitor_keys = mouse_look = false; return; }
+    if (!visitor_keys && !mouse_look) { set_cursor_hidden(false); return; }
+    if (GetTickCount64() > visitor_until) { visitor_keys = mouse_look = false; set_cursor_hidden(false); return; }
     HWND window = GetForegroundWindow();
     DWORD pid = 0;
     GetWindowThreadProcessId(window, &pid);
-    if (pid != GetCurrentProcessId()) return;
+    if (pid != GetCurrentProcessId()) { set_cursor_hidden(false); return; }
+    set_cursor_hidden(mouse_look);
     static bool down[11] = {};
     static const int keys[11] = {VK_TAB, 'T', 'E', 'V', '1', '2', '3', '4', '5', '6', 'F'};
     static const char* names[11] = {"tab", "t", "e", "v", "1", "2", "3", "4", "5", "6", "f"};

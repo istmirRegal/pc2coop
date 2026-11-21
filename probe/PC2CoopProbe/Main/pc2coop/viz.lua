@@ -109,6 +109,32 @@ local function place(item, x, y, z, dt, rotation)
     end
 end
 
+-- How big a marker is drawn (P6 finding A9: too big, the same up close as far away): by the
+-- camera's distance, about the same size on the screen, small when the camera is close.
+local camAt, camFrame = nil, -1
+local function sizeAt(x, y, z)
+    if camFrame ~= frames then
+        camFrame = frames
+        camAt = nil
+        local okW, W = global.pcall(global.require, "pc2coop.world")
+        if okW and W and W.Camera then
+            local cx, cy, cz = W.Camera()
+            if cx then camAt = {cx, cy, cz} end
+        end
+    end
+    if not camAt or not x then return 1 end
+    local dx, dy, dz = x - camAt[1], (y or camAt[2]) - camAt[2], z - camAt[3]
+    -- About 1/25 of the distance: a ring of a few dozen pixels at any distance (at 1/60 it vanished
+    -- from 45 m, test copy).
+    return global.math.max(0.5, global.math.min(3, global.math.sqrt(dx * dx + dy * dy + dz * dz) / 25))
+end
+-- Sets an item's scale when it changed noticeably.
+local function resize(item, scale)
+    if not item or not item.ready or (item.shown and global.math.abs(item.shown - scale) < 0.02) then return end
+    item.shown = scale
+    global.pcall(X().SetScale, item.entity, scale)
+end
+
 -- Height of the terrain below (x, z); hint is used where the ray finds nothing.
 local function ground(x, z, hint)
     local ok, y = global.pcall(function()
@@ -133,7 +159,7 @@ local function setColour(hex)
         -- The editor rewrites channel settings when the player changes tools: set them often.
         model.SetHighlightBehaviour(CHANNEL, model.HighlightDefault)
         model.SetHighlightEdgeColour(CHANNEL, Vector3:new(r, g, b), 1)
-        model.SetHighlightFillColour(CHANNEL, Vector3:new(r, g, b), 0.6)
+        model.SetHighlightFillColour(CHANNEL, Vector3:new(r, g, b), 0.45)  -- see-through (P6 A9)
     end)
 end
 
@@ -219,8 +245,8 @@ local function update(p, dt)
     if not state then
         state = {dots = {}, ghosts = {}, targets = {}}
         players[p.sid] = state
-        state.marker = spawn(DISC, 1.5)
-        for i, dot in global.ipairs(DOTS) do state.dots[i] = spawn(DISC, 0.3 + 0.55 * dot[2]) end
+        state.marker = spawn(DISC, 1)
+        for i, dot in global.ipairs(DOTS) do state.dots[i] = spawn(DISC, 0.2 + 0.35 * dot[2]) end
     end
     local fx, fy, fz = p.fx or p.x, p.fy or p.y, p.fz or p.z
     local signature = global.string.format("%.0f,%.0f,%.0f,%.0f", p.x or fx, p.z or fz, fx, fz)
@@ -246,6 +272,8 @@ local function update(p, dt)
     -- marker then: the ground disc and the view dots would cover everything close up.
     local visiting = global.string.find(global.tostring(p.act or ""), "Besucher", 1, true) ~= nil
     place(state.marker, m[1], visiting and -500 or m[2], m[3], dt)
+    local k = sizeAt(m[1], m[2], m[3])
+    resize(state.marker, 1 * k)
     if visiting and not state.figure then state.figure = guestFigure(p) or (figureOK() and spawn(FIGURE, 1)) or nil end
     if state.figure and state.figure.fig then
         if visiting then
@@ -265,6 +293,7 @@ local function update(p, dt)
     for i, dot in global.ipairs(state.dots) do
         local t = state.targets[i]
         if t and not visiting then place(dot, t[1], t[2], t[3], dt) else place(dot, m[1], -500, m[3], dt) end
+        resize(dot, (0.2 + 0.35 * DOTS[i][2]) * (t and sizeAt(t[1], t[2], t[3]) or k))
     end
     -- What the player holds: ghosts of up to MAX_GHOSTS parts, or a large disc for things
     -- that cannot be shown as a model (rides, blueprints of rides).
@@ -315,24 +344,27 @@ function Viz.Enabled() return enabled end
 
 -- remote: list of the other players (see update); lockedEntities: entity -> true for
 -- objects somebody else is editing; hex: colour for all of it.
--- A ping: a pulsing ring on the ground and a column of small discs above it.
+-- A ping: a softly pulsing ring on the ground and three small discs above it, sized by the
+-- camera's distance (P6 A9; before: a ring growing to six metres and six discs).
 local function beacon(sid, ping, dt)
     local state = beacons[sid]
     if not state then
-        state = {ring = spawn(DISC, 2), column = {}}
-        for i = 1, 6 do state.column[i] = spawn(DISC, 0.9 - i * 0.08) end
+        state = {ring = spawn(DISC, 1), column = {}}
+        for i = 1, 3 do state.column[i] = spawn(DISC, 0.35) end
         beacons[sid] = state
     end
     local y = ground(ping.x, ping.z, ping.y)
+    local k = sizeAt(ping.x, y, ping.z)
     place(state.ring, ping.x, y + 0.15, ping.z, 1)
     if state.ring and state.ring.ready then
-        -- Build areas: a ring the size of the area; pings and events pulse.
-        local scale = (ping.radius and ping.radius > 0) and ping.radius * 2 or (2 + 4 * ((ping.age * 6) % 1))
+        -- Build areas: a ring the size of the area; pings and events pulse a little.
+        local scale = (ping.radius and ping.radius > 0) and ping.radius * 2 or (1 + 0.5 * ((ping.age * 2) % 1)) * k
         global.pcall(X().SetScale, state.ring.entity, scale)
     end
     for i, item in global.ipairs(state.column) do
-        local bob = global.math.sin(frames / 12 + i) * 0.25
-        place(item, ping.x, y + 1.5 * i + bob, ping.z, 1)
+        local bob = global.math.sin(frames / 12 + i) * 0.15 * k
+        place(item, ping.x, y + (0.6 + 1.1 * i) * k + bob, ping.z, 1)
+        resize(item, 0.35 * k)
     end
 end
 

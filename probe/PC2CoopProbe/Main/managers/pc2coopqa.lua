@@ -92,7 +92,7 @@ Manager.Advance=function(self,delta)
                 local who=names[ping.sid]
                 if who then
                     pings[#pings+1]=ping
-                    tags[#tags+1]={key="ping:" .. ping.sid,name=who.name,activity="hier!",color=who.color,x=ping.x,y=ping.y+11,z=ping.z}
+                    tags[#tags+1]={key="ping:" .. ping.sid,name=who.name,activity="hier!",color=who.color,x=ping.x,y=ping.y+6,z=ping.z}   -- above the smaller column (P6 A9)
                     colour=colour or who.color
                 end
             end

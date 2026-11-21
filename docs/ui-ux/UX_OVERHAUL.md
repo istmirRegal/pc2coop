@@ -334,9 +334,9 @@ Feste Orte, gleich in Park und Besuch. Die Spielelemente bleiben, wo sie sind.
 | oberes Drittel, Mitte | **Anfrage-Karte**, eine zur Zeit |
 | links | **Multiplayer-Fenster** (`Panel`), nicht modal |
 | unten links | **Chat** mit Spieler-Ereignissen, blendet aus |
-| unten rechts | Tastenhinweise im Spiel-Stil (Besuch; „Mittelklick Markieren“ beim Bauen) |
+| unten rechts | Hinweiszeile des Spiels: „Enter Chat“, „Markieren“ beim Bauen; im Besuch eine Zeile im selben Look an derselben Stelle |
 | Bildmitte | E-Prompt, Radialmenüs (Markieren, Emotes), Dialoge |
-| Bauleiste | Reiter „Multiplayer“ und „Besuchen“ |
+| links oben | runder Knopf „Multiplayer“ in der Knopfspalte des Spiels (seit P6 statt des Bauleisten-Reiters) |
 
 Hauptmenü: Seite „Multiplayer“ im Rahmen des Spiels. Die Sitzungsleiste steht auf jeder Seite
 oben rechts unter den Einstellungs-Icons.
@@ -501,6 +501,31 @@ letzte Schritt geht (Eingriff in die Statusleiste des Spiels, nur das Label des 
 Fund beim Fotografieren: Die Spielerleiste lag über dem Kopf der Werkzeug-Fenster des Spiels
 rechts (Szeneriepinsel). Behoben: Sie rückt links neben ein offenes Fenster des Spiels
 (`trackRightPanels`), im Spiel mit dem Gelände-Werkzeug geprüft.
+
+**P6 Abnahme, erster Test des Eigners (2026-11-21, Paket 1.14.0 aus Nexus, ein PC):**
+
+| Nr. | Fund | Ziel |
+|---|---|---|
+| A1 | Steam-Freunde auf der Hauptmenü-Seite scrollen nicht | Scroll-Kasten mit der Scrollleiste des Spiels |
+| A2 | Klick auf „+ Einladen“ ohne sichtbare Rückmeldung | Platz zeigt die Auswahl, Liste daneben deutlich |
+| A3 | Sitzungsleiste und Hinweise wirken wie Fremdkörper; Abstand zum Rand passt nicht | Look und Kanten wie der Newsletter-Kasten und die Hinweise des Spiels |
+| A4 | Auf den Spielseiten (Sandbox, Neuer Park) fehlt der Bezug zum Multiplayer | Hinweis auf der Spielseite: der Park öffnet sich für alle |
+| A5 | Reiter „Multiplayer“ in der Bauleiste: falsche Abstände, Leiste unsymmetrisch | Reiter raus aus der Bauleiste |
+| A6 | Knopf unten rechts, Fenster links: weiter Mausweg | runder Knopf links oben wie die Spielknöpfe dort, Fenster klappt daneben auf |
+| A7 | Fenster im Park scrollt nicht, Einstellungen verdeckt | Scroll-Kasten |
+| A8 | „Enter Chat“ und „Mittelklick Markieren“ verdecken die Bauleiste; Chat öffnet links, der Hinweis steht rechts | Hinweise in die Hinweiszeile des Spiels bzw. an den Chat |
+| A9 | Marker (Ping) zu groß, nicht durchsichtig, nicht abhängig vom Abstand | kleiner, durchsichtig, mit Abstand skaliert |
+| A10 | Besuch: Mauszeiger sichtbar in der Bildmitte gefangen | Zeiger im Besuch ausblenden |
+| A11 | Besuch: Figur steuert abrupt, Übergänge der Animationen nicht weich | Beschleunigen, Abbremsen, Drehen glätten |
+| A12 | Besuch: Eingänge und Benutzen nur an seltsamen Stellen | großzügigere Erkennung |
+| A13 | Besuch: Tastenhinweise passen nicht ins Bild | im Look der Hinweiszeile des Spiels |
+| A14 | Emote-Rad: Zahlentasten lösen zusätzlich ihre Spielfunktion aus | Rad nur mit der Maus |
+
+Stand (2026-11-21, lokal): gebaut A1–A14. Im Spiel gesehen (Testkopie, nachgestellt): A1–A9,
+A13, A14. Nur in Unit-Tests: A11, A12 (Laufen, Eingänge). Nicht prüfbar ohne echte Maus: A10
+(Zeiger). A9 nur teilweise: kleiner und nach Abstand, aber nicht wirklich durchsichtig (die
+Grundform des Spiels deckt).
+Offen zur Entscheidung: Chat bleibt unten links (der Hinweis steht jetzt in der Hinweiszeile).
 
 Prototypen zuerst (vor P2/P3/P4): `Panel` in unserer Ebene, Seite im Hauptmenü-Rahmen,
 Bauleiste im Besuch aus. Ergebnis entscheidet, ob Ziel oder Rückfall gebaut wird.

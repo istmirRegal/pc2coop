@@ -3,6 +3,30 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-21 – P6: Funde aus dem ersten Test des Eigners
+
+- Eigner testete 1.14.0 aus dem Nexus-Paket auf einem PC; 14 Funde (UX_OVERHAUL.md, Tabelle P6).
+- Scrollen: Gameface scrollt nicht von selbst; `ScrollBox` hält den Versatz selbst und zeigt die
+  Scrollleiste des Spiels (`ScrollPanePres`). Kinder brauchen `flexShrink: 0`, sonst schrumpfen sie
+  auf die Höhe des Kastens. QA-Mausrad: Gameface kennt kein `WheelEvent`, `MouseEvent('wheel')`
+  mit `deltaY` geht.
+- Einstieg: runder Knopf in der `ManagementMenu`-Spalte (ADR-021), Fenster darunter; der Knopf
+  erschien erst nach einem Neuzeichnen der Spalte, daher ein Anstoß, solange er fehlt.
+- Hinweise: `ButtonPromptUtil.ButtonPromptHelper` des Spiels; Taste als Kind des `ButtonPrompt`
+  (das Spiel kennt keinen Eingabenamen für Enter), Maus als `InputIcon_imageIcon` (ein
+  `ButtonPrompt_icon` zeigte sie grau). Im Besuch eine Zeile mit den Klassen der Spielzeile; das
+  Ausblenden der Spielzeile traf zuerst auch unsere (gleiche Klasse).
+- Sitzungsleiste: `Button_root alt` wie der Newsletter-Kasten, Kanten gemessen.
+- Marker: Ping-Ring 1–1,5 statt 2–6, drei statt sechs Scheiben, Größe nach Kameraabstand
+  (`sizeAt`, Abstand/25 zwischen 0,5 und 3; bei Abstand/60 war er aus 45 m nicht mehr zu sehen),
+  Füllung 0,45 statt 0,6. Wirklich durchsichtig wird die Grundform des Spiels nicht.
+- Testkopie: runder Knopf, Hinweiszeile (Enter, Maus Mitte weiß), Scrollen per QA-Mausrad im
+  Fenster und auf der Seite, Sitzungsleiste, Hinweis auf der Sandbox-Seite, „Freund wählen →“,
+  Besuchs-Hinweise in der Spielzeile, Rad ohne Zahlen, Ping aus 35 m und 70 m fotografiert.
+- Besuch: Geschwindigkeit und Blickrichtung folgen den Tasten weich (`ACCEL`, `DECEL`, `TURN`),
+  Gang nach echter Geschwindigkeit mit Spielraum; Eingänge/Läden über einen Fächer aus Richtungen
+  (`lookYaws`); Zahlentasten aus; Zeiger aus (`set_cursor_hidden`, `cursor: none`).
+
 ## 2026-11-21 – TP-29: Tooltips an gesperrten Spielknöpfen
 
 - `patchStatusControls` wie beim Pausemenü (`Focusable.decorateEx`, `nodeName` ist die echte

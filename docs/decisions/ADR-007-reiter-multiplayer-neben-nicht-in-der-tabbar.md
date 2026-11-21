@@ -1,6 +1,6 @@
 # ADR-007: Reiter „Multiplayer“ neben, nicht in der TabBar
 
-- **Status:** Akzeptiert
+- **Status:** Abgelöst durch ADR-021 (2026-11-21)
 - **Datum:** 2026-11-18
 - **Betrifft:** FEAT-111
 

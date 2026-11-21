@@ -134,7 +134,8 @@ in kleinen Etiketten wie `StatusTag`.
 | **Spieler-Pille** (eigen) | HUD-Grund, Avatar, Name, Krone, Zustands-Icon | Sitzungs-Cluster |
 
 Im Code (`CoopLayer.js`, P0 Schritt 3): Zeile `row`, Anfrage-Karte `RequestCard`, Pille `hudPill`,
-HUD-Karte `hudCard`, Tastenhinweis `keyCap`/`keyHint`/`hintBar`. Fenster im Park (P2):
+HUD-Karte `hudCard`, Tastenhinweis seit P6 mit den Klassen des Spiels (`gameKey`, `gameMouse`,
+`gamePrompt`; `hintBar` nur noch für den E-Hinweis und „Du fährst …“). Fenster im Park (P2):
 `renderParkPanel` mit den Klassen `Panel_*`/`TabBar_*`, Spiel-`Tab`, `CloseButton`, Zeilen mit
 `iconButton` (rund, Tooltip) wie `LinkedObjectRow` des Spiels.
 

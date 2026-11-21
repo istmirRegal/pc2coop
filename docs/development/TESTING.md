@@ -65,7 +65,10 @@ gleiches Steam-Konto; geprüft 2026-11-20):
   bei Spiel-Komponenten ohne echte Maus), 10 die Nachfrage „Für alle beenden?“, 11 den Tooltip
   am Info-Icon der Regeln, 12 im Hauptmenü die Sandbox-Seite des Spiels (wie die Kachel),
   13 die Nachfrage vor „Zurückholen“ für den ersten Sicherungspunkt, 14 schreibt die Texte der
-  Tooltips an Pause, Tempo und Rückgängig ins Log (`qa status tips …`; zeigen geht nur mit echter Maus).
+  Tooltips an Pause, Tempo und Rückgängig ins Log (`qa status tips …`; zeigen geht nur mit echter Maus),
+  15 dreht das Mausrad drei Schritte in jedem unserer Scroll-Kästen (`.pc2coopScroll`, Park und
+  Hauptmenü), 16 klickt im Hauptmenü den ersten freien Platz an. Reiter 0 blendet seit P6 den
+  runden Knopf links oben aus; `Ui._QaClickTab` drückt ihn.
 - **Hauptmenü testen:** Bot-Schritt `inspect:qa:frontend=true` statt `new-test-park` (das Spiel
   bleibt im Hauptmenü). QA-Skripte holen Session und UI dort über
   `require("pc2coop.frontend").Session()` bzw. `.Ui()`.

@@ -74,7 +74,7 @@ Sync.Tick liest Kamera, Blickpunkt, Aktivität → sync:pres|… (nicht ins Log)
 
 ```
 Spieler steht vor einem Laden, E → Visitor.Interact → Visitor.Shop (Menü mit Shop.Items)
-  → Zahl 1–6 → Session.BuyPick → Gast: buy|shop-gid|index   Host: _HostBuy direkt
+  → Klick auf eine Zeile (UI-Aktion buy n) → Session.BuyPick → Gast: buy|shop-gid|index   Host: _HostBuy direkt
   → Host: Laden offen? Ware vorhanden? → Shop.Credit (AddCashDelta in den Park des Hosts)
   → sold|ok|… an den Käufer, em|sid|eat/drink|q an alle (Figur isst/trinkt)
 ```

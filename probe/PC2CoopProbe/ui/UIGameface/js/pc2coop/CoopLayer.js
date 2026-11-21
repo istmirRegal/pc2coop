@@ -24,6 +24,8 @@ import { ListStepperRow } from '/js/project/components/ListStepperRow.js';
 import { Stars } from '/js/project/components/Stars.js';
 import { ProgressSteps } from '/js/project/components/ProgressSteps.js';
 import { LoadingSpinner } from '/js/project/components/LoadingSpinner.js';
+import { ScrollPanePres } from '/js/common/components/ScrollPanePres.js';
+import { Direction as ScrollDirection } from '/js/common/components/ScrollBar.js';
 
 // The window in a park uses the classes of the game's Panel and TabBar (TP-11). Their style sheets
 // come with those components; the components themselves are not used (focus handling).
@@ -148,6 +150,9 @@ function poll() {
     try { raiseTooltips(); } catch (error) { /* tooltips stay where the game puts them */ }
     try { syncVisitHud(); } catch (error) { /* the build bar stays */ }
     try { trackRightPanels(); } catch (error) { /* the bar stays at the edge */ }
+    try { trackMenuButton(); } catch (error) { /* the window keeps its default place */ }
+    try { trackPromptRow(); } catch (error) { /* the visit row takes a default place */ }
+    try { trackNewsletter(); } catch (error) { /* the session bar keeps its default place */ }
     try { applyState(DS.getValue(CONTEXT, 'state')); } catch (error) { /* context not created yet */ }
     try { applyAvatars(DS.getValue(CONTEXT, 'avatars')); } catch (error) { /* not there yet */ }
     polls += 1;
@@ -527,15 +532,39 @@ class PlayerBar extends StateComponent {
 // build bar and the game's build key hints are hidden meanwhile (syncVisitHud). F opens the rides.
 const one = (v) => (typeof v === 'number' ? (Math.round(v * 10) / 10).toFixed(1) : '-');
 
+// Key hints in the look of the game's own hint row (P6 findings A8/A13): the same classes as its
+// ButtonPrompt (key caps "InputIcon_textIcon", mouse icons from img/buttonIcons), no box of ours.
+try { loadCSS('project/components/ButtonPromptBar'); loadCSS('project/components/InputIcon'); } catch (error) { /* look only */ }
+const gameKey = (text, i) => h('div', { key: 'k' + i, className: 'InputIcon_root ButtonPrompt_inputIcon' }, h('span', { className: 'InputIcon_textIcon' }, text));
+// A mouse button as the game draws it in its hints (InputIcon_imageIcon, white).
+const gameMouse = (name) => h('div', { key: 'm' + name, className: 'InputIcon_root ButtonPrompt_inputIcon' },
+    h('img', { className: 'InputIcon_imageIcon inputIcon-' + name, src: 'img/buttonIcons/' + name + '.svg' }));
+const MOUSE = (name) => name;
+const gamePrompt = (keys, word, mouse) => h('div', { key: word, className: 'ButtonPrompt_root noBackground', style: { marginLeft: '1rem' } },
+    mouse ? gameMouse(mouse) : keys.map(gameKey),
+    h('div', { className: 'ButtonPrompt_label' }, word));
+
+// Since P6 (A14) the number keys are not used in a visit: they also did what the game does with
+// them. The wheel goes by the mouse, the shop by a click (the mouse is free while it is open).
 function visitKeys(visitor) {
-    if (visitor.shop) return [...keyHint('1–6', 'Kaufen'), ...keyHint('E', 'Schließen', true)];
+    if (visitor.shop) return [gamePrompt([], 'Kaufen', MOUSE('mouseL')), gamePrompt(['E'], 'Schließen')];
     const rides = visitor.list ? 'Liste zu' : 'Fahrgeschäfte';
     if (visitor.guest) {
-        return [...keyHint('WASD', 'Laufen'), ...keyHint('Alt', 'Springen'), ...keyHint('Strg', 'Ducken'), ...keyHint('L', 'Lampe'),
-            ...keyHint('E', 'Shop'), ...keyHint('F', rides), ...keyHint('T', 'Emotes'), ...keyHint('V', 'Ansicht'), ...keyHint('Tab', 'Zurück', true)];
+        return [gamePrompt(['W', 'A', 'S', 'D'], 'Laufen'), gamePrompt(['Alt'], 'Springen'), gamePrompt(['Strg'], 'Ducken'), gamePrompt(['L'], 'Lampe'),
+            gamePrompt(['E'], 'Shop'), gamePrompt(['F'], rides), gamePrompt(['T'], 'Emotes'), gamePrompt(['V'], 'Ansicht'), gamePrompt(['Tab'], 'Zurück')];
     }
-    return [...keyHint('WASD', 'Laufen'), ...keyHint('Umschalt', 'Rennen'), ...keyHint('E', 'Benutzen'), ...keyHint('F', rides),
-        ...keyHint('T', 'Emotes'), ...keyHint('V', 'Ich-Sicht'), ...keyHint('Tab', 'Zurück', true)];
+    return [gamePrompt([], 'Umsehen', MOUSE('mouseXYAxis')), gamePrompt(['W', 'A', 'S', 'D'], 'Laufen'), gamePrompt(['Umschalt'], 'Rennen'),
+        gamePrompt(['E'], 'Benutzen'), gamePrompt(['F'], rides), gamePrompt(['T'], 'Emotes'), gamePrompt(['V'], 'Ich-Sicht'), gamePrompt(['Tab'], 'Zurück')];
+}
+
+// Where the game's hint row sits (measured while it shows; in a visit it is hidden and ours takes
+// its place): px from the left and from the bottom, its width and height.
+let promptRow = null;
+function trackPromptRow() {
+    if (visitHidden) return;
+    const el = document.getElementsByClassName('HUD_promptsList').item(0);
+    const r = el && el.getBoundingClientRect();
+    if (r && r.height > 0) promptRow = { left: r.left, bottom: window.innerHeight - r.bottom, width: r.width };
 }
 
 class VisitorHud extends StateComponent {
@@ -553,20 +582,21 @@ class VisitorHud extends StateComponent {
         // Full screen: "bottom" and "top: 58%" need a box of the screen's size (a plain div put
         // the hints above the screen and the prompt at the top, test copy).
         return h('div', { style: { position: 'absolute', left: 0, top: 0, width: '100vw', height: '100vh', pointerEvents: 'none' } },
-            // Where the game's own key hints were, above the status bar.
-            hintBar({ position: 'absolute', right: '1rem', bottom: '2.6rem' }, visitKeys(visitor)),
+            // In the place and look of the game's hint row, which is hidden in a visit.
+            h('div', { className: 'HUD_promptsList', style: promptRow ? { position: 'absolute', left: promptRow.left + 'px', bottom: promptRow.bottom + 'px',
+                width: promptRow.width + 'px' } : { position: 'absolute', left: 0, right: 0, bottom: '2.1rem' } }, visitKeys(visitor)),
             // What E does here, under the screen centre, with the game's reason when it cannot.
             hint && h('div', { style: { position: 'absolute', left: '50%', top: '58%', width: '30rem', marginLeft: '-15rem',
                 display: 'flex', flexDirection: 'column', alignItems: 'center' } },
-                hintBar({}, [keyCap('E'), h('div', { key: 'a' }, shown(hint.action))]),
+                hintBar({}, [gameKey('E', 0), h('div', { key: 'a', style: { marginLeft: '0.5rem' } }, shown(hint.action))]),
                 hint.blocker && h('div', { style: hudPill({ marginTop: '0.3rem', color: C('warning') }) }, shown(hint.blocker))),
             // A shop's buy list as a small panel: rows with the key, the item and its price.
             shop && h('div', { style: hudCard({ position: 'absolute', right: '1rem', bottom: '5.4rem', width: '19rem', padding: '0.5rem 0.7rem',
                 pointerEvents: 'auto' }) },
                 h('div', { style: { fontWeight: 'bold', marginBottom: '0.3rem' } }, 'Kaufen'),
                 list(shop.items).map((it) => h('div', { key: 'buy' + it.n, onClick: () => request('buy', String(it.n)),
-                    style: { display: 'flex', alignItems: 'center', padding: '0.15rem 0' } },
-                    keyCap(String(it.n)),
+                    style: { display: 'flex', alignItems: 'center', padding: '0.2rem 0.3rem', borderRadius: '0.3rem', pointerEvents: 'auto',
+                        backgroundColor: 'rgba(255, 255, 255, 0.08)', marginBottom: '0.15rem' } },
                     h('div', { style: { flexGrow: 1, flexShrink: 1, minWidth: 0 } }, (it.name && shown(it.name)) || it.fallback),
                     h('div', { style: { marginLeft: '0.6rem', color: C('accentButtonLight') } }, it.price)))));
     }
@@ -609,7 +639,7 @@ class VisitorRides extends StateComponent {
                                 { filter: C('accent-filter'), opacity: mine >= n ? 1 : 0.45 })))),
                     list(r.comments).slice(-2).map((c, i) => muted(c.who + ' (' + c.stars + '/5): ' + c.text, { key: 'c' + i, color: C('accentText') })));
             });
-        return h('div', { style: { position: 'absolute', left: 0, top: rem(PANEL_TOP * 20), width: rem(PANEL_WIDTH * 20 * 1.3), pointerEvents: 'none',
+        return h('div', { style: { position: 'absolute', left: 0, top: panelTop(), width: rem(PANEL_WIDTH * 20 * 1.3), pointerEvents: 'none',
             color: C('accentText'), fontSize: '1rem' } },
             h('div', { className: 'Panel_root' },
                 h('div', { className: 'Panel_panel', style: { borderTopLeftRadius: 0, borderBottomLeftRadius: 0, overflow: 'hidden' } },
@@ -617,8 +647,7 @@ class VisitorRides extends StateComponent {
                         glyph('img/icons/coaster.svg', '1.2rem', true, { marginRight: '0.4rem' }),
                         h('div', { className: 'Panel_titleBarLabel', style: { flexGrow: 1, color: C('whiteColor') } }, 'Fahrgeschäfte – nächstes zuerst'),
                         h(CloseButton, { rootClassName: 'Panel_titleBarCloseBtn', onSelect: () => request('visitorlist', '0'), focusable: false, hideInputIcon: true })),
-                    h('div', { className: 'Panel_content', style: { borderBottomLeftRadius: 0, borderBottomRightRadius: 0, height: rem(PANEL_CONTENT * 20),
-                        overflowY: 'auto', padding: '0.3rem 0.9rem 0.6rem' } }, rows),
+                    scroller(rem(PANEL_CONTENT * 20), rows, { backgroundColor: C('panel') }, { padding: '0.3rem 0.9rem 0.6rem' }),
                     picked && coop.role && h('div', { style: { padding: '0.5rem 0.9rem', backgroundColor: C('area') } },
                         h(InputField, { text: state.draft, promptText: literal('Vorschlag zu ' + picked.name), maxInputLength: 120,
                             beginEditOnSelect: true, onChange: (e) => this.setState({ draft: (e && e.text) || '' }), onCommit: (e) => {
@@ -635,11 +664,20 @@ class VisitorRides extends StateComponent {
 let visitHidden = false;
 function syncVisitHud() {
     const v = currentState.visitor;
+    // No cursor while the mouse looks around (P6 A10); the DLL hides the system cursor as well.
+    const look = !!(v && v.active && !v.riding && !v.guest && !v.list && !v.shop && !v.wheel && currentState.context === 'park');
+    try { if (document.body.style.cursor !== (look ? 'none' : '')) document.body.style.cursor = look ? 'none' : ''; } catch (error) { /* cursor stays */ }
     const hide = !!(v && v.active && !v.riding && currentState.context === 'park');
     if (!hide && !visitHidden) return;
+    const root = document.getElementById('PC2Coop_root');
     ['BrowserModule_root', 'HUD_promptsList'].forEach((name) => {
         const all = document.getElementsByClassName(name);
-        for (let i = 0; i < all.length; i++) all[i].style.display = hide ? 'none' : '';
+        for (let i = 0; i < all.length; i++) {
+            // Not our own hint row: it has the game's class for its look.
+            let ours = false;
+            for (let up = all[i]; up; up = up.parentElement) if (up === root) { ours = true; break; }
+            if (!ours) all[i].style.display = hide ? 'none' : '';
+        }
     });
     visitHidden = hide;
 }
@@ -666,7 +704,7 @@ class EmoteWheel extends StateComponent {
                         borderWidth: '0.15rem', borderStyle: 'solid', borderColor: on ? C('whiteColor') : 'rgba(255, 255, 255, 0.25)' } },
                         glyph('img/icons/guestThoughts/' + icon + '.svg', '2.4rem', false)),
                     h('div', { style: { display: 'flex', alignItems: 'center', marginTop: '0.2rem', padding: '0.05rem 0.4rem', borderRadius: '0.35rem',
-                        backgroundColor: 'rgba(0, 0, 0, 0.45)', color: C('whiteColor'), fontSize: '0.9rem' } }, keyCap(String(i + 1)), label));
+                        backgroundColor: 'rgba(0, 0, 0, 0.45)', color: C('whiteColor'), fontSize: '0.9rem' } }, label));
             }),
             h('div', { style: { position: 'absolute', left: '-2.2rem', top: '-2.2rem', width: '4.4rem', height: '4.4rem', borderRadius: '2.2rem',
                 backgroundColor: HUD_BG(0.85), display: 'flex', alignItems: 'center', justifyContent: 'center', color: C('whiteColor'),
@@ -870,22 +908,27 @@ class ContextMenu extends StateComponent {
 }
 
 // A key as the game's input hints draw it: white outline, the key's name inside.
-const keyCap = (label) => h('div', { style: { padding: '0 0.3rem', marginRight: '0.4rem', borderRadius: '0.25rem', borderWidth: '0.1rem',
-    borderStyle: 'solid', borderColor: C('whiteColor') } }, label);
-// Building block "Tastenhinweis": key and word (last: no gap after it), on the game's hint ground.
-const keyHint = (key, word, last) => [keyCap(key), h('div', { style: { marginRight: last ? 0 : '0.9rem' } }, word)];
+// Hints in the game's look: gameKey and gamePrompt (the old own key caps are gone since P6).
 const hintBar = (extra, children) => h('div', { style: Object.assign({ display: 'flex', alignItems: 'center', padding: '0.3rem 0.4rem',
     borderRadius: '0.35rem', backgroundColor: 'rgba(0, 0, 0, 0.3)', color: C('whiteColor'), fontSize: '0.9rem' }, extra) }, children);
 
-// Key hints like the game's input hints (bottom right, above the build bar): Enter opens the chat,
-// the mark is the way to everything in the radial menu (TP-15, TP-22, UX-C1).
-class MarkHint extends StateComponent {
-    render(props, state) {
-        const coop = state.coop || {};
-        if (!coop.role || coop.context !== 'park' || coop.open || (coop.visitor && coop.visitor.active) || (coop.team && coop.team.context)) return null;
-        return hintBar({ position: 'absolute', right: '1rem', bottom: '5.2rem' },
-            [...keyHint('Enter', 'Chat'), ...keyHint('Mittelklick', 'Markieren', true)]);
-    }
+// "Enter Chat" and "Mittelklick Markieren" go into the game's own hint row (P6 A8) through its
+// ButtonPromptHelper: before, a box of ours above the build bar covered part of it. In a park, in
+// a session, not while visiting, the window open or a radial menu up. The key cap of "Enter" is a
+// child of the game's ButtonPrompt (it has no input name for it); the label before it stays empty.
+let promptHelper = null;
+let promptsShown = '';
+const BUILD_PROMPTS = [
+    { label: literal('\u200b'), hideWhenNoIcon: false, children: [gameKey('Enter', 0), h('div', { key: 'w', className: 'ButtonPrompt_label' }, 'Chat')] },
+    { label: literal('​'), hideWhenNoIcon: false, children: [gameMouse('mouseM'), h('div', { key: 'w', className: 'ButtonPrompt_label' }, 'Markieren')] },
+];
+function syncBuildPrompts(s) {
+    if (!promptHelper) return;
+    const show = !!s.role && s.context === 'park' && !s.open && !(s.visitor && s.visitor.active) && !(s.team && s.team.context);
+    const key = show ? 'build' : '';
+    if (key === promptsShown) return;
+    promptsShown = key;
+    promptHelper.setPrompts(show ? BUILD_PROMPTS : []);
 }
 
 // Bottom left (TP-22): chat messages and what players did ("event"), fading out after a while;
@@ -1011,7 +1054,7 @@ class ChatArea extends StateComponent {
                         },
                         onCancel: (e) => this.close((e && e.text) || '') })),
                 typing && h('div', { style: { display: 'flex', alignItems: 'center', marginTop: '0.35rem', color: C('whiteColor'), fontSize: '0.9rem' } },
-                    ...keyHint('Enter', 'Senden'), ...keyHint('Esc', 'Schließen', true))));
+                    gamePrompt(['Enter'], 'Senden'), gamePrompt(['Esc'], 'Schließen'))));
     }
 }
 
@@ -1091,7 +1134,49 @@ const buttons = (items, wide) => h('div', { style: { display: 'flex', flexWrap: 
 
 // The lobby: the same panel in the main menu and in a park. Three columns: players, where
 // to play (or the park), chat and friends. Fixed sizes: Gameface does not shrink flex boxes.
-const box = (height, children, extra) => h('div', { style: Object.assign({ height: rem(height), overflowY: 'auto' }, extra || {}) }, children);
+// Scrolling (P6 finding A1/A7: lists and the window did not scroll). Gameface has no wheel
+// scrolling of its own; like the game's ScrollPane this box keeps the offset itself and shows the
+// game's scroll bar (ScrollPanePres - not ScrollPane, which is Focusable and takes focus and input
+// contexts like Panel did). stick: new lines keep it at the bottom (chat) while it was there.
+class ScrollBox extends preact.Component {
+    constructor() { super(); this.state = { scroll: 0, max: 0, ratio: 1, visible: false }; }
+    componentDidMount() { this.later(); }
+    componentDidUpdate() { this.later(); }
+    later() {
+        if (this._pending) return;
+        this._pending = true;
+        requestAnimationFrame(() => { this._pending = false; try { this.measure(); } catch (error) { /* stays as it is */ } });
+    }
+    measure() {
+        const el = this._content;
+        if (!el) return;
+        const height = el.getBoundingClientRect().height;
+        const max = Math.max(0, Math.floor(el.scrollHeight - height));
+        const visible = el.scrollHeight > height + 1;
+        const ratio = visible ? Math.max(0.2, Math.min(1, height / el.scrollHeight)) : 1;
+        const atBottom = this.state.scroll >= this.state.max - 2;
+        const scroll = this.props.stick && atBottom ? max : Math.min(this.state.scroll, max);
+        const s = this.state;
+        if (max !== s.max || visible !== s.visible || Math.abs(ratio - s.ratio) > 0.01 || scroll !== s.scroll) this.setState({ max, visible, ratio, scroll });
+    }
+    setScroll(value) { this.setState({ scroll: Math.max(0, Math.min(this.state.max, value)) }); }
+    onWheel = (e) => { const step = e.deltaY > 0 ? 1 : e.deltaY < 0 ? -1 : 0; this.setScroll(this.state.scroll + step * 4 * remPx()); };
+    onContent = (el) => { this._content = el; };
+    onBar = (e) => this.setScroll(e && typeof e.value === 'number' ? e.value : this.state.scroll);
+    render(props, state) {
+        // flexShrink 0: in Gameface every box is flex; without it the children shrank to the box and nothing scrolled.
+        const inner = h('div', { style: Object.assign({ flexShrink: 0, display: 'flex', flexDirection: 'column' }, props.innerStyle || {}) }, props.children);
+        if (!ScrollPanePres) return h('div', { style: { flexGrow: 1, overflow: 'hidden' } }, inner);
+        return h(ScrollPanePres, { rootClassName: 'pc2coopScroll', modifiers: 'flex1', direction: ScrollDirection.Vertical, contentScroll: state.scroll, scrollBarScroll: state.scroll,
+            scrollBarMaxScroll: state.max, scrollBarVisible: state.visible, scrollBarThumbSizeProp: state.ratio, onWheel: this.onWheel,
+            onContentRef: this.onContent, onChangeScrollBar: this.onBar, scrollBarPresent: state.visible }, inner);
+    }
+}
+// A box of fixed height that scrolls its children.
+const scroller = (height, children, extra, innerStyle, stick) => h('div', { style: Object.assign({ height, display: 'flex', flexDirection: 'column' }, extra || {}) },
+    h(ScrollBox, { innerStyle, stick }, children));
+
+const box = (height, children, extra) => scroller(rem(height), children, extra);
 
 // Tabs of the multiplayer window in a park (docs/KONZEPT.md).
 // Tabs of the window in a park (TP-11): key (as in ui.lua), tooltip, game icon. Visiting is a
@@ -1172,7 +1257,7 @@ class Lobby extends StateComponent {
     state = { draft: '', tab: 'save', creative: true, kind: 'task', title: '', text: '', assignee: '', radius: 20 };
     render(props, state) {
         const coop = state.coop || {};
-        if (!coop.open) return null;
+        if (!coop.open) { this._slid = false; return null; }   // the next opening slides in again
         if (coop.context === 'park') return this.renderParkPanel(coop, state);
         if (pageShown()) return null;
         const status = statusOf(coop);
@@ -1241,7 +1326,11 @@ class Lobby extends StateComponent {
         if (coop.role && coop.desync && coop.role === 'client') footer.push({ label: 'Neu synchronisieren', onSelect: () => request('resync') });
         if (coop.role) footer.push({ label: coop.role === 'host' ? 'Beenden' : 'Verlassen', tip: coop.role === 'host' ? END_TIP : LEAVE_TIP,
             onSelect: () => endOrAsk(coop) });
-        return h('div', { style: { position: 'absolute', left: 0, top: rem(PANEL_TOP * 20), width: rem(PANEL_WIDTH * 20), pointerEvents: 'none',
+        // Slides in from the left edge like a drawer (P6 A6): first drawn outside, then moved in.
+        const slid = !!this._slid;
+        if (!slid) { this._slid = true; setTimeout(() => { try { this.setState({ revision: (this.state.revision || 0) + 1 }); } catch (error) { /* drawn */ } }, 30); }
+        return h('div', { style: { position: 'absolute', left: slid ? 0 : '-' + rem(PANEL_WIDTH * 20), top: panelTop(), width: rem(PANEL_WIDTH * 20),
+            transition: 'left 0.2s ease-out', pointerEvents: 'none',
             color: C('accentText'), fontSize: '1rem' } },
             h('div', { className: 'Panel_root pc2coopPanel' },
                 h('div', { className: 'Panel_panel', style: { borderTopLeftRadius: 0, borderBottomLeftRadius: 0, overflow: 'hidden' } },
@@ -1253,8 +1342,7 @@ class Lobby extends StateComponent {
                         h('div', { className: 'TabBar_content panel' },
                             PARK_TABS.map(([key, label, icon]) => h(Tab, { key, icon: 'img/icons/' + icon + '.svg', tooltip: literal(label),
                                 toggled: tab === key, onToggle: () => request('paneltab', key) })))),
-                    h('div', { className: 'Panel_content', style: { borderBottomLeftRadius: 0, borderBottomRightRadius: 0, height: rem(PANEL_CONTENT * 20),
-                        overflowY: 'auto', padding: '0.3rem 0.9rem 0.6rem' } }, body),
+                    scroller(rem(PANEL_CONTENT * 20), body, { backgroundColor: C('panel') }, { padding: '0.3rem 0.9rem 0.6rem' }),
                     h('div', { style: { display: 'flex', flexDirection: 'column', padding: '0.5rem 0.9rem', backgroundColor: C('area'),
                         borderTopWidth: '0.05rem', borderTopStyle: 'solid', borderTopColor: ACCENT_A(0.2) } },
                         h('div', { style: { display: 'flex', alignItems: 'center', fontSize: '0.9rem' } },
@@ -1592,11 +1680,11 @@ class Lobby extends StateComponent {
         const chat = list(coop.chat).slice(-30);
         return h('div', { key: 'chat', style: { height: '16.5rem' } },
             section('Chat'),
-            h('div', { style: { height: '10.7rem', overflowY: 'auto', padding: '0.3rem 0.5rem', borderRadius: '0.4rem', backgroundColor: C('whiteColor'),
-                border: '0.05rem solid ' + ACCENT_A(0.18) } },
+            scroller('10.7rem', [
                 chat.length === 0 ? h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } }, 'Noch keine Nachrichten.')
                     : chat.map((c, i) => h('div', { key: 'c' + i, style: { display: 'flex', flexDirection: 'row', flexWrap: 'wrap', padding: '0.1rem 0', fontSize: '0.9rem' } },
-                        h('span', { style: { color: '#' + (c.color || '20435a'), fontWeight: 'bold' } }, c.name + ': '), c.text))),
+                        h('span', { style: { color: '#' + (c.color || '20435a'), fontWeight: 'bold' } }, c.name + ': '), c.text))],
+                { borderRadius: '0.4rem', backgroundColor: C('whiteColor'), border: '0.05rem solid ' + ACCENT_A(0.18) }, { padding: '0.3rem 0.5rem' }, true),
             h('div', { style: { marginTop: '0.4rem' } },
                 h(InputField, { text: state.draft, promptText: literal('Nachricht an alle'), maxInputLength: 200,
                     beginEditOnSelect: true, onChange: (e) => this.setState({ draft: (e && e.text) || '' }), onCommit: (e) => {
@@ -1628,7 +1716,7 @@ class Lobby extends StateComponent {
         list(coop.players).forEach((p) => { inSession[p.sid] = true; });
         return h('div', { key: 'friends', style: { height: coop.role ? '15.3rem' : '31.8rem' } },
             section(coop.role ? 'Freunde einladen' : 'Steam-Freunde'),
-            h('div', { style: { height: coop.role ? '12.8rem' : '29.3rem', overflowY: 'auto' } },
+            scroller(coop.role ? '12.8rem' : '29.3rem', [
                 friends.length === 0 ? h('div', { style: { color: C('accentButtonDesaturatedDark') } }, 'Lade Freundesliste ...')
                     : friends.map((f) => row([
                         h('div', { style: { width: '11.5rem' } },
@@ -1638,7 +1726,7 @@ class Lobby extends StateComponent {
                         inSession[f.sid] ? h('span', { style: { color: C('positiveDark'), fontSize: '0.9rem' } }, 'ist dabei')
                             : coop.role ? buttons([{ label: f.invited ? 'Eingeladen' : 'Einladen', disabled: f.invited, tip: f.invited ? INVITED_TIP : undefined, onSelect: () => request('invite', f.sid) }])
                             : f.lobby ? buttons([{ label: 'Beitreten', onSelect: () => request('join_friend', f.sid) }]) : null,
-                    ], 'f' + f.sid))));
+                    ], 'f' + f.sid))]));
     }
 }
 
@@ -1647,7 +1735,7 @@ class Lobby extends StateComponent {
 const pagePanel = (title, width, body, footer) => h('div', { className: 'Panel_root', style: { width: rem(width * 20), marginRight: '1.5rem', flexShrink: 0 } },
     h('div', { className: 'Panel_panel', style: { overflow: 'hidden' } },
         h('div', { className: 'Panel_titleBar' }, h('div', { className: 'Panel_titleBarLabel', style: { color: C('whiteColor') } }, title)),
-        h('div', { className: 'Panel_content', style: { height: '28rem', overflowY: 'auto', padding: '0.5rem 0.9rem', color: C('accentText') } }, body),
+        scroller('28rem', body, { backgroundColor: C('panel'), color: C('accentText') }, { padding: '0.5rem 0.9rem' }),
         footer && h('div', { style: { padding: '0.5rem 0.9rem', backgroundColor: C('area'), borderTopWidth: '0.05rem', borderTopStyle: 'solid',
             borderTopColor: ACCENT_A(0.2) } }, footer)));
 
@@ -1684,8 +1772,10 @@ class MultiplayerPage extends StateComponent {
             h('div', { style: { flexGrow: 1, flexShrink: 1, minWidth: 0 } }, status.text));
         const picking = !!coop.role && !!state.picking;
         const right = !coop.role ? pagePanel('Steam-Freunde', 26, this.friendRows(coop))
-            : picking ? pagePanel('Freund einladen', 26, this.friendRows(coop),
-                buttons([{ label: 'Steam-Overlay', onSelect: () => request('invite_overlay') }, { label: 'Fertig', onSelect: () => this.setState({ picking: false }) }]))
+            : picking ? pagePanel('Freund einladen', 26, [muted('Wen lädst du ein? Eingeladene warten blass im Platz.', { key: 'ask', marginBottom: '0.4rem' }),
+                h('div', { key: 'rows' }, this.friendRows(coop))],
+                buttons([{ label: 'Steam-Overlay', onSelect: () => request('invite_overlay') },
+                    { label: 'Fertig', onSelect: () => this.setState({ picking: false, pickSlot: null }) }]))
             : pagePanel('Chat', 26, this.chatBody(coop, state));
         return h('div', { style: { display: 'flex', flexDirection: 'column', flexGrow: 1, margin: '1.25rem 6.05rem 0', pointerEvents: 'auto', fontFamily: FONT } },
             h('div', { style: { color: C('whiteColor'), fontSize: '1.6rem', fontWeight: 'bold', lineHeight: '2.48rem' } }, 'Multiplayer'),
@@ -1745,9 +1835,17 @@ class MultiplayerPage extends StateComponent {
                     muted(late ? 'keine Antwort' : 'eingeladen', late ? { color: C('warningDark') } : undefined)),
                 late && iconButton('redo', 'Noch einmal einladen', () => request('invite', f.sid))], { opacity: late ? 0.85 : 0.55 }));
         });
+        // A free place invites (P6 A2): a tooltip on hover, the chosen place stays marked while the
+        // friends list on the right is open.
         for (let i = cards.length; i < SLOTS; i++) {
-            cards.push(card('e' + i, h('div', { style: { width: '100%', textAlign: 'center', color: C('accent') } }, '+ Einladen'),
-                { backgroundColor: C('area'), borderStyle: 'dashed', borderColor: ACCENT_A(0.45) }, () => this.setState({ picking: true })));
+            const chosen = !!this.state.picking && this.state.pickSlot === i;
+            cards.push(h(HoverTip, { key: 'e' + i, className: 'pc2coopFreePlace', tip: chosen ? 'Wähle rechts einen Freund.' : 'Einen Steam-Freund in die Sitzung einladen.',
+                onClick: () => this.setState({ picking: true, pickSlot: i }),
+                style: { width: '12.9rem', height: '3.6rem', margin: '0.3rem', display: 'flex', alignItems: 'center', padding: '0 0.5rem',
+                    borderRadius: '0.5rem', pointerEvents: 'auto', borderStyle: chosen ? 'solid' : 'dashed', borderWidth: chosen ? '0.1rem' : '0.05rem',
+                    borderColor: chosen ? C('accent') : ACCENT_A(0.45), backgroundColor: chosen ? C('accentFaint') : C('area') } },
+                h('div', { style: { width: '100%', textAlign: 'center', color: C('accent'), fontWeight: chosen ? 'bold' : 'normal' } },
+                    chosen ? 'Freund wählen →' : '+ Einladen')));
         }
         out.push(h('div', { key: 'places', style: { display: 'flex', flexWrap: 'wrap', margin: '0 -0.3rem' } }, cards));
         return out;
@@ -1768,11 +1866,11 @@ class MultiplayerPage extends StateComponent {
     chatBody(coop, state) {
         const chat = list(coop.chat).slice(-40);
         return [
-            h('div', { key: 'lines', style: { height: '23rem', overflowY: 'auto' } },
+            h('div', { key: 'lines' }, scroller('23rem', [
                 chat.length === 0 ? muted('Noch keine Nachrichten.')
                     // In a row: in Gameface every box is flex, a column put the text under the name.
                     : chat.map((c, i) => h('div', { key: 'c' + i, style: { display: 'flex', flexDirection: 'row', flexWrap: 'wrap', padding: '0.15rem 0', fontSize: '0.9rem' } },
-                        h('span', { style: { color: '#' + (c.color || '20435a'), fontWeight: 'bold' } }, c.name + ': '), c.text))),
+                        h('span', { style: { color: '#' + (c.color || '20435a'), fontWeight: 'bold' } }, c.name + ': '), c.text))], null, null, true)),
             h('div', { key: 'input', style: { marginTop: '0.4rem' } },
                 h(InputField, { text: state.draft || '', promptText: literal('Nachricht'), maxInputLength: 200, beginEditOnSelect: true,
                     onChange: (e) => this.setState({ draft: (e && e.text) || '' }),
@@ -1792,7 +1890,39 @@ class MultiplayerPage extends StateComponent {
     }
 }
 
-// Session bar in the main menu while the multiplayer page is not shown (on the game's pages).
+// The game's newsletter box top right of the main menu (P6 A3): where it is and how round, measured
+// while it shows. The session bar takes its right edge and width, below it on the main menu and
+// in its place on the other pages; its look comes from the same classes (Button_root alt).
+let newsletterBox = null;
+function trackNewsletter() {
+    const holder = document.getElementsByClassName('FrontEndTopBar_newsletterButton').item(0);
+    const el = holder && holder.getElementsByClassName('Button_root').item(0);
+    const r = el && el.getBoundingClientRect();
+    const shown = !!(r && r.width > 0);
+    if (!shown) {
+        if (newsletterBox && newsletterBox.shown) { newsletterBox = Object.assign({}, newsletterBox, { shown: false }); notifyLater(); }
+        return;
+    }
+    const next = { right: window.innerWidth - r.right, width: r.width, bottom: r.bottom, radius: getComputedStyle(el).borderTopLeftRadius, shown: true };
+    const old = newsletterBox;
+    if (!old || !old.shown || Math.abs(next.bottom - old.bottom) > 2 || Math.abs(next.width - old.width) > 2 || Math.abs(next.right - old.right) > 2) {
+        newsletterBox = next;
+        notifyLater();
+    }
+}
+// Redraw the layer soon, never from inside a listener (an open listener once recursed).
+function notifyLater() { setTimeout(() => listeners.forEach((fn) => { try { fn(currentState); } catch (error) { /* next */ } }), 0); }
+
+// The game's page the main menu shows (FrontEndNav), or null.
+function frontScreen() { try { return nav ? nav.nav.FrontEndNav.get() : null; } catch (error) { return null; } }
+// A page of the game where the host picks or makes a park (not the main menu, not ours).
+function onGameParkPage() {
+    const screen = frontScreen();
+    const ids = nav && nav.data && nav.data.FrontEndNavData.ScreenID;
+    return !!ids && screen !== null && screen !== undefined && screen !== PAGE_ID && screen !== ids.MainMenu && PAGE_BLOCKED.indexOf(screen) < 0;
+}
+
+// Session bar in the main menu while the multiplayer page is not shown (TP-04, P6 A3).
 class MiniLobby extends StateComponent {
     render(props, state) {
         try { return this.draw(state.coop || {}); } catch (error) { log('mini lobby ' + error); return null; }
@@ -1801,30 +1931,43 @@ class MiniLobby extends StateComponent {
         const join = coop.join || {};
         if (!coop.role || coop.open || coop.context !== 'menu' || ['failed', 'confirm', 'rejoin'].indexOf(join.phase) >= 0) return null;
         const status = statusOf(coop);
-        if (!this._logged) {
-            this._logged = true;
-            setTimeout(() => {
-                try {
-                    const r = this.base && this.base.getBoundingClientRect();
-                    log('mini lobby at ' + (r ? [r.left, r.top, r.width, r.height].map(Math.round).join(',') : '?') + ' of ' + window.innerWidth + 'x' + window.innerHeight);
-                } catch (error) { log('mini lobby rect ' + error); }
-            }, 500);
-        }
-        const chip = (label, onClick) => h('div', { onClick, style: { marginLeft: '0.4rem', padding: '0.25rem 0.6rem', borderRadius: '0.7rem',
-            backgroundColor: ACCENT_A(0.9), color: C('whiteColor'), fontSize: '0.9rem' } }, label);
-        // Session bar (TP-04): top right, on every page; below the game's newsletter box of the main
-        // menu (at 5.2 rem it covered it, test copy).
-        return h('div', { style: hudCard({ position: 'absolute', right: '1.2rem', top: '10.8rem', width: '20.5rem', padding: '0.6rem 0.8rem', pointerEvents: 'auto',
-            borderRadius: '0.6rem', fontSize: '1rem', borderLeftWidth: '0.25rem', borderLeftStyle: 'solid', borderLeftColor: TONE[status.tone] || TONE.idle }, 0.9) },
+        const box = newsletterBox;
+        const unit = remPx();
+        const top = box && box.shown ? (box.bottom / unit + 0.6).toFixed(2) + 'rem' : '6.5rem';
+        const right = box ? (box.right / unit).toFixed(2) + 'rem' : '2rem';
+        const width = box ? (box.width / unit).toFixed(2) + 'rem' : '22rem';
+        // On the game's pages the host is about to open a park: say that it opens for everyone.
+        const text = coop.role === 'host' && coop.stage === 'lobby' && onGameParkPage()
+            ? 'Der Park, den du hier öffnest, lädt bei allen.' : status.text;
+        return h('div', { className: 'Button_root alt', style: { position: 'absolute', top, right, width, flexDirection: 'column', alignItems: 'stretch',
+            padding: '0.55rem 0.9rem 0.6rem', borderRadius: (box && box.radius) || '0.6rem', pointerEvents: 'auto' } },
             h('div', { style: { display: 'flex', alignItems: 'center' } },
-                h('div', { style: { fontSize: '1rem', flexGrow: 1 } }, coop.role === 'host' ? 'Deine Sitzung' : 'Sitzung'),
+                glyph('img/icons/collaborate.svg', '1.3rem', true, { marginRight: '0.5rem' }),
+                h('div', { className: 'Button_label alt', style: { flexGrow: 1, fontWeight: 'bold' } }, coop.role === 'host' ? 'Deine Sitzung' : 'Sitzung'),
                 list(coop.players).slice(0, SLOTS).map((p) => h('div', { key: p.sid, style: { marginLeft: '-0.3rem' } }, h(Avatar, { player: p, size: 26, pic: avatars[p.sid] })))),
-            h('div', { style: { color: C('accentButtonLight'), fontSize: '0.9rem', margin: '0.3rem 0 0.4rem' } }, status.text),
+            h('div', { className: 'Button_subLabel alt', style: { color: C('accentButtonLight'), fontSize: '0.9rem', lineHeight: '1.3rem', margin: '0.15rem 0 0.35rem 1.8rem' } }, text),
             h('div', { style: { display: 'flex', justifyContent: 'flex-end' } },
-                chip('Öffnen', () => { request('open'); openPage(); }),
-                chip(coop.role === 'host' ? 'Beenden' : 'Verlassen', () => endOrAsk(coop))));
+                buttons([{ label: 'Öffnen', onSelect: () => { request('open'); openPage(); } },
+                    { label: coop.role === 'host' ? 'Beenden' : 'Verlassen', tip: coop.role === 'host' ? END_TIP : LEAVE_TIP, onSelect: () => endOrAsk(coop) }])));
     }
 }
+
+// On the game's park pages the host sees what the session does with his choice (P6 A4): a line at
+// the top centre in the look of the game's top bar widgets.
+class GamePageHint extends StateComponent {
+    render(props, state) {
+        const coop = state.coop || {};
+        if (coop.context !== 'menu' || coop.role !== 'host' || coop.stage !== 'lobby' || coop.open || !onGameParkPage()) return null;
+        const others = Math.max(0, list(coop.players).length - 1);
+        return h('div', { style: { position: 'absolute', top: '2.25rem', left: 0, width: '100vw', display: 'flex', justifyContent: 'center' } },
+            h('div', { className: 'Button_root alt', style: { alignItems: 'center', padding: '0.4rem 1rem', pointerEvents: 'none' } },
+                glyph('img/icons/collaborate.svg', '1.3rem', true, { marginRight: '0.5rem' }),
+                h('div', { className: 'Button_label alt', style: { fontWeight: 'bold', marginRight: '0.5rem' } }, 'Multiplayer'),
+                h('div', { className: 'Button_subLabel alt' }, 'Der Park, den du hier öffnest, lädt bei allen in deiner Sitzung'
+                    + (others > 0 ? ' (' + others + (others > 1 ? ' Mitspieler' : ' Mitspieler') + ')' : '') + '.')));
+    }
+}
+
 
 // Joining in four steps (UX_OVERHAUL.md §5): the game's ProgressSteps, the park's transfer as a
 // bar (the game's progress bar drew nothing in our layer, test copy), "Abbrechen" until the park
@@ -1953,10 +2096,10 @@ class CoopLayer extends preact.Component {
             h(ConnectionPill, null),
             h(RequestCard, null),
             h(ContextMenu, null),
-            h(MarkHint, null),
             h(ChatArea, null),
             h(JoinProgress, null),
             h(MiniLobby, null),
+            h(GamePageHint, null),
             h('div', { style: { pointerEvents: 'auto' } }, h(Lobby, null)),
             h('div', { style: { pointerEvents: 'auto' } }, h(JoinFailed, null)),
             h('div', { style: { pointerEvents: 'auto' } }, h(JoinConfirm, null)),
@@ -2039,20 +2182,67 @@ async function patchStatusControls() {
     decorated.prototype.__pc2coop = true;
 }
 
-// The build bar at the bottom: an icon tab "Multiplayer" after the multi-select tab.
-async function patchBuildBar() {
-    const [browserModule, tabModule] = await Promise.all([import('/js/project/modules/browser/components/Browser.js'),
-        import('/js/project/modules/browser/components/BrowserTab.js')]);
-    const decorated = browserModule.Browser;
-    if (!decorated || decorated.prototype.__pc2coop) return;
+// The way into the window in a park (P6 findings A5/A6): a round button in the game's own column
+// top left, below its notifications, built with the game's ManagementMenuButton; the window opens
+// right below it. Before, a tab at the right end of the build bar made the bar uneven and the
+// mouse travel across the whole screen to the window on the left (ADR-021, replaces ADR-007).
+let menuButton = null;               // the game's ManagementMenuButton class
+const managementMenus = new Set();   // rendered menus, redrawn when our window opens or closes
+async function patchManagementMenu() {
+    const [menuModule, buttonModule] = await Promise.all([import('/js/project/modules/managementMenu/ManagementMenu.js'),
+        import('/js/project/modules/managementMenu/ManagementMenuButton.js')]);
+    menuButton = buttonModule.ManagementMenuButton;
+    const decorated = menuModule.ManagementMenu;
+    if (!decorated || decorated.prototype.__pc2coop || !menuButton) return;
     const originalRender = decorated.prototype.render;
     decorated.prototype.render = function (...args) {
         const vnode = originalRender.apply(this, args);
-        try { patchBrowserClass(vnode && vnode.nodeName, tabModule.BrowserTab); } catch (error) { report('build bar patch ' + error); }
+        try { patchManagementClass(vnode && vnode.nodeName); } catch (error) { report('menu patch ' + error); }
         return vnode;
     };
     decorated.prototype.__pc2coop = true;
 }
+function patchManagementClass(cls) {
+    const proto = cls && cls.prototype;
+    if (!proto || proto.__pc2coop || typeof proto.render !== 'function') return;
+    const render = proto.render;
+    proto.render = function (...args) {
+        const tree = render.apply(this, args);
+        try { addMenuButton(this, tree); } catch (error) { report('menu button ' + error); }
+        return tree;
+    };
+    proto.__pc2coop = true;
+    report('menu column patched');
+}
+function addMenuButton(menu, tree) {
+    managementMenus.add(menu);
+    const coop = currentState || {};
+    // Only in a park; the first column (not the one with the alerts).
+    if (coop.context !== 'park') return;
+    const column = findNode(tree, (n) => n.attributes && /(^|\s)ManagementMenu_content(\s|$)/.test(String(n.attributes.className || ''))
+        && !/(^|\s)alerts(\s|$)/.test(String(n.attributes.className || '')));
+    if (!column || !Array.isArray(column.node.children) || findNode(column.node, (n) => n.key === 'pc2coopMenuButton')) return;
+    const kids = column.node.children;
+    // After the notifications button, before the gamepad input icon at the end.
+    const at = Math.max(0, kids.length - 1);
+    kids.splice(at, 0, preact.h(menuButton, { key: 'pc2coopMenuButton', rootClassName: 'pc2coopMenuButton', src: 'img/icons/collaborate.svg',
+        toggleable: true, toggled: !!coop.open, tooltip: literal('Multiplayer'), outcome: 'PC2CoopMultiplayer',
+        onSelect: () => request(currentState && currentState.open ? 'close' : 'open') }));
+}
+
+// Where the window starts: right below our button (its column grows with the game's buttons in
+// other modes), else below the game's buttons as before. Px from the top, 0 = not measured.
+let menuButtonBottom = 0;
+function trackMenuButton() {
+    const el = document.getElementsByClassName('pc2coopMenuButton').item(0);
+    const r = el && el.getBoundingClientRect();
+    const bottom = r && r.height > 0 ? r.bottom : 0;
+    if (Math.abs(bottom - menuButtonBottom) > 2) {
+        menuButtonBottom = bottom;
+        listeners.forEach((fn) => { try { fn(currentState); } catch (error) { log('menu button ' + error); } });
+    }
+}
+const panelTop = () => (menuButtonBottom > 0 ? (menuButtonBottom / remPx() + 0.6).toFixed(2) + 'rem' : rem(PANEL_TOP * 20));
 
 // The first vnode below node for which test is true, with the list it sits in.
 function findNode(node, test) {
@@ -2068,51 +2258,11 @@ function findNode(node, test) {
     return null;
 }
 
-function findTab(node, outcome) {
-    if (!node || typeof node !== 'object') return null;
-    const children = Array.isArray(node) ? node : node.children;
-    if (!Array.isArray(children)) return null;
-    for (let i = 0; i < children.length; i++) {
-        const child = children[i];
-        if (child && child.attributes && child.attributes.outcome === outcome) return { list: children, index: i, node: child };
-        const deeper = findTab(child, outcome);
-        if (deeper) return deeper;
-    }
-    return null;
-}
 
-function patchBrowserClass(browserClass, BrowserTab) {
-    const proto = browserClass && browserClass.prototype;
-    if (!proto || proto.__pc2coop || !BrowserTab) return;
-    const render = proto.render;
-    proto.render = function (...args) {
-        const tree = render.apply(this, args);
-        try {
-            // NOT inside the game's TabBar: it pairs every tab with the browser section at the same
-            // index, and a tab without one locked the whole UI on click (1.12.1). Next to it instead,
-            // like the game's own "back to the browser" tab.
-            const bar = findNode(tree, (n) => n.attributes && n.attributes.rootClassName === 'Browser_tabBar' && n.attributes.onChange);
-            const multi = findTab(tree, 'multiselect');
-            if (bar && multi && !findNode(tree, (n) => n.key === 'pc2coopTabBar')) {
-                // Out of the flow at the right end of the bar's row: the game's bar keeps its place.
-                bar.list.splice(bar.index + 1, 0, preact.h('div', { key: 'pc2coopTabBar', className: 'Browser_tabBar pc2coopTabBar',
-                    style: { position: 'absolute', right: '0.6rem', bottom: '0px', width: 'auto' } },
-                    preact.h(BrowserTab, { label: literal('Multiplayer'), icon: 'img/icons/collaborate.svg',
-                        hidden: multi.node.attributes.hidden, modifiers: 'firstItem lastItem marginLeft',
-                        onToggle: () => request('open') })));
-                if (!buildBarShown) { buildBarShown = true; report('build bar tab shown'); }
-            }
-        } catch (error) { report('build bar tab ' + error); }
-        return tree;
-    };
-    proto.__pc2coop = true;
-    report('build bar patched');
-}
 
 // Into the mod's log file (pc2coop-diagnostic-*.log), so a missing tab can be looked into.
 // Lua hears the HUD view's events only a moment after the HUD starts (an earlier line is
 // lost, tested 1.12.1), so these lines go out a few seconds later.
-let buildBarShown = false;
 function report(message) {
     try { setTimeout(() => log(message), 4000); } catch (error) { log(message); }
 }
@@ -2209,7 +2359,26 @@ export function start(logger) {
     started = true;
     if (app.indexOf('HUD.html') >= 0) {
         patchPauseMenu().catch((e) => console.log('PC2Coop: ' + e));
-        patchBuildBar().catch((e) => report('build bar import ' + e));
+        patchManagementMenu().catch((e) => report('menu column import ' + e));
+        import('/js/project/utils/ButtonPromptUtil.js').then((m) => { promptHelper = new m.ButtonPromptHelper(); syncBuildPrompts(currentState); })
+            .catch((e) => report('prompts import ' + e));
+        listeners.add((s) => { try { syncBuildPrompts(s); } catch (error) { log('prompts ' + error); } });
+        // Our round button comes with the game's column; if the column was drawn before the state
+        // said "park", it is redrawn (at most every two seconds).
+        let buttonAsked = 0;
+        listeners.add((s) => {
+            if (s.context !== 'park' || Date.now() - buttonAsked < 2000) return;
+            if (document.getElementsByClassName('pc2coopMenuButton').length > 0) return;
+            buttonAsked = Date.now();
+            managementMenus.forEach((m) => { try { m.forceUpdate(); } catch (error) { managementMenus.delete(m); } });
+        });
+        // Our button shows whether the window is open: the game's column is redrawn when it changes.
+        let menuOpen = false;
+        listeners.add((s) => {
+            if (!!s.open === menuOpen) return;
+            menuOpen = !!s.open;
+            managementMenus.forEach((m) => { try { m.forceUpdate(); } catch (error) { managementMenus.delete(m); } });
+        });
         patchStatusControls().catch((e) => report('status bar import ' + e));
         // "Alle sind da" once (TP-08): after someone was still loading the park and now nobody is.
         listeners.add((s) => {
@@ -2227,7 +2396,7 @@ export function start(logger) {
         listeners.add((s) => {
             if (!s.qaClickTab || s.qaClickTab === qaClicks) return;
             qaClicks = s.qaClickTab;
-            const tab = document.querySelector('.pc2coopTabBar .Tab_root');
+            const tab = document.querySelector('.pc2coopMenuButton');
             report('qa tab press ' + (tab ? 'found' : 'missing'));
             if (tab) tab.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 }));
         });
@@ -2242,6 +2411,16 @@ export function start(logger) {
             // 10: the question "Für alle beenden?", 11: the tooltip of the rules' info icon.
             if (tip === 10) askEnd(true);
             if (tip === 13) askRestore(list((s.team || {}).checkpoints)[0]);
+            // 15: the mouse wheel turns three steps down in every scroll box of ours.
+            if (tip === 15) {
+                const boxes = document.querySelectorAll('.pc2coopScroll');
+                boxes.forEach((el) => { for (let i = 0; i < 3; i++) {
+                    const ev = new MouseEvent('wheel', { bubbles: true });
+                    try { Object.defineProperty(ev, 'deltaY', { value: 100 }); } catch (error) { ev.deltaY = 100; }
+                    el.dispatchEvent(ev);
+                } });
+                report('qa wheel boxes=' + boxes.length);
+            }
             if (tip === 14) {
                 const label = (name) => { try { const n = statusControls && statusControls[name](null); return n && n.attributes ? n.attributes.label : '-'; }
                     catch (error) { return 'error ' + error; } };
@@ -2253,7 +2432,7 @@ export function start(logger) {
             if (hovered) hovered.dispatchEvent(new MouseEvent('mouseenter', { bubbles: false }));
             if (tip > 0 && tip !== 10 && tip < 13) report('qa hover ' + (hovered ? 'found' : 'missing'));
             // tab 0: our build bar tab hidden (does the game's bar fit without it?)
-            document.querySelectorAll('.pc2coopTabBar').forEach((el) => { el.style.display = tab === 0 ? 'none' : ''; });
+            document.querySelectorAll('.pc2coopMenuButton').forEach((el) => { el.style.display = tab === 0 ? 'none' : ''; });
             Promise.all([import('/js/config/ThemeConfig.js'), import('/js/common/core/UIScale.js')]).then(([themes, ui]) => {
                 if (accent >= 0) themes.setAccentIndex(accent);
                 if (theme >= 0) themes.setThemeIndex(theme);
@@ -2272,6 +2451,7 @@ export function start(logger) {
                 log('front end navigation ready, page ' + pageReady());
                 // Esc, a breadcrumb or a park page leaves the page: the window state follows.
                 navModule.FrontEndNav.onChange.add((screen) => {
+                    notifyLater();   // session bar text and the hint on the game's pages follow the page
                     if (screen !== PAGE_ID && currentState.open && currentState.context === 'menu' && !lobbyFallback) request('close');
                     // The host opens a park on the game's pages: the spinner screens come up. Everyone
                     // sees it in the session bar before the loading screen (TP-08).
@@ -2299,7 +2479,22 @@ export function start(logger) {
         listeners.add((s) => {
             if (!s.qaLook || s.qaLook === qaPage) return;
             qaPage = s.qaLook;
-            if (Number(String(s.qaLook).split('|')[4]) === 12) { openGamePage('sandbox'); report('qa page sandbox'); }
+            const field = Number(String(s.qaLook).split('|')[4]);
+            if (field === 12) { openGamePage('sandbox'); report('qa page sandbox'); }
+            if (field === 15) {
+                const boxes = document.querySelectorAll('.pc2coopScroll');
+                boxes.forEach((el) => { for (let i = 0; i < 3; i++) {
+                    const ev = new MouseEvent('wheel', { bubbles: true });
+                    try { Object.defineProperty(ev, 'deltaY', { value: 100 }); } catch (error) { ev.deltaY = 100; }
+                    el.dispatchEvent(ev);
+                } });
+                report('qa wheel boxes=' + boxes.length);
+            }
+            if (field === 16) {
+                const place = document.querySelector('.pc2coopFreePlace');
+                if (place) place.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                report('qa free place ' + (place ? 'clicked' : 'missing'));
+            }
         });
     }
     import('/js/project/data/DLCDataUtil.js').then((module) => { dlcModule = module; }).catch((e) => log('dlc import ' + e));

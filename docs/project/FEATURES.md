@@ -125,7 +125,7 @@ der Bereich nicht, die nächste freie Nummer ab 230.
 | ID | Funktion | Status | Seit |
 |---|---|---|---|
 | FEAT-110 | Multiplayer-Fenster (Park: links, vier Reiter; Hauptmenü: nur Rückfall) | Implemented | 1.8.0 |
-| FEAT-111 | Reiter „Multiplayer“ in der Bauleiste | Implemented | 1.12.2 |
+| FEAT-111 | Reiter „Multiplayer“ in der Bauleiste | Replaced | 1.12.2 |
 | FEAT-112 | „Multiplayer“ im Pausemenü | Implemented | 1.4.1 |
 | FEAT-113 | Kachel „Multiplayer“ im Hauptmenü | Implemented | 1.8.0 |
 | FEAT-114 | F7 öffnet Multiplayer | Implemented | 1.4.1 |
@@ -134,6 +134,7 @@ der Bereich nicht, die nächste freie Nummer ab 230.
 | FEAT-117 | Banner (Abstimmung, Wettbewerb, Einladung) | Implemented | 1.12.0 |
 | FEAT-118 | Zustandsbrücke Lua ↔ Oberfläche | Implemented | 1.8.0 |
 | FEAT-119 | Multiplayer-Seite im Hauptmenü | Implemented | 1.13.0 |
+| FEAT-120 | Knopf „Multiplayer“ links oben | Implemented | unveröffentlicht |
 
 ## Team-Funktionen — [features/team.md](../features/team.md)
 

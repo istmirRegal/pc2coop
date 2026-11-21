@@ -41,7 +41,10 @@ Wer ein Feld hinzufügt, trägt es hier ein.
 | `SessionEnded` | Spiel-`Dialog` „Die Sitzung ist beendet“ (Host weg) | join (`ended`), context | FEAT-042 |
 | `trackConnection`, `conn`, `exitToMenu` | seit wann der Host still ist, grüner Moment, aufgeschobene Dialoge; zurück ins Hauptmenü wie das Pausemenü (`ExitToMainMenu`) | join, role | FEAT-040 |
 | `ContextMenu` | Markieren-Radialmenü (`MARK_ITEMS`) | team.context | FEAT-136 |
-| `MarkHint` | Tastenhinweise „Enter Chat“, „Mittelklick Markieren“ (`keyCap`) | role, context, visitor, team.context | FEAT-095, FEAT-116 |
+| `syncBuildPrompts`, `BUILD_PROMPTS`, `promptHelper` | „Enter Chat“ und „Maus Mitte Markieren“ als Einträge der Hinweiszeile des Spiels (`ButtonPromptHelper`); ersetzt `MarkHint` (P6 A8) | role, context, open, visitor, team.context | FEAT-095, FEAT-116 |
+| `ScrollBox`, `scroller(height, children, extra, innerStyle, stick)` | Scrollen mit dem Mausrad und der Scrollleiste des Spiels (`ScrollPanePres`, nicht das fokussierende `ScrollPane`); `stick` hält den Chat unten (P6 A1/A7) | – | FEAT-110, FEAT-119 |
+| `MiniLobby` (neu gebaut), `trackNewsletter`, `newsletterBox` | Sitzungsleiste im Look des Newsletter-Kastens (`Button_root alt`), dessen gemessene rechte Kante und Breite (P6 A3) | role, players, open, nav | FEAT-034 |
+| `GamePageHint`, `onGameParkPage`, `frontScreen`, `notifyLater` | Hinweis oben Mitte auf den Spielseiten: der Park öffnet sich für alle (P6 A4) | role, stage, nav | FEAT-119 |
 | `ChatArea` | Chat, Ereignisse und Meldungen unten links, Chat-Eingabe per Enter | toasts (kind), chatKey, role, context, open | FEAT-116 |
 | `Lobby` | Multiplayer-Fenster. Park: `renderParkPanel` (links, Klassen des Spiel-Panels) mit `renderPanelPlayers`, `renderPanelFriends`, `renderPlan`, `renderHistory`, `renderSession`, `renderContentSetting`, `renderCompetition`. Hauptmenü (nur Rückfall ohne Seite): `renderBody` mit `renderPlayers`, `renderPlace`, `renderChat`, `renderContent`, `renderFriends` | fast alles | FEAT-110 |
 | `MiniLobby` | Sitzungsleiste im Hauptmenü oben rechts (TP-04) | role, players, open | FEAT-034 |
@@ -69,7 +72,7 @@ Wer ein Feld hinzufügt, trägt es hier ein.
 | `ACCENT_A(alpha)` | Akzentfarbe mit Transparenz (Linien, Rahmen), wie `rgba(var(--accent-triplet), …)` |
 | `hudPill(extra, alpha)` | Baustein Pille: HUD-Grund, runde Ecken, weiße Schrift (Wettbewerbs-Uhr) |
 | `hudCard(extra, alpha)` | Baustein HUD-Karte: Meldungen, Chat, Mini-Sitzungskarte, Beitrittskarte |
-| `keyCap(label)`, `keyHint(key, word, last)`, `hintBar(extra, children)` | Baustein Tastenhinweis wie `InputHintsItem` (`MarkHint`, Chat-Eingabe) |
+| `gameKey(text)`, `gameMouse(name)`, `gamePrompt(keys, word, mouse)`, `hintBar(extra, children)` | Tastenhinweise mit den Klassen des Spiels (`InputIcon_textIcon`, `InputIcon_imageIcon`, `ButtonPrompt_*`); `keyCap`/`keyHint` sind seit P6 weg |
 | `literal(text)` | Text für Spiel-Komponenten |
 | `shown(text)` | Lokalisierungs-Schlüssel übersetzen, sonst Text |
 | `section(title, extra)` | Abschnittstitel |
@@ -85,7 +88,8 @@ Wer ein Feld hinzufügt, trägt es hier ein.
 
 | Funktion | Spielmodul | Was | ADR |
 |---|---|---|---|
-| `patchBuildBar` | `/js/project/modules/browser/components/Browser.js`, `BrowserTab.js` | Reiter „Multiplayer“ neben der Bauleiste | ADR-007 |
+| `patchManagementMenu` / `patchManagementClass` / `addMenuButton`, `trackMenuButton`, `panelTop` | `/js/project/modules/managementMenu/ManagementMenu.js`, `ManagementMenuButton.js` | runder Knopf „Multiplayer“ in der Knopfspalte links oben; Fenster darunter (ersetzt `patchBuildBar`) | ADR-021 |
+| `syncBuildPrompts` | `/js/project/utils/ButtonPromptUtil.js` (`ButtonPromptHelper`) | Einträge in der Hinweiszeile des Spiels | – |
 | `patchPauseMenu` / `patchMenuClass` | `/js/project/modules/gameMenu/components/GameMenuModule.js` | Eintrag im Pausemenü | – |
 | `patchStatusControls` / `patchStatusClass` / `wrapStatusTooltips` | `/js/project/modules/statusBar/components/StatusControls.js` | Tooltips an Pause, Tempo, Rückgängig nennen die Sperre der Sitzung (`SPEED_TIP`, `UNDO_TIP`, `statusLockText`; TP-29) | – |
 | `patchStartTabClass` | `/js/project/modules/frontEnd/views/mainMenu/menuTabs/FrontEndStartMenuTab.js`, `FrontEndTileButton.js` | Kachel im Hauptmenü | – |

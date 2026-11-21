@@ -21,7 +21,7 @@ Code: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js`,
   die Info-Fenster des Spiels; Abstand oben 7.6 rem unter dessen runden Knöpfen.
 
 ### FEAT-111 – Reiter „Multiplayer“ in der Bauleiste
-- **Status:** Implemented · **Seit:** 1.12.0 (beschriftet 1.12.1, außerhalb der TabBar 1.12.2)
+- **Status:** Replaced (durch FEAT-120, UX-Overhaul P6) · **Seit:** 1.12.0 (beschriftet 1.12.1, außerhalb der TabBar 1.12.2)
 - **Funktion:** Unten rechts in der Bauleiste ein Reiter „Multiplayer“, öffnet das Fenster.
 - **Technik:** `patchBrowserClass` in `CoopLayer.js`: eigener `div` mit einem
   `BrowserTab` (onToggle → `open`), absolut positioniert rechts, **außerhalb** der TabBar
@@ -71,7 +71,7 @@ Code: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js`,
   - Kein Öffnen innerhalb von 0,8 s nach dem Senden oder nach Enter in einem Textfeld des Spiels
     (`document.activeElement` wird alle 0,2 s geprüft).
   - UI-Aktion `chatinput` 1/0 → `Session.SetTyping`: Solange die Eingabe offen ist, verwirft
-    Lua Tastendrücke `key:v` (T, E, V, F, 1–6 sind dann Buchstaben); Loslassen kommt durch.
+    Lua Tastendrücke `key:v` (T, E, V, F sind dann Buchstaben); Loslassen kommt durch.
   - `hello` (neue Oberfläche) setzt `SetTyping(false)`.
 
 ### FEAT-117 – Banner (Abstimmung, Wettbewerb, Einladung)
@@ -109,3 +109,15 @@ Code: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js`,
   Aktionen in `ui.lua`. Log-Kanal `PC2Coop_Log` (`js|...`).
 - **Besonderheiten:** Der Regex für Anfragen braucht ein abschließendes `|`. Die HUD-Ansicht
   wird erst kurz nach dem Start gehört; frühe Logzeilen gehen verloren (deshalb 4 s Verzögerung).
+
+### FEAT-120 – Knopf „Multiplayer“ links oben
+- **Status:** Implemented · **Seit:** unveröffentlicht (UX-Overhaul P6)
+- **Funktion:** Ein runder Knopf in der Knopfspalte des Spiels links oben (unter den
+  Benachrichtigungen) öffnet und schließt das Multiplayer-Fenster; es klappt direkt darunter vom
+  linken Rand aus. Ersetzt den Reiter in der Bauleiste (FEAT-111): kurzer Mausweg, die Leiste
+  des Spiels bleibt symmetrisch.
+- **Technik:** `patchManagementMenu`/`patchManagementClass` (wie beim Pausemenü über
+  `Focusable.decorateEx`), `addMenuButton` fügt einen `ManagementMenuButton` des Spiels in
+  `ManagementMenu_content` ein; `trackMenuButton` misst seine Unterkante, `panelTop()` setzt das
+  Fenster darunter; Ausklappen über `left` mit `transition`. ADR-021.
+- **QA:** `Ui._QaClickTab` drückt den Knopf; QA-Look „reiter 0“ blendet ihn aus.

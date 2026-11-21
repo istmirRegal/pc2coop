@@ -191,6 +191,33 @@ class ThirdPersonTests(unittest.TestCase):
         self.assertGreater(abs(x2), 1)
         self.assertAlmostEqual(y2, 0.3)
 
+    def test_starts_and_turns_smoothly(self):
+        self.v.Start()
+        self.lua.execute('V._TestKeys({W = true})')
+        self.tick(1)
+        self.assertLess(self.at()[2], 3.2 / 60 * 0.5)    # not at once at full speed
+        self.tick(59)
+        self.lua.execute('V._TestKeys({D = true})')
+        before = self.lua.eval('V._Facing()')
+        self.tick(2)
+        after = self.lua.eval('V._Facing()')
+        self.assertGreater(abs(after - before), 0.01)
+        self.assertLess(abs(after - before), 1.2)            # turning, not snapped to the side
+        self.lua.execute('V._TestKeys(nil)')
+
+    def test_an_entrance_is_found_where_the_camera_looks_too(self):
+        self.lua.execute('''
+            package.loaded["Helpers.VisitorCameraTargetUtils"] = {
+                FindInteractionTarget = function(at, fwd, apis)
+                    if fwd:GetX() > 0.9 then return {nEntityID = 901, nRideEntityID = 3, sType = "FlatRideGate"} end
+                end,
+                TestInteraction = function(t) return {sInteraction = "BoardFlatRide"} end,
+                GetInteractionString = function() return "Einsteigen" end}''')
+        self.v.Start()
+        # The figure faces +z, the gate is to the side (+x): the fan of rays finds it anyway.
+        self.lua.execute('cam.pos = require("Vector3"):new(-6, 1, 0)')
+        self.assertEqual(self.v.Hint()['action'], 'Einsteigen')
+
     def test_the_own_figure_is_no_wall_and_qa_keys_walk(self):
         self.v.Start()
         self.lua.execute('api.physics.RayCast = function() return {{nEntityID = 77}} end')   # only the figure itself
@@ -198,9 +225,12 @@ class ThirdPersonTests(unittest.TestCase):
         self.tick(60)
         self.assertGreater(self.at()[2], 2.5)
         self.lua.execute('V._TestKeys(nil)')
+        z0 = self.at()[2]
+        self.tick(30)                                   # it slows down, a little further
         z = self.at()[2]
+        self.assertLess(z - z0, 0.5)
         self.tick(30)
-        self.assertAlmostEqual(self.at()[2], z)
+        self.assertAlmostEqual(self.at()[2], z)        # and then stands
 
     def test_mouse_turns_the_camera(self):
         self.v.Start()
@@ -215,10 +245,10 @@ class ThirdPersonTests(unittest.TestCase):
         self.assertEqual(list(self.lua.eval('commands').values())[-1], 'visitor|1|0', 'no mouse look while the wheel is open')
         self.v.OnMouse(40, -40)                          # up right: the second wedge
         self.assertEqual(self.lua.eval('V.Wheel().selected'), 2)
-        self.v.OnKey('4', True)
-        self.assertEqual(self.lua.eval('V.Wheel().selected'), 4)
+        self.v.OnKey('4', True)                          # number keys are the game's: no change
+        self.assertEqual(self.lua.eval('V.Wheel().selected'), 2)
         self.v.OnKey('t', False)
-        self.assertEqual(list(self.lua.eval('emotes').values()), ['up'])
+        self.assertEqual(list(self.lua.eval('emotes').values()), ['cheer'])
         self.assertIsNone(self.v.Wheel())
 
     NATIVE = r'''
@@ -280,7 +310,7 @@ class ThirdPersonTests(unittest.TestCase):
         self.assertEqual(self.lua.eval('figure.destroyed'), 77)
         self.assertEqual(list(self.lua.eval('commands').values())[-1], 'visitor|0|0')
 
-    def test_e_at_a_shop_opens_its_list_and_a_number_buys(self):
+    def test_e_at_a_shop_opens_its_list_and_a_click_buys(self):
         self.lua.execute('''shopHere = true
             package.loaded["pc2coop.shop"] = {
                 InFront = function(x, y, z, yaw) if shopHere then return 4242 end end,
@@ -293,7 +323,9 @@ class ThirdPersonTests(unittest.TestCase):
         self.assertEqual(self.v.Shop()['entity'], 4242)
         self.assertIsNone(self.v.OnKey('t', True))            # no emote wheel over the list
         self.assertIsNone(self.v.Wheel())
-        self.assertEqual(tuple(self.v.OnKey('1', True)), ('buy', 1))
+        self.assertIsNone(self.v.OnKey('1', True))            # the game's key, not ours
+        self.tick(61)
+        self.assertEqual(list(self.lua.eval('commands').values())[-1], 'visitor|1|0', 'the mouse is free for the list')
         entity, item = self.v.Pick(1)
         self.assertEqual((entity, item['item'], item['cost']), (4242, 'Food_CheesePizza', 860))
         self.assertIsNone(self.v.Shop())

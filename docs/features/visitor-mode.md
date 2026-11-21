@@ -98,8 +98,9 @@ Code: `probe/PC2CoopProbe/Main/pc2coop/visitor.lua`, `probe/PC2CoopProbe/Main/pc
 
 ### FEAT-168 – Emotes und Emote-Rad
 - **Status:** Implemented · **Seit:** 1.11.0 (als Animation seit 1.13.0)
-- **Funktion:** T halten: Rad (Winken, Jubeln, Lachen, Super, Naja, Übel), Maus oder 1–6,
-  T loslassen sendet; alle sehen die Animation und einen Toast.
+- **Funktion:** T halten: Rad (Winken, Jubeln, Lachen, Super, Naja, Übel), die Maus wählt,
+  T loslassen sendet; alle sehen die Animation und einen Toast. Seit P6 ohne Zahlentasten (das
+  Spiel reagierte zusätzlich auf sie).
 - **Technik:** `Visitor.EMOTES`, `Visitor.OnKey`, `Visitor.Wheel`; `Session.Emote` →
   `emote|kind` → Host `em|sid|kind`; `Session._EmoteKind`, `Session.Emotes` (4 s, Essen 20 s).
   UI-Aktion `emote`, Klasse `EmoteWheel` (seit P4 im Look der Radialmenüs des Spiels, Icons
@@ -108,7 +109,8 @@ Code: `probe/PC2CoopProbe/Main/pc2coop/visitor.lua`, `probe/PC2CoopProbe/Main/pc
 ### FEAT-169 – Kaufen an Shops und Automaten
 - **Status:** Implemented · **Seit:** 1.13.0
 - **Funktion:** E vor einem Shop zeigt seine Artikel mit übersetzten Namen und Preisen;
-  1–6 oder Klick kauft, E/Tab schließt. Der Preis geht in die Parkkasse, alle sehen
+  ein Klick kauft (die Maus ist frei, solange die Liste offen ist; seit P6 ohne 1–6), E/Tab
+  schließt. Der Preis geht in die Parkkasse, alle sehen
   „<Name> kauft …“. Geschlossene Shops verkaufen nichts.
 - **Technik:** `shop.lua`: `Shop.InFront` (Strahlenfächer, Elternkette bis `IsFacility`),
   `Shop.Items` (`GetShopInventoryEntityID`, `GetShopInventory`, `GetShopInventoryItem`),

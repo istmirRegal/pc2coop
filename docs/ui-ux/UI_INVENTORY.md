@@ -16,7 +16,8 @@ Darstellung: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js` (Kompone
 |---|---|---|---|---|
 | Hauptmenü, Reiter „Spielen“ | Kachel „Multiplayer“ neben Karriere (`patchStartTabClass`); Beschreibung mit Zustand („Sitzung offen · 2/8“, „<Freund> hat eine Sitzung – beitreten“, ohne Steam-Verbindung „Gerade nicht verfügbar – <Grund>“); öffnet die Multiplayer-Seite (auch ohne Steam: dort steht, was hilft) | immer | `open` | FEAT-113, FEAT-119 |
 | Hauptmenü, jede Seite | Sitzungsleiste (`MiniLobby`) oben rechts unter dem Newsletter-Kasten: Avatare, Zustand, „Öffnen“, „Beenden“/„Verlassen“ | in einer Sitzung, Seite nicht offen | `open`, `leave` | FEAT-034 |
-| Park, Bauleiste unten | Reiter „Multiplayer“ rechts neben der Leiste, **nicht** in der TabBar (`patchBuildBar`, ADR-007) | im Park | `open` | FEAT-111 |
+| Park, Knopfspalte des Spiels links oben | runder Knopf „Multiplayer“ unter den Benachrichtigungen (Spiel-`ManagementMenuButton`, `patchManagementMenu`, ADR-021); gedrückt, solange das Fenster offen ist; das Fenster klappt direkt darunter aus | im Park | `open`/`close` | FEAT-120 |
+| (entfernt) Bauleiste unten | Reiter „Multiplayer“ rechts neben der Leiste (ADR-007): seit P6 weg, die Leiste war unsymmetrisch | – | – | FEAT-111 |
 | Park, Pausemenü (Esc) | Eintrag „Multiplayer“ (`patchMenuClass`); in einer Sitzung dazu „Sitzung verlassen“/„Sitzung beenden“ | im Park | `open`, `leave` | FEAT-112, FEAT-042 |
 | Tastatur | **F7** öffnet/schließt das Fenster (`key:menu` → `Ui.Toggle`) | überall | – | FEAT-114 |
 | Tastatur | **Enter** öffnet die Chat-Eingabe unten links (`key:chat` → `Ui.ChatKey`) | im Park, Fenster zu, kein Textfeld des Spiels aktiv | `chatinput` | FEAT-116 |
@@ -116,7 +117,7 @@ UI-Skalierung 1.0 verdeckte er die Icon-Knöpfe am Ende der Bauleiste des Spiels
 | Bodenmarke, Sichtkegel, Geist, Sperr-Färbung, Figuren | in der Welt (`viz.lua`) | Mitspieler im Park | – | FEAT-092–094, FEAT-171 |
 | Ablehnung am Objekt: Schild „<Name> baut hier gerade“ / „war schneller“ / „hat das gerade geändert“, Objekt blinkt in der Farbe des Mitspielers | 4 m über dem Objekt (Coaster-Labels), Blinken über Sperr-Färbung | 5 s nach einer zurückgenommenen eigenen Änderung (Blinken 2 s); ohne Objekt als Karte im Chat-Bereich | – | FEAT-082 |
 | Markieren-Radialmenü (`ContextMenu`): Titel (Fahrgeschäft oder „Markierung“), Kreise mit Spiel-Icons „Testfahrt mit allen“, „Mitfahren“, „Übernahme von …“, „Kommentar“, „Vorschlag“, „Baugebiet“, „Treffpunkt“; Mitte = Schließen | um die Maus | nach eigener Markierung (kurzer Mittelklick), nicht im Besuch | `ctx` (invite, ride, take, comment, proposal, area, meet, close) | FEAT-136, FEAT-137 |
-| Tastenhinweise „[Enter] Chat“ und „[Mittelklick] Markieren“ (`MarkHint`) | unten rechts über der Bauleiste | in Sitzung im Park, Fenster zu, kein Besuch, kein Radialmenü offen | – | FEAT-095 |
+| Hinweise „[Enter] Chat“ und „[Maus Mitte] Markieren“ in der Hinweiszeile des Spiels (`ButtonPromptHelper`, `BUILD_PROMPTS`) | Hinweiszeile über der Statusleiste | in Sitzung im Park, Fenster zu, kein Besuch, kein Radialmenü offen | – | FEAT-095 |
 | Anfrage-Karte (`RequestCard`), eine zur Zeit mit Zähler „1 von n“: Beitrittsanfrage (Host) „Zulassen“/„Ablehnen“ → `approve`/`deny`; Abstimmung „Ja“/„Nein“ → `vote`; Testfahrt „Mitfahren“/„Später“ → `invitation`; nach einem Bauduell „Bewerten“ → `paneltab` + `open` | oben Mitte, 7.5 rem | etwas wartet auf eine Antwort, Fenster zu | siehe Spalte links | FEAT-027, FEAT-141, FEAT-138, FEAT-147 |
 | Chat-Bereich (`ChatArea`): Chat-Zeilen (Name in Spielerfarbe), Spieler-Ereignisse (hell), darüber Meldungs-Karten | unten links, ab 6 rem; bei offenem Fenster im Park rechts daneben | Zeilen 10 s (max. 6), Karten 6 s (max. 3) | – | FEAT-044, FEAT-116 |
 | Chat-Eingabe (`ChatArea`): letzte 12 Zeilen, Feld „Nachricht an alle“, Hinweise „[Enter] Senden“, „[Esc] Schließen“ | unten links | nach Enter im Park, Fenster zu | `chat`, `chatinput` | FEAT-035, FEAT-116 |
@@ -133,16 +134,18 @@ ausgeblendet (`syncVisitHud`), beim Mitfahren nicht (dort liegen die Knöpfe der
 
 | Element | Ort | Wann | Bedienung | FEAT |
 |---|---|---|---|---|
-| Tastenhinweise | unten rechts über der Statusleiste | im Besuch, Fenster zu | von hinten: WASD Laufen, Umschalt Rennen, E Benutzen, F Fahrgeschäfte, T Emotes, V Ich-Sicht, Tab Zurück; Ich-Sicht: WASD, Alt Springen, Strg Ducken, L Lampe, E Shop, F, T, V Ansicht, Tab; Laden offen: 1–6 Kaufen, E Schließen | FEAT-160, FEAT-195 |
+| Tastenhinweise im Look der Hinweiszeile des Spiels (Klassen `HUD_promptsList`, `ButtonPrompt_*`, `InputIcon_*`) | an der Stelle der Hinweiszeile des Spiels (gemessen, `trackPromptRow`) | im Besuch, Fenster zu | von hinten: Maus Umsehen, WASD Laufen, Umschalt Rennen, E Benutzen, F Fahrgeschäfte, T Emotes, V Ich-Sicht, Tab Zurück; Ich-Sicht: WASD, Alt Springen, Strg Ducken, L Lampe, E Shop, F, T, V Ansicht, Tab; Laden offen: Maus Kaufen, E Schließen | FEAT-160, FEAT-195 |
 | „Du fährst <Bahn>“ | oben Mitte | beim Mitfahren | – | FEAT-166 |
 | E-Hinweis | unter der Bildmitte | von hinten, vor einem Eingang | [E] + Spieltext, darunter der Sperrgrund (Lokalisierung über `shown()`) | FEAT-165 |
-| Kauf-Panel „Kaufen“ | unten rechts über den Tastenhinweisen | Laden-Menü offen | Zeilen mit Taste, Artikel, Preis; 1–6 oder Klick → `buy`; E/Tab schließt | FEAT-169 |
+| Kauf-Panel „Kaufen“ | unten rechts über den Tastenhinweisen | Laden-Menü offen | Zeilen mit Artikel und Preis; Klick → `buy` (die Maus ist frei, solange es offen ist); E/Tab schließt | FEAT-169 |
 | Fahrgeschäfte-Panel | links wie das Multiplayer-Fenster | F (oder X schließt) | Zeilen: Name, Art, Entfernung, Wartende, Werte, Bewertung als Sterne des Spiels (`Stars`); „Mitfahren“ → `ride`; „Deine Wertung“: fünf Sterne zum Klicken (gewählte gefüllt in Akzentfarbe) → `rate`; Vorschlag (Enter) → `rate`; Maus frei, solange offen | FEAT-166, FEAT-167 |
-| Emote-Rad | Bildmitte, Kreise auf einem Ring wie das Markieren-Radialmenü | T gehalten | Gast-Icons des Spiels (`guestThoughts`) mit Taste 1–6 und Wort; Maus/1–6 wählt (größer, Akzentfarbe), T loslassen sendet | FEAT-168 |
+| Emote-Rad | Bildmitte, Kreise auf einem Ring wie das Markieren-Radialmenü | T gehalten | Gast-Icons des Spiels (`guestThoughts`) mit Wort; die Maus wählt (größer, Akzentfarbe), T loslassen sendet; keine Zahlentasten (P6) | FEAT-168 |
 
 Tasten im Besuch (über die DLL, FEAT-195): **WASD** laufen, **Shift** rennen, **Maus** umsehen,
-**E** Eingang/Laden, **F** Fahrgeschäfte, **V** Ich-Sicht ↔ von hinten, **T** Emote-Rad, **1–6**
-kaufen/Emote, **Tab** zurück (schließt zuerst das Laden-Menü). Entfallen (P4): die Emote-Knöpfe
+**E** Eingang/Laden, **F** Fahrgeschäfte, **V** Ich-Sicht ↔ von hinten, **T** Emote-Rad,
+**Tab** zurück (schließt zuerst das Laden-Menü). Die Zahlentasten nutzt der Besuch seit P6 nicht
+mehr: das Spiel reagiert selbst auf sie, ein Druck tat zwei Dinge (Fund A14). Mit Maus-Blick ist
+der Zeiger ausgeblendet (DLL, `cursor: none`). Entfallen (P4): die Emote-Knöpfe
 (das Rad reicht) und die Knöpfe „Ich-Sicht“ und „Zurück zum Bauen“ (V, Tab). In der Ich-Sicht gelten zusätzlich die Tasten
 des Spiels (Alt springen, Strg ducken, L Lampe).
 
@@ -195,7 +198,7 @@ Entwickler-Seite: technische Werte und „API-Rekorder an/aus“, „Namensschil
 | `view` | – | Ich-Sicht ↔ von hinten | ja |
 | `ride` | Bahn-Key | mitfahren | ja |
 | `emote` | Art | Emote | ja |
-| `buy` | 1–6 | kaufen | ja |
+| `buy` | 1–6 (Zeile im Kauf-Panel) | kaufen | ja (Klick) |
 | `shopclose` | – | Laden-Menü schließen | **nein** (E/Tab) |
 | `visitorlist` | 1/0 | Fahrgeschäfte-Panel (`Visitor.SetList`) | ja (X am Panel; öffnen mit F) |
 | `rate` | key\|sterne\|text | bewerten | ja |

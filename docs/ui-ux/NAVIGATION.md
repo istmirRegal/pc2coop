@@ -20,7 +20,7 @@ Start → `Rejoin`.
 ## Im Park
 
 ```
-Bauen ─ F7 / Reiter „Multiplayer“ (Bauleiste) / Pausemenü „Multiplayer“ ─► Fenster links (nicht modal)
+Bauen ─ F7 / runder Knopf links oben (Knopfspalte des Spiels) / Pausemenü „Multiplayer“ ─► Fenster links darunter (nicht modal, klappt aus)
           Reiter: Spieler · Planen · Verlauf · Einstellungen   (X/Esc zu; Bauen geht weiter)
           Fuß: „Besuchen“ ─► Besuch (Tab zurück)
 
@@ -39,7 +39,7 @@ Fenster „Besuchen“ ─ „Als Besucher losgehen“ ─► Besuch (von hinten
 
 Besuch (von hinten) ⇄ V ⇄ Ich-Sicht
 Besuch ─ E vor Eingang ─► Spiel-Interaktion (Anstellen/Einsteigen) → Mitfahren → „Zurück“ (Spiel) → Besuch
-Besuch ─ E vor Laden  ─► Kaufliste ─ 1–6 ─► kaufen, Figur isst/trinkt ─ E/Tab ─► Besuch
+Besuch ─ E vor Laden  ─► Kaufliste (Maus frei) ─ Klick ─► kaufen, Figur isst/trinkt ─ E/Tab ─► Besuch
 Besuch ─ T halten ─► Emote-Rad ─ T los ─► Emote
 Besuch ─ „Fahrgeschäfte“ ─► Liste (mitfahren, bewerten, Vorschlag)
 Besuch ─ Tab / „Zurück zum Bauen“ ─► Bauen

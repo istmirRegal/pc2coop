@@ -17,7 +17,7 @@ betrifft, eine Alternative bewusst verworfen wurde oder der Eigner eine Richtung
 | [ADR-004](ADR-004-erfassung-ueber-den-commit-des-editors-drei-sync.md) | Erfassung über den Commit des Editors, drei Sync-Wege | Akzeptiert | 2026-11-14 (erweitert 2026-11-18) |
 | [ADR-005](ADR-005-replay-nur-ueber-whitelist-nichts-aus-dem-netz-w.md) | Replay nur über Whitelist, nichts aus dem Netz wird Code | Akzeptiert | 2026-11-15 |
 | [ADR-006](ADR-006-bahnen-als-bauplan-dateien.md) | Bahnen als Bauplan-Dateien | Akzeptiert | 2026-11-18 |
-| [ADR-007](ADR-007-reiter-multiplayer-neben-nicht-in-der-tabbar.md) | Reiter „Multiplayer“ neben, nicht in der TabBar | Akzeptiert | 2026-11-18 |
+| [ADR-007](ADR-007-reiter-multiplayer-neben-nicht-in-der-tabbar.md) | Reiter „Multiplayer“ neben, nicht in der TabBar | Abgelöst (ADR-021) | 2026-11-18 |
 | [ADR-008](ADR-008-qa-befehle-nur-mit-dev-flag-und-nur-im-eigenen-t.md) | QA-Befehle nur mit Dev-Flag und nur im eigenen Testpark | Akzeptiert | 2026-11-14 |
 | [ADR-009](ADR-009-keine-acse-dateien-in-paketen.md) | Keine ACSE-Dateien in Paketen | Akzeptiert | 2026-11-19 |
 | [ADR-010](ADR-010-nexus-paket-ohne-skripte-dll-mit-versionsangaben.md) | Nexus-Paket ohne Skripte, DLL mit Versionsangaben | Akzeptiert | 2026-11-19 |
@@ -31,6 +31,7 @@ betrifft, eine Alternative bewusst verworfen wurde oder der Eigner eine Richtung
 | [ADR-018](ADR-018-deutsche-texte-string-literal-fuer-spiel-kompone.md) | Deutsche Texte, STRING_LITERAL für Spiel-Komponenten | Akzeptiert | 2026-11-14 |
 | [ADR-019](ADR-019-dokumentation-im-repository-mit-feature-registry.md) | Dokumentation im Repository mit Feature-Registry und Prüfung | Akzeptiert | 2026-11-20 |
 | [ADR-020](ADR-020-native-oberflaeche-spiel-bausteine-variablen-rem.md) | Native Oberfläche: Bausteine, Variablen und Einheiten des Spiels | Vorgeschlagen | 2026-11-20 |
+| [ADR-021](ADR-021-einstieg-ueber-runden-knopf-links-oben.md) | Einstieg über einen runden Knopf links oben | Akzeptiert | 2026-11-21 |
 
 ## Vorlage
 
