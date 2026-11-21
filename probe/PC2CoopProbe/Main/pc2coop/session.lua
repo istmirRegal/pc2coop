@@ -605,7 +605,16 @@ local function catchUp(sid)
     p.pending, p.manifest, p.missing = nil, nil, nil
     sendRideFiles(sid, lines)
     sendOps(sid, lines)
-    -- Ratings so far (quiet: no toast for old ones).
+    Session._SendTeam(sid)
+    local since = Session._Since(sid)
+    if since then send(sid, "since|" .. since) end
+end
+
+-- Everything of the session besides the park itself, for a player who (re)loaded it: ratings
+-- (quiet, no toast for old ones), board, rules, the game speed, a running competition and who
+-- holds what. Sent after every load: the fuzz test (tests/test_fuzz_session_lua.py) found that
+-- a second load in a row (resync twice, a hiccup) left the player without board and rules.
+function Session._SendTeam(sid)
     for key, r in global.pairs(ratings) do
         for by, v in global.pairs(r.by) do
             send(sid, "rt|" .. by .. "|" .. key .. "|" .. v.stars .. "|" .. r.name .. "|" .. v.who .. "|" .. v.text .. "|0")
@@ -613,8 +622,12 @@ local function catchUp(sid)
     end
     for _, line in global.ipairs(Board.Lines()) do send(sid, line) end
     send(sid, "rules|" .. rules.speed .. "|" .. rules.visitors .. "|" .. rules.foreign)
-    local since = Session._Since(sid)
-    if since then send(sid, "since|" .. since) end
+    for holder, hold in global.pairs(holds) do
+        if holder ~= sid then send(sid, "h|" .. holder .. "|" .. hold.label .. "|" .. hold.gids .. "|" .. hold.raw) end
+    end
+    local paused, index = World.Time()
+    if paused ~= nil then send(sid, "time|" .. (paused and "1" or "0") .. "|" .. index .. "|") end
+    if comp then send(sid, Session._CompLine()) end
 end
 
 local function join(sid, name, mode)
@@ -633,25 +646,22 @@ local function join(sid, name, mode)
     end
     players[sid].lobby = nil
     if mode == "needpark" then
-        -- Asked again while the park is still on its way: it arrives, nothing to restart.
-        if players[sid].sending then return end
+        -- Asked again while the park is still on its way: it arrives, nothing to restart -
+        -- unless that transfer is stuck (no end after 30 s): then it starts anew.
+        if players[sid].sending and frames - (players[sid].sendingSince or frames) < 1800 then return end
         players[sid].pending, players[sid].sending, players[sid].sent = {}, true, 0
+        players[sid].sendingSince = frames
         addFeed(players[sid].name .. " tritt bei und lädt den Park")
         tasks[#tasks+1] = global.coroutine.create(function() sendPark(sid) end)
     elseif mode == "loaded" and players[sid].pending then
         addFeed(players[sid].name .. " ist beigetreten")
         catchUp(sid)
-        for holder, hold in global.pairs(holds) do
-            if holder ~= sid then send(sid, "h|" .. holder .. "|" .. hold.label .. "|" .. hold.gids .. "|" .. hold.raw) end
-        end
-        local paused, index = World.Time()
-        if paused ~= nil then send(sid, "time|" .. (paused and "1" or "0") .. "|" .. index .. "|") end
-        if comp then send(sid, Session._CompLine()) end
     else
         if not returning then addFeed(players[sid].name .. " ist beigetreten") end
         local snapshot = {}
         for gid in global.pairs(objects) do snapshot[#snapshot+1] = {sid, upsertLine(gid)} end
         deliver(snapshot)
+        if sid ~= me then Session._SendTeam(sid) end
     end
 end
 
@@ -768,16 +778,45 @@ local function forwardRide(sid, old, new, file)
 end
 
 -- A change report, either from our own game or from a client.
+-- Host: at most `limit` messages of one kind per player within `window` frames (security
+-- review 2026-11-21). Without it one player could flood everyone with chat, test ride
+-- invitations or board changes, and fill the board and ratings files (2 MB each, then nothing
+-- more is kept). The host itself is not limited. Module fields: the main chunk is at its limit.
+Session._rates = {}
+Session.RATE_LIMITS = {chat = {8, 300}, board = {20, 300}, ["ride-invite"] = {2, 600}, rate = {10, 600},
+    time = {10, 300}, who = {30, 60}, ["take-ask"] = {6, 300}}
+function Session._Allow(sid, kind)
+    local rule = Session.RATE_LIMITS[kind]
+    if not rule or sid == me then return true end
+    local key = global.tostring(sid) .. "|" .. kind
+    local entry = Session._rates[key]
+    if not entry or frames - entry.start >= rule[2] then
+        entry = {start = frames, count = 0}
+        Session._rates[key] = entry
+    end
+    entry.count = entry.count + 1
+    if entry.count == rule[1] + 1 then emit("session:rate-limited|" .. global.tostring(sid) .. "|" .. kind) end
+    return entry.count <= rule[1]
+end
+
+-- A number from another player for a place or an angle: finite and within the world, else nil.
+function Session._Finite(value)
+    local n = global.tonumber(value)
+    if not n or n ~= n or global.math.abs(n) > 1e6 then return nil end
+    return n
+end
+
 local function hostChange(sid, f)
+    if f[1] and not Session._Allow(sid, f[1]) then return end
     if f[1] == "up" and #f >= 13 then
         local p, q, s = numbers(f, 6, 8), numbers(f, 9, 12), numbers(f, 13, 13)
         if p and q and s then deliver(authorityUp(sid, f[2], f[3], global.tonumber(f[4]), f[5], p, q, s[1], global.tonumber(f[14]))) end
     elseif f[1] == "del" and #f >= 4 then
         deliver(authorityDelete(sid, f[2], f[3], global.tonumber(f[4])))
     elseif f[1] == "pres" and players[sid] then
-        local pr = {x = global.tonumber(f[2]), y = global.tonumber(f[3]), z = global.tonumber(f[4]),
-            yaw = global.tonumber(f[5]), pitch = global.tonumber(f[6]), act = clean(f[9]),
-            fx = global.tonumber(f[10]), fy = global.tonumber(f[11]), fz = global.tonumber(f[12])}
+        local F = Session._Finite
+        local pr = {x = F(f[2]), y = F(f[3]), z = F(f[4]), yaw = F(f[5]), pitch = F(f[6]), act = clean(f[9]),
+            fx = F(f[10]), fy = F(f[11]), fz = F(f[12])}
         players[sid].pres = pr
         -- Where a player looks goes to the others right away; the roster is too slow for that.
         if pr.fx then
@@ -1102,7 +1141,9 @@ local function onMessage(from, payload)
             players[from].sending = false
             addFeed(players[from].name .. " konnte den Park nicht laden")
         elseif kind == "chat" and players[from] then
-            Session._BroadcastChat(players[from].name, players[from].color, global.string.sub(payload, 6))
+            if Session._Allow(from, "chat") then
+                Session._BroadcastChat(players[from].name, players[from].color, global.string.sub(payload, 6))
+            end
         elseif kind == "info" and players[from] then
             local f = split(payload, "|")
             setContent(from, f[2], f[3] or "")
@@ -1232,6 +1273,7 @@ local function onMessage(from, payload)
         elseif kind == "park" then
             local f = split(payload, "|")
             transfer.world, transfer.name = f[2], f[3]
+            Session._ParkProgress()
             Session._TryLoad()
         elseif kind == "feed" then
             feed[#feed+1] = global.string.sub(payload, 6)
@@ -1279,7 +1321,29 @@ local function requestPark()
     transfer, progress, joinFailure, desync = {}, {}, nil, nil
     emit("session:awaiting-park|" .. lobbyId .. "|" .. global.tostring(hostName))
     waiting = false
+    Session._parkProgressFrame = frames
     send(hostId, helloLine("needpark"))
+end
+
+-- Joiner: a park that does not come (its transfer was lost on the way) is asked for again
+-- after 20 s without any progress, three times; then the join fails with "Erneut versuchen".
+-- The fuzz test (tests/test_fuzz_session_lua.py) found players waiting for it for ever.
+Session.PARK_RETRY_FRAMES, Session.PARK_RETRIES = 1200, 3
+function Session._ParkProgress() Session._parkProgressFrame = frames end
+function Session._CheckParkArrives()
+    if role ~= "client" or memory.phase ~= "awaiting" or waiting or not hostId then
+        Session._parkRetries = 0
+        return
+    end
+    if frames - (Session._parkProgressFrame or frames) < Session.PARK_RETRY_FRAMES then return end
+    if (Session._parkRetries or 0) < Session.PARK_RETRIES then
+        Session._parkRetries = (Session._parkRetries or 0) + 1
+        emit("session:park-retry|" .. Session._parkRetries)
+        requestPark()
+    else
+        Session._parkRetries = 0
+        Session._FailJoin("Der Park des Hosts ist nicht angekommen. Versuch es noch einmal.", false)
+    end
 end
 
 -- Joiner: in the host's lobby (main menu or a park of one's own), waiting for a park.
@@ -1320,6 +1384,7 @@ local function failJoin(reason, tellHost)
     emit("session:join-failed|" .. reason)
     if tellHost and hostId then send(hostId, "loadfailed|") end
 end
+Session._FailJoin = failJoin
 
 local function onNet(event)
     local f = split(event, "|")
@@ -1504,6 +1569,7 @@ local function onNet(event)
         end
     elseif kind == "file:progress" then
         progress[f[2]] = {global.tonumber(f[3]) or 0, global.tonumber(f[4]) or 1}
+        Session._ParkProgress()
     elseif kind == "file:done" and global.string.match(f[3] or "", "^pc2coop%-ride%-%d+%-%d+%.blueprint$") then
         global.require("pc2coop.rides").FileReady(f[3])
         local waiting = rideWaiting[f[3]]
@@ -1514,6 +1580,7 @@ local function onNet(event)
     elseif kind == "file:done" then
         local total = global.tonumber(f[4]) or 1
         progress[f[3]] = {total, total}
+        Session._ParkProgress()
         transfer[f[3]] = true
         Session._TryLoad()
     elseif kind == "file:sending" and players[f[2]] then
@@ -2614,7 +2681,7 @@ function Session.Leave()
     if role == "host" then for _, sid in global.ipairs(order) do global.pcall(Session._RememberVisit, sid) end end
     boardFile, visitsFile, events, sinceText, vote, checkpoints, invitation = nil, nil, {}, nil, nil, {}, nil
     pingContext, lastTakeAsk, marks = nil, {}, {}
-    Session._takeAsk = nil
+    Session._takeAsk, Session._rates = nil, {}
     comp, compView, compMine = nil, nil, {}
     if role == "host" then remember("rules", "") end
     rules.speed, rules.visitors, rules.foreign = "all", "1", "free"
@@ -2675,6 +2742,7 @@ function Session.Tick()
     firstUseHint()
     if comp and comp.phase == "build" and frames % 30 == 0 then net.NetCommand("now") end
     frames = frames + 1
+    Session._CheckParkArrives()
     if Session._starting and not role and frames - Session._starting > 1800 then
         Session._starting = nil
         failJoin("Steam hat nicht geantwortet. Versuch es noch einmal.", false)

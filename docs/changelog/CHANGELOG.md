@@ -27,6 +27,11 @@ eigenen Test).
   Farbe, auf dem Boden liegt ein kleiner Punktkreis mit freier Mitte. Baugebiete sind ein
   Punktkreis statt einer großen Scheibe.
 - „Für dich“: Der Chat unten links lässt sich ausblenden; Enter öffnet ihn trotzdem.
+- Stabiler bei wackeliger Verbindung: Kommt der Park beim Beitreten nicht an, fragt die Mod
+  nach 20 Sekunden neu (dreimal), statt ewig zu warten. Nach jedem Neuladen hast du wieder das
+  Brett, die Regeln und die Bewertungen.
+- Sicherer: Ein Mitspieler kann die anderen nicht mehr mit Chat, Einladungen oder
+  Brett-Einträgen fluten und keine Bauplan-Dateien anderer überschreiben.
 - Das alte Multiplayer-Fenster in der Mitte des Hauptmenüs ist weg; die Seite „Multiplayer“
   öffnet, sobald das Menü es erlaubt.
 - Besuch: Die Figur fährt an, bremst und dreht sich weich. Eingänge und Läden werden auch in

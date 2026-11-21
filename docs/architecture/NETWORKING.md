@@ -166,5 +166,17 @@ Steuerzeilen ohne Nummer: `S|<name>` (Synchronisation starten), `X` (stoppen), `
 `joined`, `join-request`, `join-confirm`, `join-refused`, `join-failed`, `join-cancelled`, `awaiting-park`,
 `loading-park`, `park-sent`, `park-note`, `peer-stalled`, `rejected-version`,
 `content-refused`, `ride-refused`, `resync`, `host-gone`, `host-in-menu`, `feed`, `error`,
-`task-error` – Diagnose im Log
+`task-error`, `park-retry` (Park kam nicht, neu angefragt), `rate-limited` (ein Mitspieler über
+dem Limit einer Nachrichtenart) – Diagnose im Log
 (FEAT-216), werden von QA-Werkzeugen als erwartete Zeilen benutzt.
+
+## Schutz gegen Fluten und kaputte Werte (seit 1.14.0)
+
+Der Host nimmt je Mitspieler und Art höchstens so viele Nachrichten pro Zeitfenster an
+(`Session.RATE_LIMITS`, Frames bei 60 fps): `chat` 8/5 s, `board` 20/5 s, `ride-invite`
+2/10 s, `rate` 10/10 s, `time` 10/5 s, `who` 30/1 s, `take-ask` 6/5 s. Was darüber liegt, wird
+verworfen (einmal `session:rate-limited|<sid>|<art>` im Log). Der Host selbst ist nicht
+begrenzt. Zahlen für Orte und Winkel (`pres`, `ping`, `pg`, Replay-Vektoren) müssen endlich und
+höchstens 1e6 (Replay 1e7) groß sein. Bauplan-Dateien (`pc2coop-ride-<id>-<n>.blueprint`) nimmt
+der Host nur mit der Steam-Id des Absenders an, höchstens 400 je Spieler und Spielstart (DLL).
+Sicherheits- und Stabilitätsübersicht: `docs/architecture/SECURITY.md`.

@@ -80,6 +80,8 @@ Wo was liegt. Zeilenzahlen grob (Stand 1.13.0), um die Größe einzuschätzen.
 | `tests/test_presence_extras_lua.py`, `tests/test_coop_play_lua.py` | Anwesenheit, Team-Funktionen |
 | `tests/test_ui_lua.py` | Oberflächen-Zustand und Aktionen |
 | `tests/test_texts_js.py`, `tests/test_lang_lua.py` | englische Texte (Node) und Schilder in Lua (ADR-022) |
+| `tests/test_fuzz_session_lua.py` | Fuzzing der Sitzung über ein gestörtes Netz, bösartige Nachrichten (`SECURITY.md`) |
+| `tests/test_viz_lua.py` | Markierungen verdecken nichts (Umriss, Punktring) |
 | `tests/test_parks_lua.py`, `tests/test_diagnostic_lua.py`, `tests/test_probe_lua.py`, `tests/test_qa_lua.py`, `tests/test_live_lua.py` | übrige Module, Version, QA |
 | `tests/test_native_outbox.py` | DLL-Warteschlange (C++) |
 | `tests/test_alpha.py`, `tests/test_coop.py`, `tests/test_collaboration.py`, `tests/test_doctor.py`, `tests/test_model.py` | Legacy-Python |

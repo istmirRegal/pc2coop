@@ -3,6 +3,28 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-21 – Sicherheit und Stabilität geprüft (coop-anything-Methoden)
+
+- Auftrag des Eigners: Zusammenspiel übers Netz, Abstürze, Out of Sync, Edge Cases und
+  IT-Sicherheit (DLL, Dateien, Chat/JavaScript) prüfen, mit dem Repo coop-anything als Hilfe.
+  Dessen Werkzeuge (fuzz, chaos, flight) sind für C++-Mods mit eigener UDP-Verbindung gebaut;
+  PC2Coop läuft über Steam und Lua. Übernommen wurden Methode und Profile:
+  `tests/test_fuzz_session_lua.py` (Sitzungen aus Seeds über ein gestörtes Netz, Orakel,
+  Neustart der Lua-Module bei jedem Parkladen) und über 5000 bösartige Nachrichten.
+- Funde des Fuzzers, behoben: zweimal kurz nacheinander geladen → kein Brett, keine Regeln
+  (`Session._SendTeam` nach jedem Laden); Park-Übertragung unterwegs verloren → Spieler wartete
+  ewig (`Session._CheckParkArrives`: nach 20 s ohne Fortschritt neu anfragen, 3×, dann
+  „Erneut versuchen“; der Host startet eine hängende Übertragung nach 30 s neu).
+- Sicherheitsfunde, behoben: keine Mengenlimits (Chat, Brett, Einladungen, Bewertungen – auch
+  Brett- und Bewertungsdatei liefen voll) → `Session.RATE_LIMITS`; `pres` nahm ∞ an →
+  `Session._Finite`; Replay-Vektoren nahmen ∞ an → Grenze wie bei Zahlen; Baupläne: ein
+  Mitspieler konnte Dateien anderer überschreiben und unbegrenzt viele schicken → DLL nimmt nur
+  `pc2coop-ride-<Absender>-…`, ≤ 400 je Spieler und Spielstart (DLL neu gebaut).
+- Ohne Befund: Verbindungen nur von Lobby-Mitgliedern, Dateinamen nur `pc2coop-…`, kein
+  `innerHTML`/`eval` in der Oberfläche (Chat ist Text), kein `load` auf Netzdaten,
+  Replay nur über die Liste der Bau-Methoden, Entwicklerkanal nur mit Flag-Datei.
+- Übersicht: `docs/architecture/SECURITY.md`.
+
 ## 2026-11-21 – Markierung ohne Verdecken, Restpunkte aus dem UX-Konzept
 
 - Wunsch des Eigners: die Markierung darf keine Spielelemente verdecken, nur unterstützen

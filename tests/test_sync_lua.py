@@ -369,6 +369,32 @@ class SyncTests(unittest.TestCase):
         self.assertEqual(self.records('sync:cmd|'), [])
         self.assertTrue(self.records('sync:applied|2'))
 
+    def test_hostile_batches_call_nothing_outside_the_list_and_break_nothing(self):
+        # Security review 2026-11-21: only registered builder methods, four object methods,
+        # finite numbers; anything else is refused and reported, the session goes on.
+        import random
+        rng = random.Random(11)
+        nasty = ['os.execute(sx)', 'io.open(x2e2e2f)', 'global.load(x41)', 'require.x(n1)',
+                 'gameterrain.AddPushPullToChangeList(@op,vnan:2:3,n8,n0.25,n0.5)',
+                 'gameterrain.AddPushPullToChangeList(@op,vinf:0:0,n8,n0,n0)',
+                 'gameterrain.AddPushPullToChangeList(@op,v1e999:0:0,n8,n0,n0)',
+                 'gameterrain.AddPushPullToChangeList(@op,v1:2:3,nnan,n0,n0)',
+                 'gameterrain.AddPushPullToChangeList(@op,v1:2,n8,n0,n0)',
+                 '@r1.Destroy()', '@r9.SetPosition(v1:2:3)', 'r1=@composite;@r1.Evil()',
+                 'r1=@table;@r1.__index()', 'gameterrain.CreateLake(v4:0:4,s../../x)',
+                 'gameterrain.CreateLake(v4:0:4,x' + 'ff' * 200 + ')', '@preview;@preview', '!' * 50, ';;;',
+                 '~1.1.2~half', '~1.9.1~' + 'a' * 100]
+        for seq in range(1, 120):
+            batch = rng.choice(nasty) if rng.random() < 0.8 else ''.join(rng.choice('()@;:,.~!rnvsxe0123456789') for _ in range(40))
+            self.lua.eval('function(b) sync.Receive(b) end')(f'K|{seq}|{batch}')
+        for line in ('U|200|g9|Eve|1|AQ_Rock_04|nan|0|0|0|0|0|1|1', 'U|201|g9|Eve|1|../x|1|2|3|0|0|0|1|1',
+                     'D|202|g9', 'U|203|' + 'x' * 500, 'A|204|g1|nan|1', 'bogus', ''):
+            self.lua.eval('function(b) sync.Receive(b) end')(line)
+        self.tick(60)
+        calls = list(self.lua.eval('terrainCalls').values())
+        self.assertFalse(any('nan' in c or 'inf' in c for c in calls), calls)
+        self.assertTrue(self.records('sync:desync|') or self.records('replay:'), 'refusals are reported')
+
     def test_remote_lake_uses_returned_change_list(self):
         self.lua.execute('sync.Receive("K|1|gameterrain.CreateLake(v4:0:4,sCalmLake)")')
         self.tick(20)

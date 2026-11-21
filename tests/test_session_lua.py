@@ -922,6 +922,38 @@ class TeamTests(SessionTests.__bases__[0]):
             votes = dict(peer.lua.eval('session.View().board[1].votes').items())
             self.assertEqual(votes, {'Alex': True, 'Sam': False})
 
+    def test_one_player_cannot_flood_the_others(self):
+        # Security review 2026-11-21: per player and kind at most so many messages per window.
+        host, sam = self.peers['100'], self.peers['300']
+        for i in range(30):
+            host.event(f'msg|200|chat|spam {i}')
+        self.pump()
+        chat = [c['text'] for c in sam.lua.eval('session.Chat()').values()]
+        self.assertEqual(len([c for c in chat if c.startswith('spam')]), 8)
+        self.assertTrue(any('rate-limited|200|chat' in m for m in host.lua.eval('logs').values()))
+        for i in range(40):
+            host.event(f'msg|200|board|add|comment|1|2|3|0|Zettel {i}||')
+        self.pump()
+        self.assertEqual(len(self.board(sam)), 20)
+        host.lua.execute('for i = 1, 310 do session.Tick() end')          # the window is over
+        host.event('msg|200|chat|wieder da')
+        self.pump()
+        self.assertIn('wieder da', [c['text'] for c in sam.lua.eval('session.Chat()').values()])
+        host.event('msg|100|chat|host')                                    # the host is never limited
+        for i in range(12):
+            host.lua.execute(f'session.SendChat("Host {i}")')
+        self.pump()
+        chat = [c['text'] for c in sam.lua.eval('session.Chat()').values()]
+        self.assertEqual(len([c for c in chat if c.startswith('Host ')]), 12)
+
+    def test_odd_numbers_in_a_presence_do_not_travel(self):
+        host, sam = self.peers['100'], self.peers['300']
+        host.event('msg|200|pres|1e999|nan|-inf|0|0|||baut|1e999|5|5')
+        self.pump()
+        pres = self.player(host, '200')
+        for key in ('x', 'y', 'z', 'fx'):
+            self.assertIsNone(pres[key] if pres else None, key)
+
     def test_a_mark_carries_the_object_and_odd_ids_are_dropped(self):
         # P6 A9: the others outline the marked object; ride ids and odd text never go along.
         host, sam = self.peers['100'], self.peers['300']

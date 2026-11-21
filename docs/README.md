@@ -34,6 +34,7 @@ Regeln für die Pflege: `docs/development/AI_WORKFLOW.md`. Prüfung: `tools/chec
 | [architecture/CODE_STRUCTURE.md](architecture/CODE_STRUCTURE.md) | Dateien, Module, Funktionen, Werkzeuge, Tests |
 | [architecture/NETWORKING.md](architecture/NETWORKING.md) | Alle Nachrichten, ops-Zeilen, DLL-Befehle/-Ereignisse, sync-Zeilen |
 | [architecture/DATA_FLOW.md](architecture/DATA_FLOW.md) | Wege einer Änderung, Beitritt, Kauf, gespeicherte Dateien |
+| [architecture/SECURITY.md](architecture/SECURITY.md) | Vertrauensmodell, was aus dem Netz kommt, Fehlerfälle, Fuzz-Tests, Restrisiken |
 | [architecture/DEPENDENCIES.md](architecture/DEPENDENCIES.md) | Externe und interne Abhängigkeiten, kritische Ketten |
 
 ## UI/UX

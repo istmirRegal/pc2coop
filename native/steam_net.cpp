@@ -466,6 +466,19 @@ void send_file(u64 to, const std::string& name, const std::string& as) {
     pump_outbox();
 }
 
+// Ride snapshots a peer may start per game start (rides.lua keeps 40 per author and deletes
+// older ones; 400 leaves room for long sessions and stops a flood at 400 x 16 MB).
+constexpr int kRideFilesPerPeer = 400;
+std::vector<std::pair<u64, int>> ride_files;
+
+bool ride_file_allowed(u64 from) {
+    for (auto& entry : ride_files) {
+        if (entry.first == from) return ++entry.second <= kRideFilesPerPeer;
+    }
+    ride_files.emplace_back(from, 1);
+    return true;
+}
+
 // True while this game loads the transferred park (the Lua side stores phase=loading).
 bool files_locked() {
     for (const auto& kv : memory) if (kv.first == "phase") return kv.second == "loading";
@@ -491,6 +504,11 @@ void receive_chunk(u64 from, const char* data, size_t size) {
     if (ride_name(name)) {
         if (total > 16LL * 1024 * 1024 || !is_member(from) || from == self_id) return;
         if (owner != self_id && from != owner) return;
+        // Security review 2026-11-21: on the host a member sends only its own snapshots
+        // (pc2coop-ride-<its id>-<n>), so nobody overwrites another player's ride, and only so
+        // many per game start, so nobody fills the disk (16 MB each).
+        if (owner == self_id && name.rfind("pc2coop-ride-" + id_text(from) + "-", 0) != 0) return;
+        if (offset == 0 && !ride_file_allowed(from)) { queue("file:error|ride-limit|" + id_text(from)); return; }
     } else {
         if (owner == self_id || from != owner) return;
         if (name != "pc2coop-join.bin" && name != "pc2coop-join.trn") return;

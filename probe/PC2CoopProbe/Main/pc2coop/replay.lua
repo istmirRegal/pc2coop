@@ -259,7 +259,13 @@ local function decodeScalar(text, ctx)
         return entity
     end
     local numbers = {}
-    for field in global.string.gmatch(body, "[^:]+") do numbers[#numbers+1] = global.tonumber(field) end
+    for field in global.string.gmatch(body, "[^:]+") do
+        -- Like "n" above: finite and inside the world. NaN or infinity in a vector would go
+        -- straight into the game's terrain and placement calls (security review 2026-11-21).
+        local n = global.tonumber(field)
+        global.assert(n and n == n and global.math.abs(n) < 1e7, "bad number")
+        numbers[#numbers+1] = n
+    end
     if tag == "y" and #numbers == 6 then
         local V = global.require("Vector3")
         local _, volume = global.api.world.GetWorldAPIs().volumes:Raycast(V:new(numbers[1], numbers[2], numbers[3]),
