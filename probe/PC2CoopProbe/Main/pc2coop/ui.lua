@@ -75,9 +75,17 @@ local function choosing()
     return frontendMenu ~= nil and view.role == "host" and view.stage == "lobby"
 end
 
+-- One instance of the park list for listing and loading: the main menu's require loads a
+-- module anew on every call, and the save tokens of the listing live in the module (1.13.0
+-- said "unknown park" for every saved park).
+local parksModule
+local function parks()
+    parksModule = parksModule or global.require("pc2coop.parks")
+    return parksModule
+end
+
 local function refreshParks()
-    local Parks = global.require("pc2coop.parks")
-    parkList = choosing() and Parks.List(frontendMenu.parkLoadSaveManager) or {}
+    parkList = choosing() and parks().List(frontendMenu.parkLoadSaveManager) or {}
 end
 
 local closedAt = -1000
@@ -485,7 +493,7 @@ local actions = {
     -- Host opens the chosen park; everyone in the lobby then loads it.
     start = function()
         if not choosing() or not chosen then return end
-        local Parks = global.require("pc2coop.parks")
+        local Parks = parks()
         local ok, failure
         if chosen.kind == "save" then ok, failure = Parks.Load(frontendMenu.parkLoadSaveManager, chosen.id)
         elseif chosen.kind == "new" then ok, failure = Parks.New(frontendMenu, chosen.biome, chosen.creative, "PC2Coop Park")

@@ -3,6 +3,20 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-21 – „unknown park“ bei Testern (1.13.0)
+
+- Ein Tester konnte in 1.13.0 keinen gespeicherten Park über „Park öffnen“ laden, neue schon
+  (Meldung „Der Park konnte nicht geöffnet werden (unknown park)“). Ohne Log gefunden: das
+  `require` des Hauptmenüs cached keine Module (wie in `shared.lua` beschrieben). `refreshParks`
+  und `start` holten sich je eine eigene `parks.lua`; die Speicher-Token aus `Parks.List` waren
+  beim `Parks.Load` weg. Trifft jeden gespeicherten Park, immer. Die Unit-Tests hatten ein
+  Park-Modul ohne Zustand und sahen es nicht; der neue Test lädt das echte `parks.lua` mit einem
+  `require` wie im Menü und zeigt vor dem Fix genau `ui:start|save|false|unknown park`.
+- „Liste kommt nicht sofort“: `refreshParks` lief nur beim Öffnen des Fensters, wenn die Lobby
+  schon stand; sonst erst nach „aktualisieren“.
+- 1.14.0 hat keinen Knopf mehr dafür (Park über die Seiten des Spiels), `ui.lua` hält trotzdem
+  jetzt eine Instanz. Ausweg für 1.13.0: Lobby öffnen, Park über das Lade-Menü des Spiels öffnen.
+
 ## 2026-11-21 – Log-Datei ohne NUL-Byte
 
 - Fremde Tester sollen ihr Log schicken; der Eigner sah beim Öffnen nur chinesische Zeichen.

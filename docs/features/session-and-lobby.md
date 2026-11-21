@@ -132,6 +132,11 @@ Hauptcode: `probe/PC2CoopProbe/Main/pc2coop/session.lua` (Rolle, Nachrichten, Zu
 - **UI:** bis UX-Overhaul P3 Lobby Mitte „Wo spielen wir?“ (Parkliste, Klima, „Park öffnen“).
   Heute: `parks` und `start` ohne Knopf, `choose` nur noch „franchise“ (Kachel Franchise).
 - **Besonderheiten:** Karriere und Herausforderungen fehlen noch (ROADMAP).
+- **Bekannter Fehler in 1.9.0–1.13.0:** Jeder gespeicherte Park meldete „Der Park konnte nicht
+  geöffnet werden (unknown park)“. Das `require` des Hauptmenüs lädt ein Modul bei jedem Aufruf
+  neu; die Speicher-Token der Liste lagen in der einen `parks.lua`-Instanz, geladen wurde mit
+  einer neuen, leeren. Seit 1.14.0 hält `ui.lua` eine Instanz (`parks()`), Test in
+  `tests/test_ui_lua.py`. Ausweg in 1.13.0: den Park über das Lade-Menü des Spiels öffnen.
 
 ### FEAT-033 – Parkwechsel des Hosts für alle (Stage)
 - **Status:** Implemented · **Seit:** 1.8.0

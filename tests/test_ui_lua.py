@@ -173,6 +173,24 @@ class UiTests(unittest.TestCase):
         self.assertEqual(list(self.lua.eval('calls.choice').values()), ['game|einen Park|'])
         self.assertTrue(self.lua.eval('calls.starting'))
 
+    def test_saved_park_opens_although_the_menu_does_not_cache_modules(self):
+        # 1.13.0 said "unknown park" for every saved park: the main menu's require loads a
+        # module anew on each call, so the save tokens of the listing were gone when loading.
+        parks = (SOURCE.parent / 'parks.lua').read_text(encoding='utf8')
+        self.lua.eval('function(s) package.preload["pc2coop.parks"] = function() return assert(load(s, "parks", "t", _G))() end end')(parks)
+        self.lua.execute('''
+            require = function(name) return package.preload[name]() end   -- like the main menu
+            api.save = {GetExistingSaves_SortOldestFirst = function() end,
+                GetSaveMetadata = function(token) return {tSave = {sGameMode = "sandbox", sWorldName = "Taiga"}} end,
+                GetSaveCustomName = function(token) return "Talpark" end}
+            menuHud.parkLoadSaveManager = {
+                EnumerateParkSaves = function(self) return true, {"token-a"} end,
+                LoadParkFromSaveToken = function(self, token) calls.loaded = token; return true end}
+            ui.SetFrontend(menuHud); view.role, view.stage = "host", "lobby"; ui.SetOpen(true)
+        ''')
+        self.lua.execute('ui._Request("1|choose|save|1"); ui._Request("2|start|")')
+        self.assertEqual(self.lua.eval('calls.loaded'), 'token-a', list(self.lua.eval('logs').values()))
+
     def test_guests_cannot_pick_or_start(self):
         self.lua.execute('ui.SetFrontend(menuHud); view.role, view.stage = "client", "lobby"')
         self.lua.execute('ui._Request("1|choose|save|1"); ui._Request("2|start|")')
