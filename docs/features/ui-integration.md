@@ -110,6 +110,21 @@ Code: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js`,
 - **Besonderheiten:** Der Regex für Anfragen braucht ein abschließendes `|`. Die HUD-Ansicht
   wird erst kurz nach dem Start gehört; frühe Logzeilen gehen verloren (deshalb 4 s Verzögerung).
 
+### FEAT-121 – Englisch nach der Sprache des Spiels
+- **Status:** Implemented · **Seit:** 1.14.0
+- **Funktion:** Läuft das Spiel nicht auf Deutsch, zeigt die Mod alle Texte auf Englisch:
+  Fenster, Hauptmenü-Seite, Hinweise, Meldungen, Verlauf, Fehler beim Beitreten, Schilder an
+  Objekten. Was Spieler schreiben (Chat, Brett), bleibt, wie es ist. In einer Sitzung sieht
+  jeder die Texte in seiner Sprache.
+- **Technik:** `Texts.js` (`createTranslator`: `EXACT`, `PATTERNS`, Teile mit „ · “) neben
+  `CoopLayer.js`, geladen per `import('./Texts.js')`, wenn `System.getLanguage()` nicht
+  `Language.German` ist. `tr()` in `h()` (jedes Text-Kind) und `literal()`; `keep()` für Text von
+  Spielern; `buildPrompts()` baut die Hinweiszeile neu. Lua: `lang.lua` (`Lang.Set`, `Lang.Code`,
+  `Lang.World` für Schilder in `managers/pc2coopqa.lua`), UI-Aktion `lang`, Zustand `lang`.
+  QA: `Ui._QaLook` Feld 6 (1 Englisch, 2 Deutsch). ADR-022.
+- **Besonderheiten:** Die Texte bleiben im Code Deutsch; ein neuer Text ohne Eintrag in
+  `Texts.js` erscheint auf Deutsch. Muster hängen am genauen Wortlaut.
+
 ### FEAT-120 – Knopf „Multiplayer“ links oben
 - **Status:** Implemented · **Seit:** 1.14.0 (UX-Overhaul P6)
 - **Funktion:** Ein runder Knopf in der Knopfspalte des Spiels links oben (unter den

@@ -46,6 +46,7 @@ Eine Aufgabe ist erst fertig, wenn Code **und** Doku stimmen. Bei Widerspruch gi
   nutzen (ADR-014). Neue Funktionen müssen für Mitspieler etwas bringen.
 - **Zeilenenden erhalten** (ADR-017): `git diff --stat` mit/ohne `--ignore-cr-at-eol` vergleichen.
 - Spieler-Texte Deutsch, „du“, kurz; Spiel-Komponenten bekommen `literal()` (ADR-018).
+  **Jeder neue Spielertext braucht einen englischen Eintrag in `Texts.js`** (ADR-022).
 
 ## Wo was liegt
 

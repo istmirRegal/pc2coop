@@ -15,6 +15,9 @@ Manager.Init=function(self,properties,environment)
     self.live.AuthorizeNewPark()
     self.qa.Init(function(message) self.diagnostic.Write("[PC2CoopQA] " .. message) end)
     self.sync=global.require("pc2coop.sync")
+    -- Labels at objects in the player's language (ADR-022); German if the module is missing.
+    local okLang,lang=global.pcall(global.require,"pc2coop.lang")
+    self.lang=okLang and global.type(lang)=="table" and lang or {World=function(text) return text end}
     self.session=global.require("pc2coop.session")
     self.sync.Init(function(message)
         -- Camera presence is frequent; it goes to the session only, not into the log.
@@ -142,7 +145,7 @@ Manager.Advance=function(self,delta)
                 local placement=global.api.world.GetWorldAPIs().placement
                 if text and placement:PlacementPartExists(part) then
                     local at=global.api.transform.CalculateWorldPosition(placement:PlacementIDToEntityID(part))
-                    self.authorTag={key="author",name=text,activity="",x=at:GetX(),y=at:GetY()+2.5,z=at:GetZ()}
+                    self.authorTag={key="author",name=self.lang.World(text),activity="",x=at:GetX(),y=at:GetY()+2.5,z=at:GetZ()}
                 end
             end
         end
@@ -154,7 +157,7 @@ Manager.Advance=function(self,delta)
                 local entity=self.sync.GidToEntity(c.gid)
                 if entity then
                     local at=global.api.transform.CalculateWorldPosition(entity)
-                    tags[#tags+1]={key="conflict:" .. c.gid,name=c.text,activity="",color=c.color,x=at:GetX(),y=at:GetY()+4,z=at:GetZ()}
+                    tags[#tags+1]={key="conflict:" .. c.gid,name=self.lang.World(c.text),activity="",color=c.color,x=at:GetX(),y=at:GetY()+4,z=at:GetZ()}
                     if c.age<0.4 then
                         locked[entity]=global.math.floor(c.age*20)%2==0 or nil
                         colour=c.color or "ff922b"

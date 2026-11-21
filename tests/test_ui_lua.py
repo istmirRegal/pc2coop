@@ -191,6 +191,19 @@ class UiTests(unittest.TestCase):
         self.lua.execute('ui._Request("1|choose|save|1"); ui._Request("2|start|")')
         self.assertEqual(self.lua.eval('calls.loaded'), 'token-a', list(self.lua.eval('logs').values()))
 
+    def test_the_layer_reports_the_language_for_lua_labels(self):
+        # ADR-022: CoopLayer.js sends "de"/"en"; the state echoes it so the layer can send it again.
+        for name in ('shared', 'lang'):
+            source = (SOURCE.parent / (name + '.lua')).read_text(encoding='utf8')
+            self.lua.eval('function(n, s) package.preload["pc2coop." .. n] = function() return assert(load(s, n, "t", _G))() end end')(name, source)
+        self.assertEqual(self.state()['lang'], 'de')
+        self.ui._Request('1|lang|en')
+        self.assertEqual(self.state()['lang'], 'en')
+        self.ui._Request('2|lang|fr')                 # only de and en
+        self.assertEqual(self.state()['lang'], 'en')
+        self.ui._Request('3|lang|de')
+        self.assertEqual(self.state()['lang'], 'de')
+
     def test_guests_cannot_pick_or_start(self):
         self.lua.execute('ui.SetFrontend(menuHud); view.role, view.stage = "client", "lobby"')
         self.lua.execute('ui._Request("1|choose|save|1"); ui._Request("2|start|")')

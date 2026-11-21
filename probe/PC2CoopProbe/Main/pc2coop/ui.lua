@@ -102,6 +102,12 @@ end
 
 function Ui.Toggle() Ui.SetOpen(not open) end
 
+-- The language module (ADR-022); nil if it cannot be loaded (the layer then stays German).
+local function langModule()
+    local ok, Lang = global.pcall(global.require, "pc2coop.lang")
+    return ok and global.type(Lang) == "table" and Lang or nil
+end
+
 function Ui.ChatKey() chatKeys = chatKeys + 1; lastState = nil end
 
 -- Hosting: a lobby in the main menu, or the loaded park.
@@ -263,6 +269,7 @@ local function buildState()
     end
     return {
         available = session.Available() == true, role = view.role or false, me = view.me, open = open, qaClickTab = qaClick, qaLook = qaLook,
+        lang = langModule() and langModule().Code() or "de",
         netProblem = session.NetProblem and session.NetProblem() or false,
         canHost = canHost, franchise = franchise, players = players, friends = friends,
         join = session.JoinState and session.JoinState() or false,
@@ -440,6 +447,11 @@ local actions = {
         if key then session.InviteRide(key, name) end
     end,
     take_ok = function() if session.DismissTakeAsk then session.DismissTakeAsk() end end,
+    -- The game's language as CoopLayer.js sees it ("de"/"en", ADR-022), for labels Lua draws.
+    lang = function(arg)
+        local Lang = langModule()
+        if Lang then Lang.Set(arg); lastState = nil end
+    end,
     invitation = function(arg)
         local invite = session.Invitation and session.Invitation()
         session.DismissInvitation()

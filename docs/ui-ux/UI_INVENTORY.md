@@ -205,6 +205,7 @@ Entwickler-Seite: technische Werte und „API-Rekorder an/aus“, „Namensschil
 | `invite_ride` | key\|name | Testfahrt-Einladung | nein (seit P2; Radialmenü „Testfahrt mit allen“ über `ctx`) |
 | `invitation` | 1/0 | Einladung annehmen/später | ja |
 | `take_ok` | – | Übernahme-Frage gelesen („Verstanden“) | ja |
+| `lang` | de/en | Sprache des Spiels für Schilder, die Lua zeichnet (ADR-022) | nein (beim Start, automatisch) |
 | `paneltab` | team/plan/history/session (visit veraltet, zeigt „Spieler“) | Reiter | ja |
 | `board_add` | art\|titel\|text\|zuständig\|radius | Brett-Eintrag | ja |
 | `board_vote` | id\|1/0 | Vorschlag abstimmen | ja |

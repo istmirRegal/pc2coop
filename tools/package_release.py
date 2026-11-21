@@ -20,7 +20,7 @@ import zipfile
 PROJECT = Path(__file__).resolve().parents[1]
 WORKSPACE = PROJECT.parents[1]
 EXE_HASH = "9da90ae2611bf41af532a30611082bd90cdda6b325e570ac63a469051e736c12"
-INSTALLER_FILES = ("INSTALL.cmd", "UNINSTALL.cmd", "UPDATE.cmd", "install.ps1", "update.ps1", "LIESMICH.txt")
+INSTALLER_FILES = ("INSTALL.cmd", "UNINSTALL.cmd", "UPDATE.cmd", "install.ps1", "update.ps1", "LIESMICH.txt", "README-EN.txt")
 # GitHub repository whose releases UPDATE.cmd reads ("owner/name"); set in release.json.
 RELEASE_CONFIG = PROJECT / "release.json"
 
@@ -93,6 +93,8 @@ def nexus(stage: Path, out: Path, version: str) -> int:
         raise RuntimeError("Nexus readme still mentions the installer")
     stage.mkdir(parents=True)
     (stage / "PC2Coop-LIESMICH.txt").write_text(readme, encoding="utf8")
+    # English readme (ADR-022): covers the GitHub and the Nexus package in one text.
+    copy(PROJECT / "alpha-dist" / "README-EN.txt", stage / "PC2Coop-README-EN.txt")
     copy(PROJECT / "LICENSE", stage / "PC2Coop-LICENSE.txt")
     payload(stage / "Win64/ovldata/PC2CoopProbe")
     temp_zip = out.with_suffix(".tmp.zip")

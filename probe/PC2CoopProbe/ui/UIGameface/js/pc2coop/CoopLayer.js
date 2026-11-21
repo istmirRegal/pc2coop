@@ -9,6 +9,7 @@
 import { Icon } from '/js/common/components/Icon.js';
 import * as DS from '/js/common/core/DataStore.js';
 import * as Engine from '/js/common/core/Engine.js';
+import * as System from '/js/common/core/System.js';
 import { translate } from '/js/common/core/Localisation.js';
 import * as preact from '/js/common/lib/preact.js';
 import { Button } from '/js/project/components/Button.js';
@@ -39,7 +40,33 @@ const listeners = new Set();
 // Literal text for the game's translated components. ':' separates the token's fields, so
 // a colon inside the text is replaced (a dialog with one in its description did not show).
 function literal(text) {
-    return '[STRING_LITERAL:Value=|' + String(text).replace(/[|\[\]]/g, '').replace(/\s*:\s*/g, ' - ') + '|]';
+    return '[STRING_LITERAL:Value=|' + String(tr(String(text))).replace(/[|\[\]]/g, '').replace(/\s*:\s*/g, ' - ') + '|]';
+}
+
+// Player texts follow the game's language (ADR-022): German as written here and in Lua, English
+// (Texts.js) for every other language. tr() runs on every text child (h below) and in literal();
+// keep() marks what players wrote (chat, board), which is never translated.
+let translator = null;          // Texts.js createTranslator() while the game is not German
+let langWanted = 'de';
+let langForced = '';            // QA: 'en' or 'de' instead of the game's language
+let langSentAt = 0;
+function tr(text) { return translator ? translator(text) : text; }
+function gameIsGerman() {
+    if (langForced) return langForced === 'de';
+    try { return System.getLanguage() === System.Language.German; } catch (error) { return true; }
+}
+function applyLanguage() {
+    const german = gameIsGerman();
+    langWanted = german ? 'de' : 'en';
+    langSentAt = Date.now();
+    request('lang', langWanted);
+    if (german) {
+        if (translator) { translator = null; promptsShown = ''; notifyLater(); }
+        return;
+    }
+    if (translator) return;
+    import('./Texts.js').then((m) => { translator = m.createTranslator(); promptsShown = ''; notifyLater(); })
+        .catch((e) => log('texts import ' + e));
 }
 
 export function request(command, argument) {
@@ -215,7 +242,11 @@ function money(park) {
     return 'Geld ' + Math.round(park.cash).toLocaleString('de-DE');
 }
 
-const h = preact.h;
+// Every text child goes through tr() (ADR-022); nothing changes while the game is German.
+const trChild = (child) => (typeof child === 'string' ? tr(child) : Array.isArray(child) ? child.map(trChild) : child);
+const h = (type, props, ...children) => preact.h(type, props, ...(translator ? children.map(trChild) : children));
+// Text a player wrote (chat, board): drawn as it is, never translated ("Super" stays "Super").
+const keep = (text) => preact.h('span', null, text);
 // The game's own UI font (same list as its style sheets).
 const FONT = 'StandardFont, StandardFont_fallback1, StandardFont_fallback2, StandardFont_fallback3, StandardFont_fallback4, '
     + 'StandardFont_fallback5, StandardFont_fallback6, StandardFont_fallback7';
@@ -922,17 +953,18 @@ const hintBar = (extra, children) => h('div', { style: Object.assign({ display: 
 // child of the game's ButtonPrompt (it has no input name for it); the label before it stays empty.
 let promptHelper = null;
 let promptsShown = '';
-const BUILD_PROMPTS = [
+// Built when shown, so the words follow the language (ADR-022).
+const buildPrompts = () => [
     { label: literal('\u200b'), hideWhenNoIcon: false, children: [gameKey('Enter', 0), h('div', { key: 'w', className: 'ButtonPrompt_label' }, 'Chat')] },
     { label: literal('​'), hideWhenNoIcon: false, children: [gameMouse('mouseM'), h('div', { key: 'w', className: 'ButtonPrompt_label' }, 'Markieren')] },
 ];
 function syncBuildPrompts(s) {
     if (!promptHelper) return;
     const show = !!s.role && s.context === 'park' && !s.open && !(s.visitor && s.visitor.active) && !(s.team && s.team.context);
-    const key = show ? 'build' : '';
+    const key = show ? 'build' + (translator ? '-en' : '') : '';
     if (key === promptsShown) return;
     promptsShown = key;
-    promptHelper.setPrompts(show ? BUILD_PROMPTS : []);
+    promptHelper.setPrompts(show ? buildPrompts() : []);
 }
 
 // Bottom left (TP-22): chat messages and what players did ("event"), fading out after a while;
@@ -1027,7 +1059,7 @@ class ChatArea extends StateComponent {
             const at = t.text.indexOf(': ');
             return h('div', { key: 'l' + t.id, style: { ...style, display: 'flex', flexDirection: 'row', alignItems: 'flex-start' } },
                 at > 0 && h('div', { style: { color: '#' + (t.color || '9cbad0'), fontWeight: 'bold', flexShrink: 0, marginRight: '0.3rem' } }, t.text.slice(0, at) + ':'),
-                h('div', { style: { flexGrow: 1, flexShrink: 1, minWidth: 0 } }, at > 0 ? t.text.slice(at + 2) : t.text));
+                h('div', { style: { flexGrow: 1, flexShrink: 1, minWidth: 0 } }, keep(at > 0 ? t.text.slice(at + 2) : t.text)));
         }
         return h('div', { key: 'l' + t.id, style: { ...style, color: C('neutral3') } }, t.loc ? shown(t.text) : t.text);
     }
@@ -1441,10 +1473,10 @@ class Lobby extends StateComponent {
             glyph('img/icons/' + (BOARD_ICON[item.kind] || 'clipboard') + '.svg', '1.2rem', false,
                 { marginRight: '0.5rem', filter: C('accentText-filter'), opacity: item.done ? 0.55 : 1 }),
             h('div', { style: { flexGrow: 1, flexShrink: 1, minWidth: 0, opacity: item.done ? 0.55 : 1 } },
-                h('div', null, (item.done ? '✓ ' : '') + item.title),
+                h('div', null, item.done ? '✓ ' : null, keep(item.title)),
                 muted(BOARD_WORD[item.kind] + ' · ' + item.by + (item.assignee ? ' → ' + item.assignee : '')
                     + (item.kind === 'proposal' ? ' · ' + item.yes + ' dafür, ' + item.no + ' dagegen' : '')),
-                item.text && h('div', { style: { fontSize: '0.9rem' } }, item.text)),
+                item.text && h('div', { style: { fontSize: '0.9rem' } }, keep(item.text))),
             item.kind === 'task' && iconButton('tick', item.done ? 'Wieder offen' : 'Erledigt',
                 () => request('board_done', item.id + '|' + (item.done ? '0' : '1')), item.done),
             item.kind === 'proposal' && iconButton('thumbsUp', 'Dafür', () => request('board_vote', item.id + '|1'), item.myVote === '1'),
@@ -1687,7 +1719,7 @@ class Lobby extends StateComponent {
             scroller('10.7rem', [
                 chat.length === 0 ? h('div', { style: { color: C('accentButtonDesaturatedDark'), fontSize: '0.9rem' } }, 'Noch keine Nachrichten.')
                     : chat.map((c, i) => h('div', { key: 'c' + i, style: { display: 'flex', flexDirection: 'row', flexWrap: 'wrap', padding: '0.1rem 0', fontSize: '0.9rem' } },
-                        h('span', { style: { color: '#' + (c.color || '20435a'), fontWeight: 'bold' } }, c.name + ': '), c.text))],
+                        h('span', { style: { color: '#' + (c.color || '20435a'), fontWeight: 'bold' } }, c.name + ': '), keep(c.text)))],
                 { borderRadius: '0.4rem', backgroundColor: C('whiteColor'), border: '0.05rem solid ' + ACCENT_A(0.18) }, { padding: '0.3rem 0.5rem' }, true),
             h('div', { style: { marginTop: '0.4rem' } },
                 h(InputField, { text: state.draft, promptText: literal('Nachricht an alle'), maxInputLength: 200,
@@ -1874,7 +1906,7 @@ class MultiplayerPage extends StateComponent {
                 chat.length === 0 ? muted('Noch keine Nachrichten.')
                     // In a row: in Gameface every box is flex, a column put the text under the name.
                     : chat.map((c, i) => h('div', { key: 'c' + i, style: { display: 'flex', flexDirection: 'row', flexWrap: 'wrap', padding: '0.15rem 0', fontSize: '0.9rem' } },
-                        h('span', { style: { color: '#' + (c.color || '20435a'), fontWeight: 'bold' } }, c.name + ': '), c.text))], null, null, true)),
+                        h('span', { style: { color: '#' + (c.color || '20435a'), fontWeight: 'bold' } }, c.name + ': '), keep(c.text)))], null, null, true)),
             h('div', { key: 'input', style: { marginTop: '0.4rem' } },
                 h(InputField, { text: state.draft || '', promptText: literal('Nachricht'), maxInputLength: 200, beginEditOnSelect: true,
                     onChange: (e) => this.setState({ draft: (e && e.text) || '' }),
@@ -2361,6 +2393,20 @@ export function start(logger) {
     const app = String(window.location.href);
     if (app.indexOf('HUD.html') < 0 && app.indexOf('FrontEnd.html') < 0) return;
     started = true;
+    // Texts in the game's language (ADR-022); Lua gets it too, for the labels it draws itself.
+    applyLanguage();
+    listeners.add((s) => {
+        // QA (dev scripts, Ui._QaLook 6th field): 1 English, 2 German, 0 the game's language.
+        // Never the game's own setting: the test copy shares the owner's options.
+        const fields = String(s.qaLook || '').split('|');
+        const forced = fields.length >= 7 ? ({ 1: 'en', 2: 'de' }[fields[5]] || '') : langForced;
+        if (forced !== langForced) { langForced = forced; applyLanguage(); return; }
+        // Lua did not get it yet (not listening at the start) or set its view up again.
+        if (s.lang !== undefined && s.lang !== langWanted && Date.now() - langSentAt > 2000) {
+            langSentAt = Date.now();
+            request('lang', langWanted);
+        }
+    });
     if (app.indexOf('HUD.html') >= 0) {
         patchPauseMenu().catch((e) => console.log('PC2Coop: ' + e));
         patchManagementMenu().catch((e) => report('menu column import ' + e));

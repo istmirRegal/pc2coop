@@ -10,6 +10,9 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
 Neue Oberfläche im Stil des Spiels (UX-Overhaul P0 bis P6, mit den Funden aus dem ersten
 eigenen Test).
 
+- **Englisch:** Läuft Planet Coaster 2 nicht auf Deutsch, spricht die Mod Englisch – Fenster,
+  Hauptmenü, Hinweise, Meldungen und Schilder. Chat und Brett bleiben, wie sie geschrieben wurden.
+
 - Das Multiplayer-Fenster öffnest du im Park über einen runden Knopf links oben, wie die Knöpfe
   des Spiels dort. Das Fenster klappt direkt darunter aus. Der Reiter rechts an der Bauleiste ist
   weg, die Leiste ist wieder symmetrisch.

@@ -28,10 +28,11 @@ betrifft, eine Alternative bewusst verworfen wurde oder der Eigner eine Richtung
 | [ADR-015](ADR-015-kaufen-host-prueft-und-bucht-mit-addcashdelta.md) | Kaufen: Host prüft und bucht mit AddCashDelta | Akzeptiert | 2026-11-19 |
 | [ADR-016](ADR-016-essen-und-trinken-beim-gehen.md) | Essen und Trinken beim Gehen | Akzeptiert | 2026-11-19 |
 | [ADR-017](ADR-017-zeilenenden-jeder-datei-bleiben-wie-sie-sind.md) | Zeilenenden jeder Datei bleiben, wie sie sind | Akzeptiert | 2026-11-19 |
-| [ADR-018](ADR-018-deutsche-texte-string-literal-fuer-spiel-kompone.md) | Deutsche Texte, STRING_LITERAL für Spiel-Komponenten | Akzeptiert | 2026-11-14 |
+| [ADR-018](ADR-018-deutsche-texte-string-literal-fuer-spiel-kompone.md) | Deutsche Texte, STRING_LITERAL für Spiel-Komponenten | Akzeptiert (Übersetzung: ADR-022) | 2026-11-14 |
 | [ADR-019](ADR-019-dokumentation-im-repository-mit-feature-registry.md) | Dokumentation im Repository mit Feature-Registry und Prüfung | Akzeptiert | 2026-11-20 |
 | [ADR-020](ADR-020-native-oberflaeche-spiel-bausteine-variablen-rem.md) | Native Oberfläche: Bausteine, Variablen und Einheiten des Spiels | Vorgeschlagen | 2026-11-20 |
 | [ADR-021](ADR-021-einstieg-ueber-runden-knopf-links-oben.md) | Einstieg über einen runden Knopf links oben | Akzeptiert | 2026-11-21 |
+| [ADR-022](ADR-022-englisch-nach-spielsprache.md) | Englisch nach der Sprache des Spiels | Akzeptiert | 2026-11-21 |
 
 ## Vorlage
 

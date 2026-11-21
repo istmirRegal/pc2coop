@@ -26,7 +26,8 @@ Keine Eingriffe in Spiel-Lokalisierung; ein Doppelpunkt im Text ließ einen Dial
 
 ## Konsequenzen
 
-- Keine Übersetzung in andere Sprachen ohne neues Konzept.
+- Keine Übersetzung in andere Sprachen ohne neues Konzept. Seit 1.14.0: Englisch nach der
+  Sprache des Spiels, die Texte bleiben im Code Deutsch (ADR-022).
 - Siehe UX-Audit B1 (Umlaute in Lua-Texten).
 
 _Nachträglich dokumentiert am 2026-11-20 aus Code, Commits und Gesprächen._

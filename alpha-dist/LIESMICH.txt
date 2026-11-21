@@ -1,5 +1,8 @@
 PC2Coop 1.14.0 - Planet Coaster 2 live zusammen bauen, ueber Steam
 
+Sprache: Die Mod spricht Deutsch, wenn das Spiel auf Deutsch laeuft, sonst Englisch.
+English: see README-EN.txt.
+
 Installation (jeder Spieler, einmalig)
 0. ACSE (Mod-Loader fuer Planet Coaster 2) von Nexus Mods installieren, falls noch nicht
    vorhanden. Es ist nicht in diesem Paket. Wer schon eine fruehere PC2Coop-Version hatte,

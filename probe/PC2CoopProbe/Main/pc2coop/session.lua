@@ -797,7 +797,7 @@ local function hostChange(sid, f)
             for _, other in global.ipairs(order) do
                 if other ~= me and other ~= sid and players[other] and not players[other].pending then send(other, line) end
             end
-            if sid ~= me then toast(nameOf(sid) .. " zeigt auf etwas (oben rechts anklicken: folgen)", players[sid].color, false, "event") end
+            if sid ~= me then toast(nameOf(sid) .. " zeigt auf etwas", players[sid].color, false, "event") end
         end
     elseif f[1] == "who" and players[sid] and validGid(f[2] or "") then
         local creator, last = authorOf(f[2])
@@ -1035,8 +1035,7 @@ function Session.OnSyncLine(line)
     if kind == "unsupported" then
         if frames - lastUnsupported > 600 then
             lastUnsupported = frames
-            toast("Hinweis: \"" .. clean(rest) .. "\" wird noch nicht an die anderen übertragen. Sie können im "
-                .. "Multiplayer-Fenster \"Neu synchronisieren\".", "ff922b")
+            toast("„" .. clean(rest) .. "“ wird noch nicht an die anderen übertragen.", "ff922b")
         end
         return
     end
@@ -1068,12 +1067,12 @@ local function onMessage(from, payload)
             local name, theirGame = clean(f[2] or "?"), clean(f[6] or "")
             if f[5] ~= Session.VERSION then
                 local version = clean(f[5] or "alt")
-                addFeed(name .. " hat PC2Coop " .. version .. ", du " .. Session.VERSION .. " - bitte beide UPDATE.cmd ausführen")
+                addFeed(name .. " hat PC2Coop " .. version .. ", du " .. Session.VERSION .. ". Beide führen UPDATE.cmd aus.")
                 send(from, "reject|" .. Session.VERSION .. "|" .. gameVersion)
                 return
             end
             if gameVersion ~= "" and theirGame ~= "" and theirGame ~= gameVersion then
-                addFeed(name .. " hat Spielversion " .. theirGame .. ", du " .. gameVersion .. " - bitte beide in Steam aktualisieren")
+                addFeed(name .. " hat Spielversion " .. theirGame .. ", du " .. gameVersion .. ". Beide aktualisieren das Spiel in Steam.")
                 send(from, "reject|" .. Session.VERSION .. "|" .. gameVersion)
                 return
             end
@@ -1219,7 +1218,7 @@ local function onMessage(from, payload)
             if x and y and z then
                 pings[f[2]] = {x = x, y = y, z = z, frame = frames}
                 for _, pl in global.ipairs(roster.players or {}) do
-                    if pl.sid == f[2] then toast(pl.name .. " zeigt auf etwas (oben rechts anklicken: folgen)", pl.color, false, "event") end
+                    if pl.sid == f[2] then toast(pl.name .. " zeigt auf etwas", pl.color, false, "event") end
                 end
             end
         elseif kind == "who" then
@@ -1587,7 +1586,7 @@ local function onNet(event)
         if role == "client" and f[2] == hostId then selfStalled = true end
         -- Steam accepted nothing for this player for a minute: the data for them is gone.
         local who = players[f[2]] and players[f[2]].name or "Ein Mitspieler"
-        addFeed("Verbindung zu " .. who .. " hängt - bitte neu beitreten")
+        addFeed("Die Verbindung zu " .. who .. " hängt. Tritt neu bei.")
         emit("session:peer-stalled|" .. f[2] .. "|" .. global.tostring(f[3]))
     elseif kind == "net:error" then
         Session._netError = f[2] or "?"   -- the DLL could not bind Steam: multiplayer stays off
@@ -2208,7 +2207,7 @@ function Session.Rules() return rules end
 local RULE_WORDS = {
     speed = {all = "Spieltempo: alle", host = "Spieltempo: nur der Host"},
     visitors = {["1"] = "Besucher-Modus: erlaubt", ["0"] = "Besucher-Modus: aus"},
-    foreign = {free = "Fremde Bauten abreissen: erlaubt", ask = "Fremde Bauten abreissen: erst fragen"},
+    foreign = {free = "Fremde Bauten abreißen: erlaubt", ask = "Fremde Bauten abreißen: erst fragen"},
 }
 
 -- Host: several rules at once ({speed = "host", ...}); one line in the log (label or the changes).

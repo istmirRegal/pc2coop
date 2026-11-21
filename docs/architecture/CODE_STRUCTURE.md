@@ -10,7 +10,8 @@ Wo was liegt. Zeilenzahlen grob (Stand 1.13.0), um die Größe einzuschätzen.
 | `probe/PC2CoopProbe/Main/database/pc2coopprobeluadatabase.lua` | ACSE-Einstieg: Manager, Hooks, `LuaDB.Init`, Mod-Version (`VERSION`) |
 | `probe/PC2CoopProbe/Main/managers/pc2coopqa.lua` | Park-Manager `Managers.PC2CoopQA`: Init und Frame-Schleife |
 | `probe/PC2CoopProbe/Main/pc2coop/` | alle Lua-Module (Tabelle unten) |
-| `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js` | gesamte Oberfläche (Preact, ~1400 Zeilen) |
+| `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js` | gesamte Oberfläche (Preact, ~2500 Zeilen) |
+| `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/Texts.js` | englische Texte (`createTranslator`), geladen, wenn das Spiel nicht Deutsch läuft (ADR-022) |
 | `probe/PC2CoopProbe/ui/UIGameface/js/common/debug/DebugToolImports.js` | ersetzt das gleichnamige Spielmodul, startet `CoopLayer.js`, Namensschild-Stil |
 | `native/` | DLL-Quellen: `steam_net.cpp` (Steam, Dateien, Tasten), `diagnostic.cpp` (Log, Exporte), `string_probe.cpp`, `version.rc` |
 | `alpha-dist/` | was in den Paketen landet: `INSTALL.cmd`, `UPDATE.cmd`, `UNINSTALL.cmd`, `install.ps1`, `update.ps1`, `LIESMICH.txt` (+ Legacy `START.cmd`, `start.ps1`) |
@@ -36,6 +37,7 @@ Wo was liegt. Zeilenzahlen grob (Stand 1.13.0), um die Größe einzuschätzen.
 | `shop.lua` | 130 | Läden lesen und Geld buchen | `Shop.InFront`, `Shop.Items`, `Shop.Price`, `Shop.IsOpen`, `Shop.Credit`, `Shop.Kind` |
 | `viz.lua` | 410 | Darstellung der Mitspieler im Park (Marker, Sichtkegel, Geister, Färbung, Figuren) | `Viz.Init`, `Viz.Update`, `Viz.Clear`, `Viz.SetEnabled` |
 | `labels.lua` | 100 | Namensschilder über die Coaster-Labels des Spiels | `Labels.Init`, `Labels.Show`, `Labels.Pin`, `Labels.Clear` |
+| `lang.lua` | 40 | Sprache für Schilder, die Lua zeichnet (ADR-022) | `Lang.Set`, `Lang.Code`, `Lang.World` |
 | `ui.lua` | 540 | Zustand für die Oberfläche (DataStore `pc2coop`), Aktionen aus `Request` | `Ui.Init`, `Ui.Tick`, `Ui.Toggle`, `Ui.SetOpen`, `Ui._Request` |
 | `world.lua` | 290 | Spiel-Zugriffe: Kamera, Zeit, Zahlen, HUD-/Meldungs-Hooks, DLC | `World.HookHUD`, `World.HookNotifications`, `World.Camera`, `World.SetCamera`, `World.FocusPoint`, `World.Time`, `World.SetTime`, `World.Numbers`, `World.RequiredDLC`, `World.LeaveTool` |
 | `board.lua` | 160 | Brett-Daten (Gebiete, Aufgaben, Kommentare, Treffpunkte, Vorschläge) | `Board.Add`, `Board.Set`, `Board.Remove`, `Board.Apply`, `Board.Lines`, `Board.Tally` |
@@ -77,6 +79,7 @@ Wo was liegt. Zeilenzahlen grob (Stand 1.13.0), um die Größe einzuschätzen.
 | `tests/test_visitor_lua.py`, `tests/test_figure_lua.py`, `tests/test_shop_lua.py` | Besucher-Modus |
 | `tests/test_presence_extras_lua.py`, `tests/test_coop_play_lua.py` | Anwesenheit, Team-Funktionen |
 | `tests/test_ui_lua.py` | Oberflächen-Zustand und Aktionen |
+| `tests/test_texts_js.py`, `tests/test_lang_lua.py` | englische Texte (Node) und Schilder in Lua (ADR-022) |
 | `tests/test_parks_lua.py`, `tests/test_diagnostic_lua.py`, `tests/test_probe_lua.py`, `tests/test_qa_lua.py`, `tests/test_live_lua.py` | übrige Module, Version, QA |
 | `tests/test_native_outbox.py` | DLL-Warteschlange (C++) |
 | `tests/test_alpha.py`, `tests/test_coop.py`, `tests/test_collaboration.py`, `tests/test_doctor.py`, `tests/test_model.py` | Legacy-Python |

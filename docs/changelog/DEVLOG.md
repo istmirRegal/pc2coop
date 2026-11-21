@@ -3,6 +3,23 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-21 – Englisch nach der Sprache des Spiels (FEAT-121, ADR-022)
+
+- Wunsch eines englischsprachigen Testers, vom Eigner freigegeben. Die Texte bleiben im Code
+  Deutsch; `Texts.js` übersetzt beim Anzeigen (`EXACT` ~330 Einträge, ~110 `PATTERNS` für Texte
+  mit Namen/Zahlen aus JS und Lua, „ · “-Teile einzeln). `tr()` hängt in `h()` und `literal()`,
+  also an jedem Text der Ebene; Texte von Spielern gehen durch `keep()` („Super“ im Chat bliebe
+  sonst nicht „Super“).
+- Sprache: `System.getLanguage()` des Spiels (`Language.German` = 2), sonst Englisch;
+  `import('./Texts.js')` nur dann (fehlt die Datei, bleibt alles Deutsch). Lua bekommt die
+  Sprache über die UI-Aktion `lang` (für die Schilder an Objekten, `lang.lua`), der Zustand
+  spiegelt sie zurück, damit die Ebene sie erneut schickt, falls Lua am Anfang nicht zuhörte.
+- Die Hinweiszeile (`setPrompts`) wurde einmal beim Laden gebaut; jetzt `buildPrompts()`.
+- Tests: `tests/test_texts_js.py` (Node, Beispiele aus Oberfläche und Lua; keine Umlaute in der
+  englischen Spalte), `tests/test_lang_lua.py`, `lang` in `tests/test_ui_lua.py`.
+- Nebenbei: weitere Textregeln in Lua (kein „bitte“, kein „oben rechts anklicken“, „Sie können“
+  → kurzer Satz, „abreissen“ → „abreißen“).
+
 ## 2026-11-21 – UX-Overhaul gegen das Konzept geprüft
 
 - Auftrag des Eigners: prüfen, ob das UX-Overhaul wirklich richtig umgesetzt ist. Code gegen
