@@ -3,6 +3,18 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-21 – Version 2.0.0 statt 1.14.0
+
+- Wunsch des Eigners: Der Umfang seit 1.13.0 (UX-Overhaul, Englisch, Sicherheit und
+  Stabilität, 37 Commits) rechtfertigt eine neue erste Zahl. Nichts davon war veröffentlicht;
+  1.14.0 war nur ein Vorabpaket für den Test des Eigners. Alle Stellen aus `RELEASE.md`
+  umgestellt, „seit 1.14.0“ in der Doku heißt jetzt „seit 2.0.0“; Einträge über den Test des
+  Vorabpakets nennen weiter 1.14.0. `update.ps1` vergleicht mit `[version]`, 2.0.0 > 1.13.0.
+- Dabei gefunden: `install.ps1` hatte Hash und Build des Spiels von vor dem Update am
+  2026-11-17 fest im Skript (26255360) und warnte deshalb jeden Spieler mit dem aktuellen Build.
+  Jetzt liest es beides aus `payload-manifest.json` (`package_release.py`: `EXE_HASH`,
+  `TESTED_BUILD`); Test `tests/test_installer_ps1.py`.
+
 ## 2026-11-21 – Sicherheit und Stabilität geprüft (coop-anything-Methoden)
 
 - Auftrag des Eigners: Zusammenspiel übers Netz, Abstürze, Out of Sync, Edge Cases und
@@ -90,7 +102,7 @@ Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
   `require` wie im Menü und zeigt vor dem Fix genau `ui:start|save|false|unknown park`.
 - „Liste kommt nicht sofort“: `refreshParks` lief nur beim Öffnen des Fensters, wenn die Lobby
   schon stand; sonst erst nach „aktualisieren“.
-- 1.14.0 hat keinen Knopf mehr dafür (Park über die Seiten des Spiels), `ui.lua` hält trotzdem
+- 2.0.0 hat keinen Knopf mehr dafür (Park über die Seiten des Spiels), `ui.lua` hält trotzdem
   jetzt eine Instanz. Ausweg für 1.13.0: Lobby öffnen, Park über das Lade-Menü des Spiels öffnen.
 
 ## 2026-11-21 – Log-Datei ohne NUL-Byte
@@ -112,7 +124,7 @@ Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
 ## 2026-11-21 – P6: Funde aus dem ersten Test des Eigners
 
-- Eigner testete 1.14.0 aus dem Nexus-Paket auf einem PC; 14 Funde (UX_OVERHAUL.md, Tabelle P6).
+- Eigner testete das Vorabpaket 1.14.0 (heute 2.0.0, Nexus-Paket) auf einem PC; 14 Funde (UX_OVERHAUL.md, Tabelle P6).
 - Scrollen: Gameface scrollt nicht von selbst; `ScrollBox` hält den Versatz selbst und zeigt die
   Scrollleiste des Spiels (`ScrollPanePres`). Kinder brauchen `flexShrink: 0`, sonst schrumpfen sie
   auf die Höhe des Kastens. QA-Mausrad: Gameface kennt kein `WheelEvent`, `MouseEvent('wheel')`

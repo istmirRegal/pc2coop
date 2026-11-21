@@ -1,4 +1,4 @@
-PC2Coop 1.14.0 - Planet Coaster 2 live zusammen bauen, ueber Steam
+PC2Coop 2.0.0 - Planet Coaster 2 live zusammen bauen, ueber Steam
 
 Sprache: Die Mod spricht Deutsch, wenn das Spiel auf Deutsch laeuft, sonst Englisch.
 English: see README-EN.txt.
@@ -232,7 +232,7 @@ Live synchronisiert und im Spiel getestet:
   sperrt sie fuer die anderen (allein getestet, mit nachgestelltem Mitspieler).
 Eingebaut, aber noch nicht im Spiel bestaetigt:
 - Das Zusammenspiel der Sperren zwischen zwei echten Spielern.
-- Neu in 1.14.0: Oberflaeche im Stil des Spiels - Seite "Multiplayer" im Hauptmenue,
+- Neu in 2.0.0: Oberflaeche im Stil des Spiels - Seite "Multiplayer" im Hauptmenue,
   runder Knopf links oben mit dem Fenster darunter, Hinweise in der Hinweiszeile des Spiels,
   Besuch ohne Leiste oben, Emote-Rad und Sterne, Anzeigen fuer Verbindung, Beitritt und
   Sitzungsende (allein getestet, nachgestellter Mitspieler; erster Test des Herausgebers

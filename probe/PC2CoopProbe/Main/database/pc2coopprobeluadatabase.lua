@@ -2,7 +2,7 @@
 local global = _G
 local api = global.api
 local LuaDB = {}
-local probeVersion = "1.14.0"
+local probeVersion = "2.0.0"
 local diagnostic
 local viewHookResult = "not-run"
 
@@ -117,7 +117,7 @@ function LuaDB.Init()
         diagnostic = value
         diagnostic.Init()
         if diagnostic.ready then
-            -- No NUL byte in the file (it was here up to 1.14.0): editors then took the whole
+            -- No NUL byte in the file (it was here up to 1.13.0): editors then took the whole
             -- log for UTF-16 and showed Chinese characters. The DLL test covers NUL bytes.
             diagnostic.Write("channel-test:ASCII|UTF8:Grüße|end")
         end

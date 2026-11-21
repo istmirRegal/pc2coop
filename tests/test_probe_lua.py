@@ -60,7 +60,7 @@ class ProbeLuaTests(unittest.TestCase):
         self.module.Init()
         suffixes = self.lua.globals().api.acse.tAppendToVersionString
         self.assertEqual(len(suffixes), 1)
-        self.assertTrue(suffixes[1].text.startswith('PC2CoopProbe 1.14.0 Init OK'))
+        self.assertTrue(suffixes[1].text.startswith('PC2CoopProbe 2.0.0 Init OK'))
         self.assertIn('P:f C:f O:n', suffixes[1].text)
         messages = tuple(self.lua.globals().messages.values())
         self.assertTrue(any('api.undo.CommitPreview=function' in m for m in messages))

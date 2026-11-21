@@ -59,7 +59,7 @@ Was ein Spieler von den anderen sieht. Code: `probe/PC2CoopProbe/Main/pc2coop/vi
 - **Technik:** DLL `key:mdown`/`key:mup|<ms>|<weg²>` → `Session._MiddleUp` → `Session.Ping`
   (`World.CursorPoint`); Nachricht `ping` → Host `pg` an alle; `PING_FRAMES` = 480;
   höchstens 1 Ping/s; `Session.Pings`. UI-Aktion `ping`.
-- **Aussehen (seit 1.14.0, P6 A9):** Eine Markierung verdeckt nichts mehr. Auf einem Objekt
+- **Aussehen (seit 2.0.0, P6 A9):** Eine Markierung verdeckt nichts mehr. Auf einem Objekt
   blinkt dessen Umriss in der Spielerfarbe (Highlight-Kanal 3 des Spiels, wie gesperrte
   Objekte); `Sync.PartOnRay` sucht das geteilte Teil am Maus-Strahl (`World.CursorRay`, 2 m +
   3 % des Abstands), die Nachrichten tragen seine Id (`ping|x|y|z|gid`, `pg|…|gid`; keine

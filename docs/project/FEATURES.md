@@ -134,9 +134,9 @@ der Bereich nicht, die nächste freie Nummer ab 230.
 | FEAT-117 | Banner (Abstimmung, Wettbewerb, Einladung) | Implemented | 1.12.0 |
 | FEAT-118 | Zustandsbrücke Lua ↔ Oberfläche | Implemented | 1.8.0 |
 | FEAT-119 | Multiplayer-Seite im Hauptmenü | Implemented | 1.13.0 |
-| FEAT-120 | Knopf „Multiplayer“ links oben | Implemented | 1.14.0 |
-| FEAT-121 | Englisch nach der Sprache des Spiels | Implemented | 1.14.0 |
-| FEAT-122 | Chat unten links abschaltbar („Für dich“) | Implemented | 1.14.0 |
+| FEAT-120 | Knopf „Multiplayer“ links oben | Implemented | 2.0.0 |
+| FEAT-121 | Englisch nach der Sprache des Spiels | Implemented | 2.0.0 |
+| FEAT-122 | Chat unten links abschaltbar („Für dich“) | Implemented | 2.0.0 |
 
 ## Team-Funktionen — [features/team.md](../features/team.md)
 

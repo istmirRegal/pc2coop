@@ -59,7 +59,7 @@ Gemeinsam planen, entscheiden, spielen. Konzept: `docs/KONZEPT.md`. Code:
 - **Technik:** `Session.AskTakeover` → `take-ask|sid` → Host → `tk|name|label` an den
   Bearbeiter; höchstens eine Frage pro Spieler alle 5 s. Beim Bearbeiter `Session.TakeAsk()`
   (läuft nach `Session.TAKE_ASK_FRAMES` ab), `Session.DismissTakeAsk`.
-- **UI:** seit 1.14.0 Anfrage-Karte „<Name> möchte bei „<Objekt>“ weitermachen.“ mit
+- **UI:** seit 2.0.0 Anfrage-Karte „<Name> möchte bei „<Objekt>“ weitermachen.“ mit
   „Verstanden“ (`take_ok`, UX TP-19); vorher ein Toast.
 
 ### FEAT-138 – Testfahrt-Einladung

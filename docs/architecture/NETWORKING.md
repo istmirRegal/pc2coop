@@ -25,7 +25,7 @@ geprüft (`clean`, `cleanText`, `validGid`, `validRideKey`, `Figure.ParseLook` �
 | `base` | Anzahl | Baseline nach dem Laden | FEAT-030 |
 | `pres` | Kamera, Blickpunkt, Aktivität, Fokus | Anwesenheit (mehrmals pro Sekunde) | FEAT-090–099 |
 | `hold` | label, gids, items | Objekt in der Hand (leer = losgelassen) | FEAT-062 |
-| `ping` | x, y, z, gid (leer oder Teil-Id, seit 1.14.0) | Ping | FEAT-095 |
+| `ping` | x, y, z, gid (leer oder Teil-Id, seit 2.0.0) | Ping | FEAT-095 |
 | `who` | gid | Urheber erfragen | FEAT-098 |
 | `time` | paused, index | Pause/Tempo | FEAT-078 |
 | `board` | add/set/del … | Brett ändern | FEAT-130–135 |
@@ -170,7 +170,7 @@ Steuerzeilen ohne Nummer: `S|<name>` (Synchronisation starten), `X` (stoppen), `
 dem Limit einer Nachrichtenart) – Diagnose im Log
 (FEAT-216), werden von QA-Werkzeugen als erwartete Zeilen benutzt.
 
-## Schutz gegen Fluten und kaputte Werte (seit 1.14.0)
+## Schutz gegen Fluten und kaputte Werte (seit 2.0.0)
 
 Der Host nimmt je Mitspieler und Art höchstens so viele Nachrichten pro Zeitfenster an
 (`Session.RATE_LIMITS`, Frames bei 60 fps): `chat` 8/5 s, `board` 20/5 s, `ride-invite`

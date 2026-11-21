@@ -1,4 +1,4 @@
-PC2Coop 1.14.0 - build live together in Planet Coaster 2, over Steam
+PC2Coop 2.0.0 - build live together in Planet Coaster 2, over Steam
 
 The mod speaks English when Planet Coaster 2 does not run in German. (The full manual,
 PC2Coop-LIESMICH.txt / LIESMICH.txt, is in German.)

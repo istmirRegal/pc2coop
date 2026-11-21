@@ -10,7 +10,7 @@ Code: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js`,
 - **Funktion:** Im Park ein Fenster im Look der Spiel-Fenster am linken Rand, nicht modal (Bauen
   geht weiter), mit vier Symbol-Reitern: Spieler, Planen, Verlauf, Einstellungen. „Besuchen“ ist
   ein Knopf im Fuß. Im Hauptmenü zeigt die Seite FEAT-119 alles. Das alte Fenster in drei
-  Spalten (Rückfall, wenn die Seite nicht öffnen konnte) ist seit 1.14.0 entfernt: Erlaubt das
+  Spalten (Rückfall, wenn die Seite nicht öffnen konnte) ist seit 2.0.0 entfernt: Erlaubt das
   Menü die Seite gerade nicht (Titelbild, Laden), öffnet sie, sobald es geht (`pendingPage`).
 - **Technik:** Klasse `Lobby` in `CoopLayer.js`: `renderParkPanel` (Park, `PARK_TABS`) baut aus den
   CSS-Klassen von `Panel` und `TabBar` des Spiels, dem Spiel-`Tab` und `CloseButton`; die
@@ -112,7 +112,7 @@ Code: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js`,
   wird erst kurz nach dem Start gehört; frühe Logzeilen gehen verloren (deshalb 4 s Verzögerung).
 
 ### FEAT-122 – Chat unten links abschaltbar („Für dich“)
-- **Status:** Implemented · **Seit:** 1.14.0 (UX-Overhaul TP-32)
+- **Status:** Implemented · **Seit:** 2.0.0 (UX-Overhaul TP-32)
 - **Funktion:** Schalter „Chat unten links einblenden“ im Reiter Einstellungen, Abschnitt „Für
   dich“. Aus: neue Nachrichten und Ereignisse erscheinen nicht mehr kurz unten links; Enter
   öffnet den Chat mit dem Verlauf trotzdem. Hinweise (Karten über dem Chat) bleiben.
@@ -120,7 +120,7 @@ Code: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js`,
   Spielende, auch über das Laden eines Parks). `ChatArea.onCoop` nimmt dann keine Zeilen auf.
 
 ### FEAT-121 – Englisch nach der Sprache des Spiels
-- **Status:** Implemented · **Seit:** 1.14.0
+- **Status:** Implemented · **Seit:** 2.0.0
 - **Funktion:** Läuft das Spiel nicht auf Deutsch, zeigt die Mod alle Texte auf Englisch:
   Fenster, Hauptmenü-Seite, Hinweise, Meldungen, Verlauf, Fehler beim Beitreten, Schilder an
   Objekten. Was Spieler schreiben (Chat, Brett), bleibt, wie es ist. In einer Sitzung sieht
@@ -135,7 +135,7 @@ Code: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js`,
   `Texts.js` erscheint auf Deutsch. Muster hängen am genauen Wortlaut.
 
 ### FEAT-120 – Knopf „Multiplayer“ links oben
-- **Status:** Implemented · **Seit:** 1.14.0 (UX-Overhaul P6)
+- **Status:** Implemented · **Seit:** 2.0.0 (UX-Overhaul P6)
 - **Funktion:** Ein runder Knopf in der Knopfspalte des Spiels links oben (unter den
   Benachrichtigungen) öffnet und schließt das Multiplayer-Fenster; es klappt direkt darunter vom
   linken Rand aus. Ersetzt den Reiter in der Bauleiste (FEAT-111): kurzer Mausweg, die Leiste

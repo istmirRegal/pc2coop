@@ -1,6 +1,6 @@
 # UX-Overhaul: Inventar, Audit, Zielbild
 
-Status: **freigegeben und gebaut (P0–P5, P6-Funde A1–A14), Stand 1.14.0** (2026-11-21). Offen ist
+Status: **freigegeben und gebaut (P0–P5, P6-Funde A1–A14), Stand 2.0.0** (2026-11-21). Offen ist
 die Abnahme auf zwei echten PCs (P6). Prüfung gegen dieses Konzept: §9, „Prüfung 2026-11-21“.
 Entscheidung dazu: ADR-020. Analyse des Spiels: `docs/ui-ux/NATIVE_UI.md`.
 Ersetzt als Arbeitsgrundlage `docs/ui-ux/UX_AUDIT.md` (dessen IDs sind unten zugeordnet).
@@ -503,7 +503,7 @@ Fund beim Fotografieren: Die Spielerleiste lag über dem Kopf der Werkzeug-Fenst
 rechts (Szeneriepinsel). Behoben: Sie rückt links neben ein offenes Fenster des Spiels
 (`trackRightPanels`), im Spiel mit dem Gelände-Werkzeug geprüft.
 
-**P6 Abnahme, erster Test des Eigners (2026-11-21, Paket 1.14.0 aus Nexus, ein PC):**
+**P6 Abnahme, erster Test des Eigners (2026-11-21, Vorabpaket 1.14.0 aus Nexus, heute 2.0.0, ein PC):**
 
 | Nr. | Fund | Ziel |
 |---|---|---|

@@ -17,8 +17,8 @@ Erledigtes wandert in CHANGELOG/DEVLOG; die Funktion bekommt ihren Status in der
 - E an einem echten Eingang in der Ansicht von hinten mit einem zweiten Spieler.
 - Seen und Wasserfälle über zwei PCs (FEAT-068).
 - Fahrende Bahnen beim Tauschen des Bauplans (FEAT-072); Rückgängig an Achterbahnen.
-- Alles aus 1.12.0/1.13.0/1.14.0 mit zwei echten Spielern.
-- Die Oberfläche aus 1.14.0 mit echter Maus und Tastatur (UX-Overhaul P6).
+- Alles aus 1.12.0/1.13.0/2.0.0 mit zwei echten Spielern.
+- Die Oberfläche aus 2.0.0 mit echter Maus und Tastatur (UX-Overhaul P6).
 
 ## Später (aus KONZEPT.md)
 

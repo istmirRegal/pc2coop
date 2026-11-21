@@ -54,9 +54,14 @@ function Install-IntoGame([string]$Folder, [string]$Package, [string]$ExpectedEx
     $exe = Join-Path $game 'Win64\PlanetCoaster2.exe'
     if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { $exe = Join-Path $game 'PlanetCoaster2.exe' }
     if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { throw 'PlanetCoaster2.exe wurde in diesem Ordner nicht gefunden.' }
-    if ((File-Hash $exe) -ne $ExpectedExeHash) {
+    $manifest = Get-Content -LiteralPath (Join-Path $Package 'payload-manifest.json') -Raw | ConvertFrom-Json
+    # The package says which game build it was tested with (package_release.py); older
+    # packages without that fall back to the hash above.
+    $testedHash = if ($manifest.tested_exe_sha256) { [string]$manifest.tested_exe_sha256 } else { $ExpectedExeHash }
+    $testedBuild = if ($manifest.tested_steam_build) { [string]$manifest.tested_steam_build } else { '26255360' }
+    if ((File-Hash $exe) -ne $testedHash) {
         # The mod finds what it needs in the game at start-up; a new game build usually works.
-        Write-Host 'Hinweis: Diese Spielversion wurde mit PC2Coop noch nicht getestet (getestet: Build 26255360). Wird trotzdem installiert.' -ForegroundColor Yellow
+        Write-Host "Hinweis: Diese Spielversion wurde mit PC2Coop noch nicht getestet (getestet: Build $testedBuild). Wird trotzdem installiert." -ForegroundColor Yellow
         Write-Host 'Klappt der Multiplayer nicht, bitte die Log-Datei aus Win64\ovldata\PC2CoopProbe an den Host schicken.' -ForegroundColor Yellow
     }
     $ovldata = Join-Path $game 'Win64\ovldata'
@@ -67,7 +72,6 @@ function Install-IntoGame([string]$Folder, [string]$Package, [string]$ExpectedEx
         $journal = Get-Content -LiteralPath $journalPath -Raw | ConvertFrom-Json
         foreach ($entry in @($journal.files)) { $oldFiles[$entry.path] = $entry }
     }
-    $manifest = Get-Content -LiteralPath (Join-Path $Package 'payload-manifest.json') -Raw | ConvertFrom-Json
     # ACSE is the mod loader that many mods share. A loader that is already there (from
     # Nexus, ForgeUtils or another mod, or the ACSEDebug build) is used as it is and never
     # changed; ours is only installed where there is none.

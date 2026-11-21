@@ -5,10 +5,11 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
 
 ## Unveröffentlicht
 
-## 1.14.0 – 2026-11-21
+## 2.0.0 – 2026-11-21
 
 Neue Oberfläche im Stil des Spiels (UX-Overhaul P0 bis P6, mit den Funden aus dem ersten
-eigenen Test).
+eigenen Test). Während der Entwicklung hieß diese Version 1.14.0; wegen des Umfangs (neue
+Oberfläche, Englisch, Sicherheit) heißt sie 2.0.0.
 
 - **Englisch:** Läuft Planet Coaster 2 nicht auf Deutsch, spricht die Mod Englisch – Fenster,
   Hauptmenü, Hinweise, Meldungen und Schilder. Chat und Brett bleiben, wie sie geschrieben wurden.
@@ -32,6 +33,9 @@ eigenen Test).
   Brett, die Regeln und die Bewertungen.
 - Sicherer: Ein Mitspieler kann die anderen nicht mehr mit Chat, Einladungen oder
   Brett-Einträgen fluten und keine Bauplan-Dateien anderer überschreiben.
+- Der Installer nennt den Spiel-Build, mit dem das Paket getestet wurde (jetzt 26494896).
+  Vorher nannte er immer den alten Build 26255360 und meldete deshalb bei jedem
+  „noch nicht getestet“.
 - Das alte Multiplayer-Fenster in der Mitte des Hauptmenüs ist weg; die Seite „Multiplayer“
   öffnet, sobald das Menü es erlaubt.
 - Besuch: Die Figur fährt an, bremst und dreht sich weich. Eingänge und Läden werden auch in

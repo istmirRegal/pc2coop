@@ -16,7 +16,10 @@ Vorlage je Funktion: Funktion · Technik · UI · Besonderheiten.
 - **UI:** Konsolenfenster mit Meldungen auf Deutsch.
 - **Besonderheiten:** Keine Administratorrechte, schreibt nur in `Win64\ovldata`. Eine
   fremde, veränderte Datei wird nie überschrieben („Andere Modversion vorhanden“). Prüft die
-  EXE nicht mehr hart: unbekannter Build → nur Hinweis (FEAT-009).
+  EXE nicht mehr hart: unbekannter Build → nur Hinweis (FEAT-009). Welcher Build getestet
+  ist, steht seit 2.0.0 im Paket (`payload-manifest.json`: `tested_exe_sha256`,
+  `tested_steam_build` aus `tools/package_release.py`); vorher standen Hash und Build fest im
+  Skript und waren seit dem Spiel-Update veraltet. Test: `tests/test_installer_ps1.py`.
 
 ### FEAT-002 – ACSE-Prüfung beim Installieren
 - **Status:** Implemented · **Seit:** 1.12.2 (Nexus), für alle Pakete seit 1.12.3

@@ -1,6 +1,6 @@
 # Sicherheit und Stabilität
 
-Stand 1.14.0 (Prüfung 2026-11-21). Was die Mod aus dem Netz annimmt, was sie damit tut, was
+Stand 2.0.0 (Prüfung 2026-11-21). Was die Mod aus dem Netz annimmt, was sie damit tut, was
 bei Fehlern passiert und wie das geprüft wird. Netzformat: `NETWORKING.md`, Grundsätze: ADR-003
 (Host-Autorität), ADR-005 (nichts aus dem Netz wird ausgeführt).
 
@@ -38,7 +38,7 @@ anvertraust“).
 | DLL | Ausnahmen in Befehlen und Poll abgefangen (`net:error|command-exception`); verweigerte Sends warten in der Ausgangsschlange; nimmt ein Spieler 60 s nichts an: `net:peer-stalled`. |
 | Spieler stürzt ab / geht | Der Host sieht ihn gehen, der Platz wird frei; er kann wieder beitreten (Dialog „Wieder beitreten?“). |
 | Host stürzt ab / geht | Pille „Keine Verbindung zum Host · m:ss“, nach 30 s Frage „Warten/Verlassen“; „Die Sitzung ist beendet“; der Park bleibt beim Spieler offen. |
-| Daten unterwegs verloren | Der Host markiert den Spieler, schickt beim nächsten Kontakt `resync`, der Park kommt neu. Seit 1.14.0: kommt der Park 20 s nicht voran, fragt der Spieler neu (3×), dann „Erneut versuchen“; nach jedem Laden schickt der Host Brett, Regeln, Bewertungen, Tempo, Wettbewerb und wer was hält (`Session._SendTeam`). |
+| Daten unterwegs verloren | Der Host markiert den Spieler, schickt beim nächsten Kontakt `resync`, der Park kommt neu. Seit 2.0.0: kommt der Park 20 s nicht voran, fragt der Spieler neu (3×), dann „Erneut versuchen“; nach jedem Laden schickt der Host Brett, Regeln, Bewertungen, Tempo, Wettbewerb und wer was hält (`Session._SendTeam`). |
 | Nicht synchron | Lässt sich eine Änderung nicht anwenden: Markierung `desync`, der Host erfährt es, Pille/Knopf „Neu synchronisieren“ lädt den Park des Hosts neu. |
 | Nicht unterstütztes Werkzeug | Hinweis „… wird noch nicht übertragen“, die Änderung bleibt lokal (Abhilfe: Neu synchronisieren). |
 | Unerwartetes | Unbekannte Nachrichten werden ignoriert, Werte außerhalb der Grenzen verworfen; ein Mitspieler über dem Limit wird gebremst, nicht getrennt. |

@@ -12,7 +12,7 @@ Freundesgruppen, die zusammen Parks bauen. Ziel aus den ursprünglichen Anforder
 (`docs/COOP_DESIGN.md`): mindestens **drei** Spieler gleichzeitig, mit eigener Kamera,
 ohne technische Einrichtung zwischen den Spielabenden. Bis zu 8 Plätze pro Lobby.
 
-## Was es kann (Stand 1.14.0)
+## Was es kann (Stand 2.0.0)
 
 - **Sitzung:** Lobby im Hauptmenü oder im laufenden Park, Freunde einladen, Freigabe durch
   den Host, Park-Übertragung, Parkwahl in der Lobby, Wiederbeitritt (FEAT-020–048).
