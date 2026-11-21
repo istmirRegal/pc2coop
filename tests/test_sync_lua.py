@@ -556,6 +556,19 @@ class FlatRideTests(unittest.TestCase):
         self.assertEqual(len(self.lua.eval('rides')), 1)
         self.assertEqual(len(self.records('sync:cmd|')), 1)
 
+    def test_a_repeated_skip_is_logged_once_then_counted(self):
+        # A tester's log was mostly the same "replay:skip" line (a ride's edit token of an
+        # object that is not shared, asked for again and again while its menu is open).
+        self.lua.execute('''
+            local apis = api.world.GetWorldAPIs()
+            for i = 1, 120 do apis.flatrides:GetFlatRideEditToken(98765) end
+        ''')
+        skips = self.records('replay:skip|flatrides.GetFlatRideEditToken|')
+        self.assertEqual(len(skips), 3, skips)          # 1st, 10th, 100th
+        self.assertTrue(skips[0].endswith('object not shared'), skips[0])
+        self.assertTrue(skips[1].endswith('|x10'), skips[1])
+        self.assertTrue(skips[2].endswith('|x100'), skips[2])
+
 
 @unittest.skipIf(LuaRuntime is None, 'Optional lupa.lua53 runtime is not installed')
 class VolumeTests(unittest.TestCase):

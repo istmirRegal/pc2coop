@@ -11,6 +11,14 @@ Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
   kein NUL mehr; NUL durch den Kanal prüft weiter `tools/verify_native.py`.
 - Chat-Texte stehen nicht im Log, Bewertungskommentare schon (`session:feed`), dazu Steam-Namen
   und Steam-IDs. Logs bleiben außerhalb des Repositorys.
+- Erstes Tester-Log (1.13.0, Solo-Park ohne Sitzung, kein Fehler): drei Viertel der Zeilen waren
+  `replay:skip|ridestation.GetRideStationEditToken|… object not shared`. Das Spiel fragt das
+  Token immer wieder ab, solange das Menü einer Fahrt offen ist; ohne Sitzung ist nichts geteilt.
+  `replay.lua` schreibt jeden Grund jetzt beim 1., 10., 100. und jedem 1000. Mal (`|x<n>`),
+  höchstens 200 verschiedene Gründe. Die Datei hat ein Limit von 4 MB.
+- Bekannt: Steam hat PC2 am 2026-11-17 auf Build 26494896 aktualisiert; die Testkopie ist noch
+  26255360. Die Mod findet im neuen Build alles (Tester-Log: Stringroutine bei RVA `0x1e2d910`,
+  Prüfung bestanden, Hooks installiert). Mehrspieler auf dem neuen Build ist noch nicht geprüft.
 
 ## 2026-11-21 – P6: Funde aus dem ersten Test des Eigners
 

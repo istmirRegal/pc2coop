@@ -34,7 +34,7 @@ eigenen Test).
 - Die Freundesliste zeigt nur, wer gerade erreichbar ist. Ist keiner online, steht das da.
 - „Zurückholen…“ bei einem Sicherungspunkt fragt erst nach.
 - Die Log-Datei öffnet sich im Editor wieder als normaler Text; vorher zeigte er oft nur
-  chinesische Zeichen.
+  chinesische Zeichen. Dieselbe Meldung steht nicht mehr hundertfach darin.
 - Beitreten zeigt vier Schritte (Verbinden, Zustimmung, Park kommt, Park lädt) mit
   Fortschritt, und du kannst bis zum Laden abbrechen.
 - „Sitzung starten“ ist gesperrt, bis Steam antwortet. Klappt es nicht, siehst du warum.

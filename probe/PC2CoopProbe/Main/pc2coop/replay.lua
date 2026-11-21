@@ -45,6 +45,25 @@ local hierWrapped = global.setmetatable({}, {__mode = "k"})  -- hierarchy method
 local function newRecord() return {calls = {}, refs = {}, objects = {}, n = 0} end
 local record = newRecord()
 
+-- A call that could not be recorded. The game repeats some of them all the time (a ride's edit
+-- token while its menu is open, outside a session no object is shared): a tester's log was
+-- mostly "replay:skip" lines. Each reason is logged the 1st, 10th, 100th and every 1000th time.
+local skips = {count = 0, seen = {}}
+local function skipped(name, failure)
+    local key = name .. "|" .. global.tostring(failure)
+    local n = skips.seen[key]
+    if not n then
+        if skips.count >= 200 then return end   -- enough different reasons in one log
+        skips.count = skips.count + 1
+        n = 0
+    end
+    n = n + 1
+    skips.seen[key] = n
+    if n == 1 or n == 10 or n == 100 or n % 1000 == 0 then
+        emit("replay:skip|" .. key .. (n > 1 and "|x" .. n or ""))
+    end
+end
+
 -- Builders whose first argument is the terrain operation of a change-list hierarchy.
 local OPERATION_METHODS = {
     gameterrain = {"SetTerrainEditOpCollisionFlags", "AddPushPullToChangeList", "AddPlaneFlattenToChangeList",
@@ -405,7 +424,7 @@ local function wrap(apis, key, method, s)
         local results = global.table.pack(original(self, ...))
         if not isOurs() then
             local ok, failure = global.pcall(onCall, name, s, self, global.table.pack(...), results)
-            if not ok then emit("replay:skip|" .. name .. "|" .. global.tostring(failure)) end
+            if not ok then skipped(name, failure) end
         end
         return global.table.unpack(results, 1, results.n)
     end
@@ -497,7 +516,7 @@ function Replay.Install()
                     local results = global.table.pack(original(self, ...))
                     if not isOurs() then
                         local ok, failure = global.pcall(onCall, name, full, nil, global.table.pack(self, ...), results)
-                        if not ok then emit("replay:skip|" .. name .. "|" .. global.tostring(failure)) end
+                        if not ok then skipped(name, failure) end
                     end
                     return global.table.unpack(results, 1, results.n)
                 end
