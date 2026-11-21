@@ -5,7 +5,10 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
 
 ## Unveröffentlicht
 
-Funde aus dem ersten eigenen Test:
+## 1.14.0 – 2026-11-21
+
+Neue Oberfläche im Stil des Spiels (UX-Overhaul P0 bis P6, mit den Funden aus dem ersten
+eigenen Test).
 
 - Das Multiplayer-Fenster öffnest du im Park über einen runden Knopf links oben, wie die Knöpfe
   des Spiels dort. Das Fenster klappt direkt darunter aus. Der Reiter rechts an der Bauleiste ist
@@ -17,12 +20,11 @@ Funde aus dem ersten eigenen Test:
 - Die Sitzungsleiste im Hauptmenü sieht aus wie der Newsletter-Kasten und hat dieselben Kanten.
 - Auf den Spielseiten (Sandbox, Franchise …) steht oben, dass der Park für alle öffnet.
 - „+ Einladen“ markiert den Platz, bis du rechts einen Freund wählst.
-- Pings sind kleiner, durchsichtiger und richten sich nach dem Abstand der Kamera.
+- Pings sind kleiner, weniger kräftig und richten sich nach dem Abstand der Kamera.
 - Besuch: Die Figur fährt an, bremst und dreht sich weich. Eingänge und Läden werden auch in
   Blickrichtung der Kamera und etwas zur Seite gefunden. Der Mauszeiger ist beim Umsehen weg.
   Die Tastenhinweise sehen aus wie die des Spiels. Zahlentasten tun im Besuch nichts mehr
   (Emotes mit der Maus, Kaufen per Klick).
-
 - Die Knöpfe des Spiels für Pause, Tempo und Rückgängig sagen im Tooltip, warum sie in der
   Sitzung gesperrt sind (Regel „nur der Host“, nur der eigene letzte Schritt).
 - Die Spieler oben rechts verdecken keine Fenster des Spiels mehr (z. B. Gelände oder
@@ -31,11 +33,6 @@ Funde aus dem ersten eigenen Test:
   sagen die Kachel und die Seite „Multiplayer“, woran es liegt und was hilft.
 - Die Freundesliste zeigt nur, wer gerade erreichbar ist. Ist keiner online, steht das da.
 - „Zurückholen…“ bei einem Sicherungspunkt fragt erst nach.
-
-## 1.14.0 – 2026-11-21
-
-Neue Oberfläche im Stil des Spiels (UX-Overhaul P0 bis P5).
-
 - Beitreten zeigt vier Schritte (Verbinden, Zustimmung, Park kommt, Park lädt) mit
   Fortschritt, und du kannst bis zum Laden abbrechen.
 - „Sitzung starten“ ist gesperrt, bis Steam antwortet. Klappt es nicht, siehst du warum.

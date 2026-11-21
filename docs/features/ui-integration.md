@@ -111,7 +111,7 @@ Code: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js`,
   wird erst kurz nach dem Start gehört; frühe Logzeilen gehen verloren (deshalb 4 s Verzögerung).
 
 ### FEAT-120 – Knopf „Multiplayer“ links oben
-- **Status:** Implemented · **Seit:** unveröffentlicht (UX-Overhaul P6)
+- **Status:** Implemented · **Seit:** 1.14.0 (UX-Overhaul P6)
 - **Funktion:** Ein runder Knopf in der Knopfspalte des Spiels links oben (unter den
   Benachrichtigungen) öffnet und schließt das Multiplayer-Fenster; es klappt direkt darunter vom
   linken Rand aus. Ersetzt den Reiter in der Bauleiste (FEAT-111): kurzer Mausweg, die Leiste

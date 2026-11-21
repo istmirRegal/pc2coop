@@ -80,8 +80,10 @@ Im Multiplayer-Fenster, Reiter "Einstellungen", Abschnitt "Fuer dich", laesst si
 Anzeige abschalten ("Mitspieler in der Welt zeigen").
 
 Das Multiplayer-Fenster
-"Multiplayer" unten rechts in der Bauleiste, F7 oder Pausemenue -> "Multiplayer" oeffnet das
-Fenster am linken Rand. Du kannst weiterbauen, waehrend es offen ist. Vier Reiter:
+Der runde Knopf "Multiplayer" links oben (unter den Knoepfen des Spiels), F7 oder
+Pausemenue -> "Multiplayer" oeffnet das Fenster; es klappt direkt unter dem Knopf am linken
+Rand aus. Du kannst weiterbauen, waehrend es offen ist. Fenster und Listen scrollen mit dem
+Mausrad. Vier Reiter:
 - Spieler: Mitspieler mit "Hinbringen" und "Folgen", Beitrittsanfragen (Host), "+ Einladen".
   Unten: "Besuchen" (Besucher-Modus) und "Verlassen" bzw. "Beenden".
 - Planen: das Brett des Parks - Baugebiete ("Wikingerland", mit Auftrag, Zustaendigem und
@@ -126,15 +128,17 @@ fuer alle gemeinsam, denn es ist ein Park mit einem Spielstand.
 
 Besucher-Modus (Knopf "Besuchen" im Multiplayer-Fenster)
 - Du laeufst als Figur durch den Park, die Kamera hinter dir. Wie im Laufmodus des Spiels
-  gibt es keine Leiste oben: die Tasten stehen unten rechts, die Bauleiste ist solange weg.
+  gibt es keine Leiste oben: die Tasten stehen unten in der Hinweiszeile, die Bauleiste ist
+  solange weg.
   Die Figur ist ein Parkgast des Spiels mit dessen Lauf-, Renn- und Stehbewegungen. Sie
   sieht aus wie dein Avatar aus dem Startbildschirm, so gut es geht: Alter und Geschlecht
   sowie die Farben von Oberteil, Hose und Haaren stimmen; Kopf, Frisur und Kleidungsstueck
   waehlt PC2Coop aus den Gast-Modellen des Grundspiels.
-  Maus bewegen: umsehen (der Mauszeiger ist dann weg), WASD laufen, Shift rennen. Du
-  laeufst nicht durch Gebaeude, Deko und Bahnen und gehst Stufen und Wege hoch.
+  Maus bewegen: umsehen (der Mauszeiger ist dann weg), WASD laufen, Shift rennen. Die Figur
+  faehrt weich an und bremst weich. Du laeufst nicht durch Gebaeude, Deko und Bahnen und
+  gehst Stufen und Wege hoch.
 - T gedrueckt halten: Emote-Rad im Look der Radialmenues des Spiels (Winken, Jubeln,
-  Lachen, Super, Naja, Uebel) - Maus in die Richtung oder 1-6, T loslassen sendet. Die
+  Lachen, Super, Naja, Uebel) - Maus in die Richtung, T loslassen sendet. Die
   anderen sehen deine Figur das Emote spielen (winken, jubeln, lachen ...).
 - V: zwischen Ansicht von hinten (deine Figur) und Ich-Sicht wechseln. Die Ich-Sicht ist
   der eingebaute Laufmodus des Spiels - mit Boden, Treppen, Springen (Alt), Ducken (Strg),
@@ -142,13 +146,15 @@ Besucher-Modus (Knopf "Besuchen" im Multiplayer-Fenster)
   sehen dich in beiden Ansichten als Figur.
 - E: das, was vor deiner Figur ist, wie im Spiel: am Eingang eines Fahrgeschaefts
   einsteigen (unter der Bildmitte steht, was geht, z. B. "Einsteigen: Boardslide" oder
-  warum nicht), Rutschen-Treppen, Shows. Nach der Fahrt geht es am Ausgang weiter.
+  warum nicht), Rutschen-Treppen, Shows. Gefunden wird, was vor der Figur oder in
+  Blickrichtung der Kamera liegt. Nach der Fahrt geht es am Ausgang weiter.
 - F: die Fahrgeschaefte links, mit Werten, Bewertungen als Sterne und "Mitfahren" - das
   bringt dich auch ohne Laufen in eine Bahn. Solange die Liste offen ist, ist die Maus
   frei. Deine Wertung: fuenf Sterne anklicken, dazu ein kurzer Vorschlag; der Host
   speichert sie pro Park.
-- E vor einem Shop oder Automaten: ein kleines Kauf-Panel mit Artikeln und Preisen. 1-6
-  (oder anklicken) kauft, E oder Tab schliesst. Der Preis geht in die Parkkasse wie bei
+- E vor einem Shop oder Automaten: ein kleines Kauf-Panel mit Artikeln und Preisen; die Maus
+  ist dann frei, ein Klick kauft, E oder Tab schliesst. Die Zahlentasten nutzt der Besuch
+  nicht (das Spiel hat eigene Funktionen darauf). Der Preis geht in die Parkkasse wie bei
   einem Gast, alle sehen "<Name> kauft ...", und deine Figur isst oder trinkt eine Weile
   beim Gehen. Geschlossene Shops verkaufen nichts.
 - Tab: zurueck zum Bauen.
@@ -222,9 +228,10 @@ Live synchronisiert und im Spiel getestet:
 Eingebaut, aber noch nicht im Spiel bestaetigt:
 - Das Zusammenspiel der Sperren zwischen zwei echten Spielern.
 - Neu in 1.14.0: Oberflaeche im Stil des Spiels - Seite "Multiplayer" im Hauptmenue,
-  Fenster am linken Rand, Besuch ohne Leiste oben, Emote-Rad und Sterne, Anzeigen fuer
-  Verbindung, Beitritt und Sitzungsende (allein getestet, nachgestellter Mitspieler, ohne
-  echte Maus und Tastatur).
+  runder Knopf links oben mit dem Fenster darunter, Hinweise in der Hinweiszeile des Spiels,
+  Besuch ohne Leiste oben, Emote-Rad und Sterne, Anzeigen fuer Verbindung, Beitritt und
+  Sitzungsende (allein getestet, nachgestellter Mitspieler; erster Test des Herausgebers
+  mit echter Maus, seine Funde sind eingearbeitet).
 - Neu in 1.13.0: Besucher-Figur als animierter Parkgast im Look deines Avatars, Ansicht
   wechseln (V) mit der Ich-Sicht des Spiels, Eingaenge wie im Spiel (E), Kaufen an Shops und
   Automaten mit Essen/Trinken beim Gehen (allein getestet, nachgestellter Mitspieler).
