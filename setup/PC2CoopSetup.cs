@@ -1,7 +1,8 @@
 // Original PC2Coop code, MIT. PC2Coop-Setup.exe: installs, updates and removes the mod.
 //
 // One window for players (German when Windows is German, English otherwise) and a command
-// line for tests. It copies only the files listed in payload-manifest.json into
+// line for tests. Since 2.2.0 Setup is its own download on GitHub (Nexus takes no programs):
+// without a package next to it, it installs the newest release from GitHub. It copies only the files listed in payload-manifest.json into
 // <game>\Win64\ovldata\PC2CoopProbe, checks every SHA-256, keeps backups and rolls back on an
 // error. Updates download the release ZIP from GitHub, check its SHA-256 and copy the mod
 // files out of it; a downloaded program is never started. ACSE is never touched.
@@ -302,6 +303,21 @@ namespace PC2CoopSetup
             return Json.Object(File.ReadAllText(path));
         }
 
+        public static bool HasPackage(string package)
+        {
+            return File.Exists(Path.Combine(package, "payload-manifest.json")) || Directory.Exists(Path.Combine(package, "Mod"));
+        }
+
+        // No package next to Setup: the newest release from GitHub, checked like an update.
+        public static int InstallLatest(string game, string api, Action<string> say, out string version)
+        {
+            CheckReady(game);
+            say(T.S("Frage GitHub nach der neuesten Version …", "Asking GitHub for the newest version …"));
+            var info = Latest(api);
+            version = info.Version;
+            return Update(game, info, say);
+        }
+
         public static Dictionary<string, object> LoadManifest(string package)
         {
             var path = Path.Combine(package, "payload-manifest.json");
@@ -360,6 +376,9 @@ namespace PC2CoopSetup
                         + T.S(". Bitte die ZIP-Datei neu herunterladen und entpacken.", ". Please download and extract the ZIP again."));
                 wanted[relative] = sha;
             }
+            if (wanted.Count == 0)
+                throw new SetupException(Codes.NotUnpacked, T.S("Das Paket enthält keine Mod-Dateien. Bitte die ZIP-Datei neu herunterladen.",
+                    "The package holds no mod files. Please download the ZIP again."));
             var journal = LoadJournal(ovldata);
             var owned = new Dictionary<string, string>();
             var keep = new List<object>();
@@ -690,6 +709,13 @@ namespace PC2CoopSetup
                 }
                 if (action == "install")
                 {
+                    if (!Core.HasPackage(source))
+                    {
+                        string version;
+                        int fetched = Core.InstallLatest(game, api, Say, out version);
+                        Say("result=ok action=install source=github version=" + version + " changed=" + fetched);
+                        return Codes.Ok;
+                    }
                     int changed = Core.Install(game, source, Say);
                     Say("result=ok action=install changed=" + changed);
                     return Codes.Ok;
@@ -758,7 +784,7 @@ namespace PC2CoopSetup
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
             try { packageVersion = Json.Text(Core.LoadManifest(Program.PackageFolder()), "version"); } catch { }
-            var title = new Label { Text = "PC2Coop " + (packageVersion ?? BuildInfo.Version), AutoSize = true,
+            var title = new Label { Text = "PC2Coop" + (packageVersion != null ? " " + packageVersion : ""), AutoSize = true,
                 Font = new Font("Segoe UI Semibold", 15f), Margin = new Padding(0, 0, 0, 2) };
             var subtitle = new Label { Text = T.S("Live zusammen bauen in Planet Coaster 2", "Build live together in Planet Coaster 2"),
                 AutoSize = true, ForeColor = SystemColors.GrayText, Margin = new Padding(0, 0, 0, 14) };
@@ -794,7 +820,15 @@ namespace PC2CoopSetup
             play.Click += delegate { Open("steam://rungameid/" + Core.SteamAppId); };
             install.Click += async delegate
             {
+                string api;
+                options.TryGetValue("api", out api);
                 if (pending != null) await Work(delegate(Action<string> say) { return Done(Core.Update(game, pending, say), pending.Version); });
+                else if (packageVersion == null) await Work(delegate(Action<string> say)
+                {
+                    string version;
+                    int changed = Core.InstallLatest(game, api, say, out version);
+                    return Done(changed, version);
+                });
                 else await Work(delegate(Action<string> say) { return Done(Core.Install(game, Program.PackageFolder(), say), packageVersion); });
             };
             remove.Click += async delegate
@@ -876,18 +910,21 @@ namespace PC2CoopSetup
                 : state.Installed ? T.S("installiert", "installed") + (state.InstalledVersion != null ? " (" + state.InstalledVersion + ")" : "")
                 : T.S("noch nicht installiert", "not installed yet");
             bool newer = Core.Newer(packageVersion, state.InstalledVersion);
-            install.Text = !state.Installed ? T.S("Installieren", "Install")
+            install.Text = packageVersion == null ? (state.Installed ? T.S("Neueste Version holen", "Get the newest version") : T.S("Installieren", "Install"))
+                : !state.Installed ? T.S("Installieren", "Install")
                 : newer ? T.S("Aktualisieren auf ", "Update to ") + packageVersion : T.S("Neu installieren", "Reinstall");
-            install.Enabled = state.Acse && !state.Vortex && packageVersion != null;
+            install.Enabled = state.Acse && !state.Vortex;
             remove.Enabled = state.Installed && !state.Vortex;
             update.Enabled = !state.Vortex;
-            if (packageVersion == null)
+            if (packageVersion == null && Core.HasPackage(Program.PackageFolder()))
             {
                 try { Core.LoadManifest(Program.PackageFolder()); } catch (SetupException error) { SetStatus(error.Message, true); }
             }
             else if (!state.Acse) SetStatus(T.S("Zuerst ACSE installieren: „Herunterladen“ öffnet die Seite bei Nexus Mods. Danach Setup neu starten.",
                 "Install ACSE first: \"Download\" opens its page on Nexus Mods. Then start Setup again."), false);
             else if (state.Vortex) SetStatus(modValue.Text, false);
+            else if (packageVersion == null) SetStatus(T.S("„Installieren“ lädt die neueste Version von GitHub, prüft sie und installiert sie.",
+                "\"Install\" downloads the newest version from GitHub, checks it and installs it."), false);
             else SetStatus("", false);
         }
 

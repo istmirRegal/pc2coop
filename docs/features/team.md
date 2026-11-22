@@ -52,6 +52,8 @@ Gemeinsam planen, entscheiden, spielen. Konzept: `docs/KONZEPT.md`. Code:
 - **Technik:** `pingContext`, `Session.Context`, `Session.CloseContext`, `CONTEXT_FRAMES`;
   `ui.lua` `contextState()` (nächste Bahn ≤ 30 m, Bearbeiter ≤ 40 m); UI-Aktion `ctx`
   (`take`, `proposal`, …). Klasse `ContextMenu` (Mausposition per `mousemove`).
+- **Seit 2.2.0:** auch bei offenem Fenster; ein Eintrag, der im Menü begonnen wurde, schließt
+  das Fenster danach wieder (vorher blieb es offen, und das nächste Menü kam nicht).
 
 ### FEAT-137 – Übernahme anfragen
 - **Status:** Implemented · **Seit:** 1.12.0
@@ -84,6 +86,9 @@ Gemeinsam planen, entscheiden, spielen. Konzept: `docs/KONZEPT.md`. Code:
 - **Technik:** `note|x|y|z|text`; `events`, `EVENT_FRAMES`; `Session.Events`, `Session.EventLabel`.
 - **UI:** Reiter Verlauf, Zeilen wie die Meldungen des Spiels (TP-18): Icon, Text, „Hinbringen“,
   „Ausblenden“ (nur auf diesem PC, bis das Fenster neu aufgebaut wird).
+- **Seit 2.2.0:** im Park nur ein Punktkreis; der Text („Nicht getestet: River Trek“) steht in
+  einer Zeile da, solange die Maus darauf zeigt (gilt auch für Brett-Einträge). Vorher standen
+  zweizeilige Schilder über allem.
 
 ### FEAT-141 – Sicherungspunkte mit Abstimmung
 - **Status:** Implemented · **Seit:** 1.12.0

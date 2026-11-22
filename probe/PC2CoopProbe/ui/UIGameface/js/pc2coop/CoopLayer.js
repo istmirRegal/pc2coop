@@ -1866,9 +1866,11 @@ class MiniLobby extends StateComponent {
                 h(Avatar, { player: p, size: 24, pic: avatars[p.sid] }))),
             showText && h('div', { className: 'Button_subLabel alt', style: { color: C('accentButtonLight'), fontSize: '0.9rem', margin: '0 0.6rem',
                 whiteSpace: 'nowrap', overflow: 'hidden', flexShrink: 1, minWidth: 0 } }, text),
+            // Little room (main menu, between the logo and the round buttons): only "Öffnen";
+            // ending is on the page it opens (test copy 2026-11-22: "Beenden" was cut off).
             h('div', { style: { flexShrink: 0, marginLeft: showText ? 0 : '0.6rem' } },
-                buttons([{ label: 'Öffnen', onSelect: () => { request('open'); openPage(); } },
-                    { label: coop.role === 'host' ? 'Beenden' : 'Verlassen', tip: coop.role === 'host' ? END_TIP : LEAVE_TIP, onSelect: () => endOrAsk(coop) }])));
+                buttons([{ label: 'Öffnen', onSelect: () => { request('open'); openPage(); } }].concat(room < 26 ? [] :
+                    [{ label: coop.role === 'host' ? 'Beenden' : 'Verlassen', tip: coop.role === 'host' ? END_TIP : LEAVE_TIP, onSelect: () => endOrAsk(coop) }]))));
     }
 }
 

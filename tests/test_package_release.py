@@ -49,15 +49,16 @@ def vortex_install(entries):
 
 
 class CheckRuleTests(unittest.TestCase):
-    good = ["PC2Coop/PC2Coop-Setup.exe", "PC2Coop/LIES MICH - READ ME.txt", "PC2Coop/payload-manifest.json",
+    good = ["PC2Coop/LIES MICH - READ ME.txt", "PC2Coop/payload-manifest.json",
             "PC2Coop/Mod/PC2CoopProbe/Main.ovl", "PC2Coop/Mod/PC2CoopProbe/PC2CoopDiagnostic.dll"]
 
     def test_good_layout_passes(self):
         package_release.check(self.good)
 
     def test_scripts_acse_and_stray_paths_are_refused(self):
+        # 2.2.0: no .exe at all in the ZIP (Nexus takes no programs, ADR-024).
         for extra in ("PC2Coop/INSTALL.cmd", "PC2Coop/install.ps1", "PC2Coop/Mod/ACSE/Main.ovl", "Other/file.txt",
-                      "PC2Coop/tool.exe", "PC2Coop/../x.txt"):
+                      "PC2Coop/tool.exe", "PC2Coop/PC2Coop-Setup.exe", "PC2Coop/../x.txt"):
             with self.assertRaises(RuntimeError, msg=extra):
                 package_release.check(self.good + [extra])
 
@@ -90,7 +91,7 @@ class BuiltZipTests(unittest.TestCase):
 
     def test_layout(self):
         self.assertEqual(sorted(self.names), sorted([
-            "PC2Coop/LICENSE.txt", "PC2Coop/LIES MICH - READ ME.txt", "PC2Coop/PC2Coop-Setup.exe",
+            "PC2Coop/LICENSE.txt", "PC2Coop/LIES MICH - READ ME.txt",
             "PC2Coop/payload-manifest.json", "PC2Coop/Mod/PC2CoopProbe/Main.ovl",
             "PC2Coop/Mod/PC2CoopProbe/Manifest.xml", "PC2Coop/Mod/PC2CoopProbe/PC2CoopDiagnostic.dll"]))
         readme = (self.tmp / "unpacked/PC2Coop/LIES MICH - READ ME.txt").read_text(encoding="utf-8-sig")
@@ -112,7 +113,8 @@ class BuiltZipTests(unittest.TestCase):
         (game / "Win64/ovldata/ACSE/Main.ovl").write_bytes(b"acse")
         (self.tmp / "local").mkdir(exist_ok=True)
         env = dict(os.environ, LOCALAPPDATA=str(self.tmp / "local"))
-        result = subprocess.run([str(self.tmp / "unpacked/PC2Coop/PC2Coop-Setup.exe"), "--install", "--game", str(game)],
+        result = subprocess.run([str(ROOT / "build/setup/PC2Coop-Setup.exe"), "--install", "--game", str(game),
+                                 "--source", str(self.tmp / "unpacked/PC2Coop")],
                                 capture_output=True, text=True, encoding="utf8", env=env, timeout=120)
         self.assertEqual(result.returncode, 0, result.stdout)
         for entry in self.manifest["files"]:

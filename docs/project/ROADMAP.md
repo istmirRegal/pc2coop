@@ -9,7 +9,7 @@ Erledigtes wandert in CHANGELOG/DEVLOG; die Funktion bekommt ihren Status in der
 |---|---|
 | **UX-Overhaul** | gebaut bis P6 (`docs/ui-ux/UX_OVERHAUL.md`, ADR-020); Abnahme mit zwei PCs offen |
 | Test mit zwei (und drei) echten PCs | Abnahmebedingung aus `docs/COOP_DESIGN.md`; nach 1.5.0 nur mit nachgestelltem Mitspieler geprüft |
-| Nexus mit Setup.exe | Eigner lädt die eine ZIP (ADR-023) bei Nexus hoch; zeigen, ob Nexus die EXE annimmt |
+| Besuch: Wasser, Fahrt, Ich-Sicht | man läuft über Wasser; Umsehen und V in der Fahrt; Laufen in der Ich-Sicht – braucht Tests mit echter Eingabe |
 | ACSE mitliefern? | Eigner fragt das ACSE-Team (GPL-3 erlaubt es); bei Ja installiert Setup ACSE, wo keins ist |
 | Code-Signatur für Setup | gegen die SmartScreen-Frage; kostet (z. B. Azure Trusted Signing), braucht eine Identitätsprüfung des Eigners |
 

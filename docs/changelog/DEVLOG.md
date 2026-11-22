@@ -3,6 +3,35 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-22 – 2.2.0: Funde aus dem Test des Eigners
+
+- Absturz beim Beenden (jede Version): Das Log des Eigners (2.1.0, mit der neuen
+  Absturz-Notiz) zeigt zwei Zugriffsfehler im Spiel kurz nach dem Schließen des Hauptmenüs.
+  Lua gibt Bibliotheken aus `package.loadlib` beim Schließen eines Lua-Zustands frei
+  (FreeLibrary); Steam hält aber unsere Callback-Objekte und Windows unseren Exception
+  Handler. Die DLL pinnt sich jetzt (`GET_MODULE_HANDLE_EX_FLAG_PIN`) und schreibt beim
+  Entladen `dll:detach|…` ins Log. Nachstellen ging nicht: die Rückfrage „beenden?“ liegt in
+  einer eigenen Gameface-Ansicht, die unsere Ebene nicht erreicht (QA-Klick fand 0 Knöpfe).
+  Ob der Absturz weg ist, zeigt erst das nächste echte Beenden.
+- „… hat X bearbeitet“: kam auch für Änderungen, die das Spiel selbst macht; nur noch
+  `session:actions|<Verb>|<Anzahl>` im Log.
+- Mittelklick-Menü: wurde bei offenem Fenster nicht gezeigt; nach einem Eintrag aus dem Menü
+  blieb das Fenster offen → kein Menü mehr. Jetzt immer, und das Fenster schließt wieder.
+- Emotes: das Rad wählt über die Mausbewegung im Maus-Blick, der beim offenen Rad aus war (der
+  Test schrieb genau das fest und simulierte die Bewegung trotzdem).
+- Mauszeiger: `ShowCursor` zählt nur für den aufrufenden Thread (Lua-Thread ≠ Fenster-Thread);
+  jetzt Fensterprozedur des Spielfensters für `WM_SETCURSOR`.
+- Q/E: `CameraModeManager:GetKeyBindings()` ist dieselbe Tabelle wie `tKeyBindings`; ein nicht
+  belegter Name liefert bei `InputManager:GetKeyDown` einfach false (Testkopie).
+- Leertaste: das Spiel pausiert über `ChangeSimulationSpeedSettings`; der Haken in world.lua
+  lässt das während des Besuchs als Figur weg (Testkopie: pausiert blieb false).
+- Nexus nimmt keine .exe an (Eigner): ADR-024. Setup 2.1.0 kann weiter aktualisieren, weil der
+  ZIP-Aufbau gleich bleibt (nur die EXE fehlt). Setup ohne Paket daneben holt das neueste
+  Release (geprüft gegen das echte GitHub: 2.1.0 geladen und installiert).
+- Offen, braucht echte Eingabe: Wasser (keine Wasser-Schnittstelle in den World-APIs gefunden),
+  Umsehen in der Fahrt (die Ride-Kamera dreht nur mit `bInputActive` beim Ziehen), V in der
+  Fahrt, Laufen in der Ich-Sicht.
+
 ## 2026-11-22 – 2.1.0: Setup.exe, eine ZIP, Problembericht
 
 - Wunsch des Eigners: eine Datei, die auch Leute ohne Erfahrung installieren können, auf GitHub

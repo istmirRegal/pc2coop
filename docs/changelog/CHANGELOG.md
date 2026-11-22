@@ -5,6 +5,36 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
 
 ## Unveröffentlicht
 
+## 2.2.0 – 2026-11-22
+
+Nach dem ersten großen eigenen Test: ruhiger, aufgeräumter – und kein Absturz mehr beim Beenden.
+
+**Installieren**
+- Nexus Mods nimmt keine Programme an. Die ZIP enthält deshalb nur noch die Mod: mit Vortex
+  installieren oder den Ordner von Hand kopieren. PC2Coop-Setup.exe gibt es auf GitHub als
+  eigene Datei: starten, „Installieren“ – Setup holt die Mod selbst, prüft sie und sucht
+  später Updates.
+
+**Besser**
+- Beim Beenden des Spiels kam jedes Mal die Absturzmeldung von Frontier. Die Mod gab dabei
+  ihre DLL frei, während Steam sie noch benutzte; das ist behoben.
+- Das Multiplayer-Fenster im Park steht neben der Icon-Leiste links und verdeckt sie nicht
+  mehr; die Meldungen des Spiels schieben sich nicht mehr darunter. Im Pausemenü (Esc) ist die
+  Oberfläche der Mod weg.
+- Im Hauptmenü ist die Sitzung eine schmale Zeile oben neben den runden Knöpfen und verdeckt
+  keine Kacheln mehr.
+- Keine Meldungen „… hat … bearbeitet“ mehr unten links.
+- Park-Meldungen und Brett-Einträge im Park sind kleine Punktkreise; den Text siehst du, wenn
+  du mit der Maus darauf zeigst.
+- Markierungen sieht man auch weit herausgezoomt.
+- Das Markieren-Menü geht auch bei offenem Fenster; ein Eintrag aus dem Menü schließt das
+  Fenster danach wieder (vorher kam beim nächsten Markieren kein Menü).
+- Besuch: Emotes gehen wieder. Leertaste lässt die Figur hüpfen statt das Spiel zu pausieren.
+  Q und E drehen die Kamera nicht mehr. Der Mauszeiger ist beim Umsehen weg.
+
+**Noch offen:** Wasser im Besuch (man läuft darüber), Umsehen und V während der Fahrt, Laufen
+in der Ich-Sicht.
+
 ## 2.1.0 – 2026-11-22
 
 Einfacher installieren, Probleme leichter finden.

@@ -105,6 +105,10 @@ Vorlage je Funktion: Funktion · Technik · UI · Besonderheiten.
   Administratorrechte; fehlen Schreibrechte, rät die Meldung zu „Als Administrator ausführen“.
   Tests: `tests/test_setup_exe.py` (nur nachgebaute Spielordner, eigenes LOCALAPPDATA/TEMP,
   GitHub nachgestellt), `tests/test_package_release.py`.
+- **Seit 2.2.0 (ADR-024):** eigener Release-Download auf GitHub, nicht mehr in der ZIP. Ohne
+  Paket daneben holt „Installieren“ das neueste Release von GitHub (Funktion InstallLatest,
+  Befehlszeile `--install` ohne Paket: `result=ok action=install source=github version=…`).
+  Ein Paket ohne Mod-Dateien wird abgelehnt (Code 7).
 
 ### FEAT-012 – Eine ZIP für GitHub, Nexus und Vortex
 - **Status:** Implemented · **Seit:** 2.1.0 · **Entscheidung:** ADR-023
@@ -120,4 +124,6 @@ Vorlage je Funktion: Funktion · Technik · UI · Besonderheiten.
   nimmt mit ihrem „ACSE Mod“-Installer den Ordner mit `Main.ovl` und nur dessen Geschwister und
   legt sie nach `Win64\ovldata`. Mit `Win64/` im ZIP hätte ihr „Root“-Installer Setup und Anleitung
   in den Spielordner gelegt. Nachgebildet und geprüft in `tests/test_package_release.py`.
-
+- **Seit 2.2.0 (ADR-024):** ohne PC2Coop-Setup.exe (Nexus nimmt keine Programme); `check()`
+  lässt als Programm nur die DLL zu. `package_release.py` legt Setup daneben als eigene Datei
+  (`PC2Coop-Setup.exe` neben der ZIP).

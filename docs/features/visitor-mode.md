@@ -56,6 +56,10 @@ Code: `probe/PC2CoopProbe/Main/pc2coop/visitor.lua`, `probe/PC2CoopProbe/Main/pc
   (Gelände, Volumen, Plattformen); Maus über DLL `mouse|dx|dy` → `Visitor.OnMouse`.
   QA-Naht `Visitor._TestKeys`.
 - **UI:** Hinweis „Maus umsehen · WASD laufen · Shift rennen · E … · T … · V … · Tab zurück“.
+- **Seit 2.2.0:** Leertaste = Hüpfen (`Visitor._Lift`); solange die Figur läuft, lässt der
+  Haken auf `ChangeSimulationSpeedSettings` (world.lua, `shared.visitBlocksPause`) das Pausieren
+  weg. Q/E drehen die Kamera nicht mehr (`Visitor._MuteRotate`: die Bindungen zeigen auf einen
+  unbelegten Namen und kommen beim Beenden zurück). Offen: Wasser (man läuft darüber).
 
 ### FEAT-164 – Ich-Sicht = Laufmodus des Spiels (V)
 - **Status:** Implemented · **Seit:** 1.13.0 · **Ersetzt:** FEAT-174
@@ -105,6 +109,8 @@ Code: `probe/PC2CoopProbe/Main/pc2coop/visitor.lua`, `probe/PC2CoopProbe/Main/pc
   `emote|kind` → Host `em|sid|kind`; `Session._EmoteKind`, `Session.Emotes` (4 s, Essen 20 s).
   UI-Aktion `emote`, Klasse `EmoteWheel` (seit P4 im Look der Radialmenüs des Spiels, Icons
   `guestThoughts/guest_bubble_*`, `WHEEL`). Die Emote-Knöpfe der alten Leiste sind seit P4 weg.
+- **Seit 2.2.0:** Der Maus-Blick bleibt beim offenen Rad an – seine Bewegung wählt das Feld
+  (vorher aus, also nie ein Emote).
 
 ### FEAT-169 – Kaufen an Shops und Automaten
 - **Status:** Implemented · **Seit:** 1.13.0

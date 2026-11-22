@@ -71,6 +71,9 @@ Was ein Spieler von den anderen sieht. Code: `probe/PC2CoopProbe/Main/pc2coop/vi
   Objekte und Geister. Im Spiel geprüft: Fels blinkt (Pixel rot 166 ↔ 46), Punktringe am Boden.
 - **Besonderheiten:** Der Zweig `key:ping` in `session.lua` stammt von einer früheren Taste;
   die DLL sendet ihn nicht mehr (siehe DEVLOG, Aufräumkandidat).
+- **Seit 2.2.0:** Punktkreise wachsen bis 500 m Kameraabstand mit (vorher 75 m: weit
+  herausgezoomt kaum zu finden). Kurze Markierung (8 s, eine je Spieler, die neue ersetzt die
+  alte) und dauerhafte Brett-Einträge bleiben getrennt.
 
 ### FEAT-096 – Kamera folgen
 - **Status:** Implemented · **Seit:** 1.7.0

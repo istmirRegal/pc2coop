@@ -100,6 +100,10 @@ Code: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js`,
   und ließ das Spiel abstürzen (Rekursion); deshalb `setTimeout`. Im Spiel geprüft: Seite ohne und
   mit Sitzung, Schließen aus Lua, Sitzungsleiste auf Hauptmenü und Sandbox-Seite. Nicht geprüft:
   ein Park über die Spielseiten mit echtem Mitspieler (zwei PCs).
+- **Seit 2.2.0:** Die Sitzungsleiste ist eine Zeile in der oberen Leiste des Spiels links
+  neben dessen Knöpfen (vorher eine Karte darunter, die je nach Seite Kacheln verdeckte); bei
+  wenig Platz nur Name, Avatare und „Öffnen“. Auf den Park-Seiten sagt sie „Der Park, den du
+  hier öffnest, lädt bei allen“ (der eigene Hinweis oben Mitte ist weg).
 
 ### FEAT-118 – Zustandsbrücke Lua ↔ Oberfläche
 - **Status:** Implemented · **Seit:** 1.8.0
@@ -145,3 +149,7 @@ Code: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js`,
   `ManagementMenu_content` ein; `trackMenuButton` misst seine Unterkante, `panelTop()` setzt das
   Fenster darunter; Ausklappen über `left` mit `transition`. ADR-021.
 - **QA:** `Ui._QaClickTab` drückt den Knopf; QA-Look „reiter 0“ blendet ihn aus.
+- **Seit 2.2.0:** Das Fenster öffnet rechts neben der Icon-Spalte des Spiels (oben am runden
+  Knopf), nicht mehr darüber; solange es offen ist, warten die ausfahrenden Meldungen der
+  Spalte (die Zähler bleiben). Bei offenem Pausemenü (Esc) blendet die Ebene Fenster,
+  Spielerleiste, Chat, Anfrage-Karte und Markieren-Menü aus; Dialoge bleiben.

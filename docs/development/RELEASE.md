@@ -55,8 +55,8 @@ Spiel-Update anpassen.
 ## 5. Veröffentlichen (nach Rückfrage)
 
 1. Commit, `git tag vX.Y.Z`, push.
-2. `gh release create vX.Y.Z` mit ZIP und `.sha256` (gh liegt im Arbeitsordner unter
+2. `gh release create vX.Y.Z` mit ZIP, `.sha256` und `PC2Coop-Setup.exe` (ADR-024; gh liegt im Arbeitsordner unter
    `work/toolchain/gh-2.104.0/bin/gh.exe`). Ältere Release-Dateien behalten keine Assets
    (Wunsch des Eigners); nur das neueste Release hat Dateien. Setup findet Updates über
    `releases/latest` und braucht beide Dateien.
-3. Dieselbe ZIP an den Eigner geben; er lädt sie bei Nexus hoch.
+3. Dieselbe ZIP (ohne Setup) an den Eigner geben; er lädt sie bei Nexus hoch. Nexus nimmt keine .exe.

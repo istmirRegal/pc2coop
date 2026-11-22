@@ -43,8 +43,8 @@ Wer ein Feld hinzufügt, trägt es hier ein.
 | `ContextMenu` | Markieren-Radialmenü (`MARK_ITEMS`) | team.context | FEAT-136 |
 | `syncBuildPrompts`, `BUILD_PROMPTS`, `promptHelper` | „Enter Chat“ und „Maus Mitte Markieren“ als Einträge der Hinweiszeile des Spiels (`ButtonPromptHelper`); ersetzt `MarkHint` (P6 A8) | role, context, open, visitor, team.context | FEAT-095, FEAT-116 |
 | `ScrollBox`, `scroller(height, children, extra, innerStyle, stick)` | Scrollen mit dem Mausrad und der Scrollleiste des Spiels (`ScrollPanePres`, nicht das fokussierende `ScrollPane`); `stick` hält den Chat unten (P6 A1/A7) | – | FEAT-110, FEAT-119 |
-| `MiniLobby` (neu gebaut), `trackNewsletter`, `newsletterBox` | Sitzungsleiste im Look des Newsletter-Kastens (`Button_root alt`), dessen gemessene rechte Kante und Breite (P6 A3) | role, players, open, nav | FEAT-034 |
-| `GamePageHint`, `onGameParkPage`, `frontScreen`, `notifyLater` | Hinweis oben Mitte auf den Spielseiten: der Park öffnet sich für alle (P6 A4) | role, stage, nav | FEAT-119 |
+| `MiniLobby`, `trackTopBar`, `topBarBox` | Sitzungszeile in der oberen Leiste links neben den Knöpfen des Spiels (seit 2.2.0; vorher Karte unter dem Newsletter-Kasten) | role, players, open, nav | FEAT-034 |
+| `onGameParkPage`, `frontScreen`, `notifyLater` | Spielseiten erkennen; der Hinweis „lädt bei allen“ steht seit 2.2.0 in der Sitzungszeile (`GamePageHint` entfernt) | role, stage, nav | FEAT-119 |
 | `ChatArea` | Chat, Ereignisse und Meldungen unten links, Chat-Eingabe per Enter | toasts (kind), chatKey, role, context, open | FEAT-116 |
 | `Lobby` | Multiplayer-Fenster. Park: `renderParkPanel` (links, Klassen des Spiel-Panels) mit `renderPanelPlayers`, `renderPanelFriends`, `renderPlan`, `renderHistory`, `renderSession`, `renderContentSetting`, `renderCompetition`. Hauptmenü (nur Rückfall ohne Seite): `renderBody` mit `renderPlayers`, `renderPlace`, `renderChat`, `renderContent`, `renderFriends` | fast alles | FEAT-110 |
 | `MiniLobby` | Sitzungsleiste im Hauptmenü oben rechts (TP-04) | role, players, open | FEAT-034 |

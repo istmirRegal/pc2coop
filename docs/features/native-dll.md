@@ -51,6 +51,10 @@ und Maus, Dateien im Spielordner. Lua spricht sie über `probe/PC2CoopProbe/Main
   nach 2 s); `poll_visitor()`; Ereignisse `key:v|name|0/1`, `mouse|dx|dy`. Nur wenn das
   Spielfenster vorne ist.
 - **Besonderheiten:** `GetAsyncKeyState`/`SetCursorPos` – Virenscanner-Heuristik (ADR-010).
+- **Seit 2.2.0:** auch die Leertaste (`key:v|space`, Hüpfen der Figur). Der Mauszeiger wird
+  über die Fensterprozedur des Spielfensters ausgeblendet (`WM_SETCURSOR`), `ShowCursor` allein
+  wirkte nur im Lua-Thread. Die DLL pinnt sich beim Start und bleibt bis zum Prozessende geladen
+  (Absturz beim Beenden, siehe DEVLOG 2026-11-22).
 
 ### FEAT-196 – Mittelklick, F7, F8, Enter
 - **Status:** Implemented · **Seit:** 1.6.0

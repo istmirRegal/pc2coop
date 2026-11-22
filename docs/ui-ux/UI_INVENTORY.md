@@ -15,7 +15,7 @@ Darstellung: `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js` (Kompone
 | Ort | Element | Wann sichtbar | Aktion | FEAT |
 |---|---|---|---|---|
 | Hauptmenü, Reiter „Spielen“ | Kachel „Multiplayer“ neben Karriere (`patchStartTabClass`); Beschreibung mit Zustand („Sitzung offen · 2/8“, „<Freund> hat eine Sitzung – beitreten“, ohne Steam-Verbindung „Gerade nicht verfügbar – <Grund>“); öffnet die Multiplayer-Seite (auch ohne Steam: dort steht, was hilft) | immer | `open` | FEAT-113, FEAT-119 |
-| Hauptmenü, jede Seite | Sitzungsleiste (`MiniLobby`) oben rechts unter dem Newsletter-Kasten: Avatare, Zustand, „Öffnen“, „Beenden“/„Verlassen“ | in einer Sitzung, Seite nicht offen | `open`, `leave` | FEAT-034 |
+| Hauptmenü, jede Seite | Sitzungszeile (`MiniLobby`) in der oberen Leiste links neben den Knöpfen des Spiels: Avatare, Zustand, „Öffnen“, „Beenden“/„Verlassen“ (bei wenig Platz nur „Öffnen“) | in einer Sitzung, Seite nicht offen | `open`, `leave` | FEAT-034 |
 | Park, Knopfspalte des Spiels links oben | runder Knopf „Multiplayer“ unter den Benachrichtigungen (Spiel-`ManagementMenuButton`, `patchManagementMenu`, ADR-021); gedrückt, solange das Fenster offen ist; das Fenster klappt direkt darunter aus | im Park | `open`/`close` | FEAT-120 |
 | (entfernt) Bauleiste unten | Reiter „Multiplayer“ rechts neben der Leiste (ADR-007): seit P6 weg, die Leiste war unsymmetrisch | – | – | FEAT-111 |
 | Park, Pausemenü (Esc) | Eintrag „Multiplayer“ (`patchMenuClass`); in einer Sitzung dazu „Sitzung verlassen“/„Sitzung beenden“ | im Park | `open`, `leave` | FEAT-112, FEAT-042 |

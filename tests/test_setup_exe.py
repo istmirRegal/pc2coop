@@ -143,10 +143,11 @@ class SetupTests(unittest.TestCase):
         self.assertEqual(code, 7, out)
         self.assertFalse(self.mod.exists())
 
-    def test_started_without_unpacking(self):
-        code, out = self.run_setup("--install", package=self.tmp / "nothing-here")
-        self.assertEqual(code, 7, out)
-        self.assertIn("entpacken", out)
+    def test_a_package_folder_with_damaged_mod_files_says_unpack_again(self):
+        package = make_package(self.tmp / "pkg", "2.1.0")
+        (package / "payload-manifest.json").write_text("{}", encoding="utf8")
+        code, out = self.run_setup("--install", package=package)
+        self.assertNotEqual(code, 0, out)
 
     def test_uninstall_keeps_logs_and_acse(self):
         self.run_setup("--install", package=make_package(self.tmp / "pkg", "2.1.0"))
@@ -239,6 +240,15 @@ class UpdateTests(SetupTests.__bases__[0]):
     def installed_v1(self):
         self.run_setup("--install", package=make_package(self.tmp / "pkg", "2.0.0",
                                                          {"Main.ovl": b"ovl-v1", "Manifest.xml": b"m", "PC2CoopDiagnostic.dll": b"d1"}))
+
+    def test_setup_alone_installs_the_newest_release(self):
+        # 2.2.0: Nexus takes no programs, so Setup is its own download; without a package next
+        # to it, it installs the newest release from GitHub (here a stand-in).
+        url = self.serve("2.2.0", {"Main.ovl": b"ovl-v3", "Manifest.xml": b"m", "PC2CoopDiagnostic.dll": b"d3"})
+        code, out = self.run_setup("--install", "--api", url, package=self.tmp / "nothing-here")
+        self.assertEqual(code, 0, out)
+        self.assertIn("source=github version=2.2.0", out)
+        self.assertEqual((self.mod / "Main.ovl").read_bytes(), b"ovl-v3")
 
     def test_update_downloads_checks_and_installs(self):
         self.installed_v1()

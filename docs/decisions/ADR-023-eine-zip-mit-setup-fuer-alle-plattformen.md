@@ -1,6 +1,6 @@
 # ADR-023: Eine ZIP mit Setup.exe für GitHub, Nexus und Vortex
 
-- **Status:** Akzeptiert
+- **Status:** Teilweise ersetzt durch ADR-024 (Setup ist ein eigener Download, Nexus nimmt keine .exe)
 - **Datum:** 2026-11-22
 - **Betrifft:** FEAT-011, FEAT-012, FEAT-001, FEAT-004, FEAT-005, FEAT-006, ADR-009, ADR-010
 

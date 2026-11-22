@@ -1,13 +1,14 @@
-"""Build the one player ZIP for PC2Coop (GitHub, Nexus Mods and Vortex alike, ADR-023).
+"""Build the player ZIP for PC2Coop (GitHub, Nexus Mods and Vortex alike, ADR-023, ADR-024)
+and put PC2Coop-Setup.exe next to it as a release file of its own.
 
-    PC2Coop/PC2Coop-Setup.exe            double-click: installs, updates, removes
     PC2Coop/LIES MICH - READ ME.txt      short, German and English
     PC2Coop/LICENSE.txt
     PC2Coop/payload-manifest.json        version, tested game build, SHA-256 of every mod file
     PC2Coop/Mod/PC2CoopProbe/...         the mod (Main.ovl, Manifest.xml, PC2CoopDiagnostic.dll)
 
-No scripts (.cmd/.ps1/...: virus scanners and Nexus flag them, ADR-010), no ACSE (ADR-009),
-no source (on GitHub). The mod sits in Mod/ so that Vortex's Planet Coaster 2 extension
+No programs but the mod's DLL (Nexus takes no .exe, ADR-024; scripts are flagged, ADR-010),
+no ACSE (ADR-009), no source (on GitHub). Setup.exe goes to GitHub as its own file; started
+without a package it installs the newest release from there. The mod sits in Mod/ so that Vortex's Planet Coaster 2 extension
 installs exactly PC2CoopProbe into Win64/ovldata (its "ACSE Mod" installer takes the folder
 with Main.ovl and its siblings only). Never installs or launches the game. No downloads.
 """
@@ -59,7 +60,7 @@ def check(names: list[str]) -> None:
     if any(name.lower().endswith(FORBIDDEN) for name in names):
         raise RuntimeError("A script ended up in the package")
     programs = [name for name in names if name.lower().endswith((".exe", ".dll"))]
-    if sorted(programs) != ["PC2Coop/Mod/PC2CoopProbe/PC2CoopDiagnostic.dll", "PC2Coop/PC2Coop-Setup.exe"]:
+    if programs != ["PC2Coop/Mod/PC2CoopProbe/PC2CoopDiagnostic.dll"]:
         raise RuntimeError(f"Unexpected programs in the package: {programs}")
     for required in ("PC2Coop/payload-manifest.json", f"PC2Coop/{README}", "PC2Coop/Mod/PC2CoopProbe/Main.ovl"):
         if required not in names:
@@ -76,7 +77,7 @@ def readme(version: str) -> str:
 def build(out: Path, version: str) -> dict:
     with tempfile.TemporaryDirectory(prefix="pc2coop-release-", dir=WORKSPACE / "work") as temporary:
         stage = Path(temporary) / "PC2Coop"
-        copy(PROJECT / "build/setup/PC2Coop-Setup.exe", stage / "PC2Coop-Setup.exe")
+        stage.mkdir(parents=True)
         (stage / README).write_bytes(readme(version).encode("utf-8-sig"))
         copy(PROJECT / "LICENSE", stage / "LICENSE.txt")
         payload(stage / "Mod/PC2CoopProbe")
@@ -123,7 +124,10 @@ def main() -> int:
     digest = sha(out)
     # Uploaded next to the ZIP; Setup (and the old UPDATE.cmd) refuse a download without it.
     out.with_name(out.name + ".sha256").write_text(f"{digest}  {out.name}\n", encoding="ascii")
-    print(json.dumps({"zip": str(out.resolve()), "bytes": out.stat().st_size, "sha256": digest, "version": version}, indent=2))
+    setup_out = out.with_name("PC2Coop-Setup.exe")
+    shutil.copy2(PROJECT / "build/setup/PC2Coop-Setup.exe", setup_out)
+    print(json.dumps({"zip": str(out.resolve()), "bytes": out.stat().st_size, "sha256": digest, "version": version,
+                      "setup": str(setup_out.resolve()), "setup_sha256": sha(setup_out)}, indent=2))
     return 0
 
 

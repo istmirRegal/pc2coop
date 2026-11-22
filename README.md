@@ -8,17 +8,16 @@ Steam-Einladungen – kein Server, keine Portfreigabe, kein Zusatzprogramm.
 
 ## Installieren
 
-1. Die neueste ZIP unter [Releases](../../releases/latest) (oder bei Nexus Mods) herunterladen
-   und entpacken.
-2. `PC2Coop-Setup.exe` doppelklicken und „Installieren“ drücken. Setup findet das Spiel selbst.
-   Fragt Windows „Der Computer wurde durch Windows geschützt“: „Weitere Informationen“ →
+1. Unter [Releases](../../releases/latest) die Datei `PC2Coop-Setup.exe` laden und doppelklicken,
+   dann „Installieren“. Setup findet das Spiel, holt die Mod selbst und prüft sie. Fragt
+   Windows „Der Computer wurde durch Windows geschützt“: „Weitere Informationen“ →
    „Trotzdem ausführen“ (Setup ist nur nicht signiert).
-3. Fehlt der Mod-Loader [ACSE](https://www.nexusmods.com/planetcoaster2/mods/1), sagt Setup es
+2. Fehlt der Mod-Loader [ACSE](https://www.nexusmods.com/planetcoaster2/mods/1), sagt Setup es
    und öffnet die Download-Seite.
 
-Updates holt Setup mit „Nach Update suchen“. Alle Mitspieler brauchen dieselbe Version von
-PC2Coop und vom Spiel. Mit Vortex geht es auch: die ZIP wie jede andere Mod installieren und
-einspielen – dann aber nicht zusätzlich Setup benutzen.
+Updates holt Setup mit „Nach Update suchen“. Ohne Setup geht es mit Vortex (Nexus Mods) oder
+von Hand: die ZIP laden und den Ordner `Mod\PC2CoopProbe` nach `<Spielordner>\Win64\ovldata`
+kopieren. Alle Mitspieler brauchen dieselbe Version von PC2Coop und vom Spiel.
 
 ## Spielen
 
@@ -63,11 +62,12 @@ Lizenz: MIT. ACSE ist nicht enthalten (eigenes Projekt, GPL-3).
 PC2Coop lets two to eight players build live in the same Planet Coaster 2 park over Steam
 invites – no server, no port forwarding, no extra program.
 
-**Install:** download the newest ZIP from [Releases](../../releases/latest) or Nexus Mods and
-extract it. Double-click `PC2Coop-Setup.exe` and press "Install". If Windows says "Windows
-protected your PC", click "More info" → "Run anyway" (Setup is just not signed). If the mod
-loader [ACSE](https://www.nexusmods.com/planetcoaster2/mods/1) is missing, Setup tells you and
-opens its page. Updates: "Check for update" in Setup. Everyone needs the same version.
+**Install:** download `PC2Coop-Setup.exe` from [Releases](../../releases/latest), double-click it
+and press "Install" – Setup finds the game, fetches the mod and checks it (if Windows says
+"Windows protected your PC": "More info" → "Run anyway"). If the mod loader
+[ACSE](https://www.nexusmods.com/planetcoaster2/mods/1) is missing, Setup tells you. Updates:
+"Check for update". Without Setup: Vortex (Nexus Mods), or copy `Mod\PC2CoopProbe` from the ZIP
+into `<game folder>\Win64\ovldata`. Everyone needs the same version.
 
 **Play:** main menu → "Multiplayer", start a session and invite friends. In a park, the round
 "Multiplayer" button top left; middle click marks a spot for everyone, Enter opens the chat. The

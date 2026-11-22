@@ -33,7 +33,8 @@ betrifft, eine Alternative bewusst verworfen wurde oder der Eigner eine Richtung
 | [ADR-020](ADR-020-native-oberflaeche-spiel-bausteine-variablen-rem.md) | Native Oberfläche: Bausteine, Variablen und Einheiten des Spiels | Vorgeschlagen | 2026-11-20 |
 | [ADR-021](ADR-021-einstieg-ueber-runden-knopf-links-oben.md) | Einstieg über einen runden Knopf links oben | Akzeptiert | 2026-11-21 |
 | [ADR-022](ADR-022-englisch-nach-spielsprache.md) | Englisch nach der Sprache des Spiels | Akzeptiert | 2026-11-21 |
-| [ADR-023](ADR-023-eine-zip-mit-setup-fuer-alle-plattformen.md) | Eine ZIP mit Setup.exe für GitHub, Nexus und Vortex | Akzeptiert | 2026-11-22 |
+| [ADR-023](ADR-023-eine-zip-mit-setup-fuer-alle-plattformen.md) | Eine ZIP mit Setup.exe für GitHub, Nexus und Vortex | Teilweise ersetzt (ADR-024) | 2026-11-22 |
+| [ADR-024](ADR-024-setup-als-eigener-download.md) | Setup als eigener Download, die ZIP ohne Programme | Akzeptiert | 2026-11-22 |
 
 ## Vorlage
 

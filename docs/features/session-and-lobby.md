@@ -150,7 +150,7 @@ Hauptcode: `probe/PC2CoopProbe/Main/pc2coop/session.lua` (Rolle, Nachrichten, Zu
 ### FEAT-034 – Mini-Lobby-Karte im Hauptmenü
 - **Status:** Implemented · **Seit:** 1.9.0
 - **Funktion:** Sitzungsleiste (TP-04): auf jeder Seite des Hauptmenüs oben rechts unter dem
-  Newsletter-Kasten, solange die Multiplayer-Seite nicht offen ist. Avatare, Zustand, „Öffnen“
+  Newsletter-Kasten (seit 2.2.0 eine Zeile in der oberen Leiste, FEAT-119), solange die Multiplayer-Seite nicht offen ist. Avatare, Zustand, „Öffnen“
   und „Beenden“/„Verlassen“; bleibt sichtbar, während der Host durch die Spielseiten geht.
 - **UI:** Komponente `MiniLobby` (Aktionen `open`, `leave` über `endOrAsk`).
 

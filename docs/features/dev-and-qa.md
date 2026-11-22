@@ -88,6 +88,8 @@ Werkzeuge für Entwickler und automatische Tests. Arbeitsweise: `docs/developmen
   behandeln; erst die letzte Zeile vor dem Ende des Logs zählt. Der Befehlskanal schreibt
   `net-stage:command` nur noch dreimal. Tests: `tests/test_diagnosis_lua.py`,
   `tools/verify_native.py`.
+- **Seit 2.2.0:** `dll:pinned` nach der Systemzeile; `dll:detach|process-exit` oder
+  `dll:detach|unloaded-while-running` beim Entladen.
 
 ### FEAT-223 – Problembericht
 - **Status:** Implemented · **Seit:** 2.1.0 · **Hängt ab von:** FEAT-216, FEAT-222

@@ -1,26 +1,24 @@
 PC2Coop {version} – Planet Coaster 2 live zusammen bauen
 (English below)
 
-INSTALLIEREN
-1. Diese ZIP entpacken: Rechtsklick → „Alle extrahieren…“.
-2. Im entpackten Ordner PC2Coop-Setup.exe doppelklicken und „Installieren“ drücken.
-   Zeigt Windows „Der Computer wurde durch Windows geschützt“: auf „Weitere
-   Informationen“ und dann „Trotzdem ausführen“ klicken. Setup ist nicht signiert,
-   das ist alles.
-3. Fehlt der Mod-Loader ACSE, sagt Setup es und öffnet die Download-Seite.
+INSTALLIEREN – ein Weg reicht
+A) Mit Vortex (Nexus Mods): „Mod Manager Download“, danach „Deploy“. Fertig.
+B) Mit Setup: PC2Coop-Setup.exe von https://github.com/istmirRegal/pc2coop/releases
+   laden und doppelklicken, „Installieren“. Setup holt die Mod selbst, prüft sie und
+   sucht später auch Updates. Fragt Windows „Der Computer wurde durch Windows
+   geschützt“: „Weitere Informationen“ → „Trotzdem ausführen“.
+C) Von Hand: den Ordner Mod\PC2CoopProbe aus dieser ZIP nach
+   <Spielordner>\Win64\ovldata kopieren (Steam: Rechtsklick auf Planet Coaster 2 →
+   Verwalten → Lokale Dateien durchsuchen). Danach liegt dort
+   Win64\ovldata\PC2CoopProbe\Main.ovl.
 
-Dann im Spiel: Hauptmenü → „Multiplayer“. Alle Mitspieler brauchen dieselbe Version.
-Neue Version: Setup starten → „Nach Update suchen“.
+PC2Coop braucht den Mod-Loader ACSE (Nexus Mods). Alle Mitspieler brauchen dieselbe Version.
+Im Spiel: Hauptmenü → „Multiplayer“.
 
 KLAPPT ETWAS NICHT?
 Im Multiplayer-Fenster unter „Einstellungen“ auf „Problembericht erstellen“ klicken.
 Die Datei landet auf dem Desktop – schick sie dem Entwickler (Discord oder GitHub).
 Steam-IDs und Namen der Mitspieler sind darin ersetzt, Chat steht nie drin.
-
-MIT VORTEX ODER VON HAND
-Vortex: diese ZIP wie jede andere Mod installieren und „Deploy“ ausführen. Dann aber
-nicht zusätzlich Setup benutzen.
-Von Hand: den Ordner Mod\PC2CoopProbe nach <Spielordner>\Win64\ovldata kopieren.
 
 Mehr: https://github.com/istmirRegal/pc2coop · Lizenz: MIT (LICENSE.txt).
 ACSE ist nicht enthalten (eigener Download, eigene Lizenz).
@@ -28,24 +26,22 @@ ACSE ist nicht enthalten (eigener Download, eigene Lizenz).
 
 PC2Coop {version} – build live together in Planet Coaster 2
 
-INSTALL
-1. Extract this ZIP: right-click → "Extract All…".
-2. In the extracted folder, double-click PC2Coop-Setup.exe and press "Install".
-   If Windows says "Windows protected your PC": click "More info", then "Run anyway".
-   Setup is just not signed.
-3. If the mod loader ACSE is missing, Setup tells you and opens its download page.
+INSTALL – one way is enough
+A) With Vortex (Nexus Mods): "Mod Manager Download", then "Deploy". Done.
+B) With Setup: get PC2Coop-Setup.exe from https://github.com/istmirRegal/pc2coop/releases,
+   double-click it, press "Install". Setup fetches the mod itself, checks it and later
+   looks for updates. If Windows says "Windows protected your PC": "More info" →
+   "Run anyway".
+C) By hand: copy the folder Mod\PC2CoopProbe from this ZIP into
+   <game folder>\Win64\ovldata. Then Win64\ovldata\PC2CoopProbe\Main.ovl is there.
 
-Then in the game: main menu → "Multiplayer". Everyone needs the same version.
-New version: start Setup → "Check for update".
+PC2Coop needs the mod loader ACSE (Nexus Mods). Everyone needs the same version.
+In the game: main menu → "Multiplayer".
 
 SOMETHING NOT WORKING?
 In the multiplayer window under "Settings", click "Create problem report". The file
 lands on your desktop – send it to the developer (Discord or GitHub). Steam IDs and the
 other players' names are replaced in it, chat is never in it.
-
-WITH VORTEX OR BY HAND
-Vortex: install this ZIP like any other mod and deploy. Then don't use Setup as well.
-By hand: copy the folder Mod\PC2CoopProbe into <game folder>\Win64\ovldata.
 
 More: https://github.com/istmirRegal/pc2coop · Licence: MIT (LICENSE.txt).
 ACSE is not included (separate download, separate licence).
