@@ -127,3 +127,16 @@ Vorlage je Funktion: Funktion · Technik · UI · Besonderheiten.
 - **Seit 2.2.0 (ADR-024):** ohne PC2Coop-Setup.exe (Nexus nimmt keine Programme); `check()`
   lässt als Programm nur die DLL zu. `package_release.py` legt Setup daneben als eigene Datei
   (`PC2Coop-Setup.exe` neben der ZIP).
+
+### FEAT-013 – Linux-Installer (`install-linux.sh`)
+- **Status:** Implemented · **Seit:** 2.3.0 · **Hängt ab von:** FEAT-012
+- **Funktion:** Für Planet Coaster 2 unter Steam/Proton: installieren, aktualisieren, entfernen,
+  wie PC2Coop-Setup.exe. Neben der entpackten ZIP installiert es diese, sonst lädt es das
+  neueste Release von GitHub. Release-Datei `PC2Coop-Linux-install.sh`; Aufruf `bash …`.
+- **Technik:** `alpha-dist/install-linux.sh` (bash, coreutils, grep, curl, unzip oder bsdtar
+  oder python3; kein jq). Spielordner aus den Steam-Bibliotheken (auch Flatpak/Snap),
+  `--game-dir`, `--source`, `--uninstall`, `--status`, `--api` (Tests). Dasselbe Protokoll
+  `.pc2coop-alpha-install.json` wie Setup, Sicherungen, Rücknahme bei Fehler, nur Einträge unter
+  `PC2Coop/` (Mod-Dateien nach Muster), SHA-256 jeder Datei. Codes wie Setup (0, 1, 2, 3, 5, 7, 10).
+- **Besonderheiten:** Vorschlag aus einem GitHub-Issue (Arch/CachyOS). Nicht als root starten.
+  Test: `tests/test_install_linux_sh.py` (Git-Bash unter Windows).

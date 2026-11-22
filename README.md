@@ -19,6 +19,9 @@ Updates holt Setup mit „Nach Update suchen“. Ohne Setup geht es mit Vortex (
 von Hand: die ZIP laden und den Ordner `Mod\PC2CoopProbe` nach `<Spielordner>\Win64\ovldata`
 kopieren. Alle Mitspieler brauchen dieselbe Version von PC2Coop und vom Spiel.
 
+**Linux (Steam/Proton):** `PC2Coop-Linux-install.sh` aus den Releases laden und mit
+`bash PC2Coop-Linux-install.sh` starten – es findet das Spiel, holt die Mod und prüft sie.
+
 ## Spielen
 
 - **Hauptmenü → Multiplayer:** Sitzung starten und Freunde auf die freien Plätze einladen. Der
@@ -68,6 +71,9 @@ and press "Install" – Setup finds the game, fetches the mod and checks it (if 
 [ACSE](https://www.nexusmods.com/planetcoaster2/mods/1) is missing, Setup tells you. Updates:
 "Check for update". Without Setup: Vortex (Nexus Mods), or copy `Mod\PC2CoopProbe` from the ZIP
 into `<game folder>\Win64\ovldata`. Everyone needs the same version.
+
+**Linux (Steam/Proton):** download `PC2Coop-Linux-install.sh` from Releases and run
+`bash PC2Coop-Linux-install.sh`.
 
 **Play:** main menu → "Multiplayer", start a session and invite friends. In a park, the round
 "Multiplayer" button top left; middle click marks a spot for everyone, Enter opens the chat. The

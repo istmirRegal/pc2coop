@@ -139,6 +139,10 @@ const EXACT = {
     'Chat unten links einblenden': 'Show chat bottom left',
     // Problem report (FEAT-223)
     'Problembericht erstellen': 'Create problem report', 'Bericht wird erstellt …': 'Creating the report …',
+    // Marks in the park by kind (window, plan tab)
+    'Kommentare': 'Comments', 'Vorschläge': 'Proposals', 'Baugebiete': 'Build zones', 'Aufgaben': 'Tasks',
+    'Treffpunkte': 'Meeting points', 'Park-Meldungen': 'Park notifications', 'Kurze Markierungen': 'Quick marks',
+    'Alle Einträge sind ausgeblendet.': 'All entries are hidden.', 'Meldung des Parks': 'Park notification',
     'Auf dem Desktop gespeichert:': 'Saved on your desktop:',
     'Klappt etwas nicht? Schick den Bericht dem Entwickler. Steam-IDs und Namen sind darin ersetzt.':
         'Something not working? Send the report to the developer. Steam IDs and names are replaced in it.',
@@ -374,6 +378,8 @@ function englishTexts(tr) {
         [/^(.+) war schneller$/, (m, who) => named(who) + ' was faster'],
         [/^„(.+)“ wird noch nicht an die anderen übertragen\.$/, (m, what) => '“' + what + '” is not sent to the others yet.'],
         [/^Bericht ging nicht: (.+)$/, (m, why) => 'The report did not work: ' + tr(why)],
+        [/^Im Park zu sehen: (.+)$/, (m, what) => 'Shown in the park: ' + tr(what)],
+        [/^Ausgeblendet: (.+)$/, (m, what) => 'Hidden: ' + tr(what)],
         [/^(.+) hat PC2Coop (\S+), du (\S+)\. Ihr braucht dieselbe Version: PC2Coop-Setup → „Nach Update suchen“\.$/, (m, who, a, b) => who + ' has PC2Coop ' + a + ', you have ' + b + '. You need the same version: PC2Coop Setup → “Check for update”.'],
         [/^(.+) hat Spielversion (\S+), du (\S+)\. Beide aktualisieren das Spiel in Steam\.$/, (m, who, a, b) => who + ' has game version ' + a + ', you have ' + b + '. Both of you update the game in Steam.'],
         [/^Der Host hat PC2Coop (\S+), du (\S+)\. Ihr braucht dieselbe Version: Spiel beenden, PC2Coop-Setup → „Nach Update suchen“\.$/, (m, a, b) => 'The host has PC2Coop ' + a + ', you have ' + b + '. You need the same version: quit the game, PC2Coop Setup → “Check for update”.'],

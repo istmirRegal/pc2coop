@@ -74,6 +74,10 @@ Was ein Spieler von den anderen sieht. Code: `probe/PC2CoopProbe/Main/pc2coop/vi
 - **Seit 2.2.0:** Punktkreise wachsen bis 500 m Kameraabstand mit (vorher 75 m: weit
   herausgezoomt kaum zu finden). Kurze Markierung (8 s, eine je Spieler, die neue ersetzt die
   alte) und dauerhafte Brett-Einträge bleiben getrennt.
+- **Seit 2.3.0:** Das Schild einer kurzen Markierung trägt nur den Namen in der Spielerfarbe
+  (vorher „Name – hier!“, umbrochen); nahe Markierungen stapeln ihre Namen. Die Art „Kurze
+  Markierungen“ lässt sich ausblenden (FEAT-140). Die Punktkreise haben eine gemeinsame Farbe
+  (ein Hervorhebungskanal, eine Farbe).
 
 ### FEAT-096 – Kamera folgen
 - **Status:** Implemented · **Seit:** 1.7.0

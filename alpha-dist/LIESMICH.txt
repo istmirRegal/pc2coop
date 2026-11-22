@@ -11,6 +11,8 @@ C) Von Hand: den Ordner Mod\PC2CoopProbe aus dieser ZIP nach
    <Spielordner>\Win64\ovldata kopieren (Steam: Rechtsklick auf Planet Coaster 2 →
    Verwalten → Lokale Dateien durchsuchen). Danach liegt dort
    Win64\ovldata\PC2CoopProbe\Main.ovl.
+D) Linux (Steam/Proton): PC2Coop-Linux-install.sh von GitHub laden und
+   „bash PC2Coop-Linux-install.sh“ starten.
 
 PC2Coop braucht den Mod-Loader ACSE (Nexus Mods). Alle Mitspieler brauchen dieselbe Version.
 Im Spiel: Hauptmenü → „Multiplayer“.
@@ -34,6 +36,8 @@ B) With Setup: get PC2Coop-Setup.exe from https://github.com/istmirRegal/pc2coop
    "Run anyway".
 C) By hand: copy the folder Mod\PC2CoopProbe from this ZIP into
    <game folder>\Win64\ovldata. Then Win64\ovldata\PC2CoopProbe\Main.ovl is there.
+D) Linux (Steam/Proton): get PC2Coop-Linux-install.sh from GitHub and run
+   "bash PC2Coop-Linux-install.sh".
 
 PC2Coop needs the mod loader ACSE (Nexus Mods). Everyone needs the same version.
 In the game: main menu → "Multiplayer".

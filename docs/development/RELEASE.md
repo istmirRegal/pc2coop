@@ -55,7 +55,7 @@ Spiel-Update anpassen.
 ## 5. Veröffentlichen (nach Rückfrage)
 
 1. Commit, `git tag vX.Y.Z`, push.
-2. `gh release create vX.Y.Z` mit ZIP, `.sha256` und `PC2Coop-Setup.exe` (ADR-024; gh liegt im Arbeitsordner unter
+2. `gh release create vX.Y.Z` mit ZIP, `.sha256`, `PC2Coop-Setup.exe` und `PC2Coop-Linux-install.sh` (ADR-024, FEAT-013; gh liegt im Arbeitsordner unter
    `work/toolchain/gh-2.104.0/bin/gh.exe`). Ältere Release-Dateien behalten keine Assets
    (Wunsch des Eigners); nur das neueste Release hat Dateien. Setup findet Updates über
    `releases/latest` und braucht beide Dateien.

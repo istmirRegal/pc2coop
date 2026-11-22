@@ -207,6 +207,7 @@ Entwickler-Seite: technische Werte und „API-Rekorder an/aus“, „Namensschil
 | `invitation` | 1/0 | Einladung annehmen/später | ja |
 | `take_ok` | – | Übernahme-Frage gelesen („Verstanden“) | ja |
 | `report` | – | Problembericht erstellen (FEAT-223) | ja |
+| `mark_filter` | Art (comment, proposal, area, task, meet, note, ping) | Art im Park und in der Liste ein-/ausblenden (FEAT-140) | ja |
 | `lang` | de/en | Sprache des Spiels für Schilder, die Lua zeichnet (ADR-022) | nein (beim Start, automatisch) |
 | `paneltab` | team/plan/history/session (visit veraltet, zeigt „Spieler“) | Reiter | ja |
 | `board_add` | art\|titel\|text\|zuständig\|radius | Brett-Eintrag | ja |

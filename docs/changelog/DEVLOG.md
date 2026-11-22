@@ -3,6 +3,22 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-22 – 2.3.0: Markierungen und Linux
+
+- Ein GitHub-Issue brachte ein install.sh für Arch/CachyOS, umgeschrieben aus install.ps1 (bis
+  2.0.0: Ordner `payload/`, alter Build-Hash, braucht jq). Neu geschrieben als
+  `alpha-dist/install-linux.sh` für den heutigen Aufbau (`Mod/`, Manifest), ohne jq: unser
+  Manifest und das Protokoll haben ein festes Format, `grep`/`awk` reichen (Paare "path" vor
+  "sha256"; GitHub-Assets "name" vor "browser_download_url"). Lädt ohne Paket wie Setup das
+  neueste Release, prüft SHA-256, entpackt nur die Mod-Dateien (unzip, sonst bsdtar oder
+  python3). Getestet mit Git-Bash (nie WSL: `git --exec-path`) gegen nachgebaute Spielordner und
+  einen GitHub-Ersatz, dazu echt gegen GitHub in die Testkopie. Fund dabei: der EXIT-Trap sah
+  eine lokale Variable nicht mehr (`set -u`).
+- Markierungen: Filter je Art (`shared.markHidden`, UI-Aktion `mark_filter`), Text als Tooltip
+  an der Maus (`shared.pointed`, CoopLayer `PointedTip`), Namen kurzer Markierungen ohne
+  „hier!“ und gestapelt. Die Punktkreise behalten eine gemeinsame Farbe: Hervorhebungskanal 3
+  hat genau eine Farbe; die Namen tragen die Spielerfarbe.
+
 ## 2026-11-22 – 2.2.0: Funde aus dem Test des Eigners
 
 - Absturz beim Beenden (jede Version): Das Log des Eigners (2.1.0, mit der neuen

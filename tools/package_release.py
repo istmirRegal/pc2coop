@@ -126,6 +126,9 @@ def main() -> int:
     out.with_name(out.name + ".sha256").write_text(f"{digest}  {out.name}\n", encoding="ascii")
     setup_out = out.with_name("PC2Coop-Setup.exe")
     shutil.copy2(PROJECT / "build/setup/PC2Coop-Setup.exe", setup_out)
+    # Linux (Steam/Proton): the same job as Setup as a bash script, LF line ends (FEAT-013).
+    linux_out = out.with_name("PC2Coop-Linux-install.sh")
+    linux_out.write_bytes((PROJECT / "alpha-dist/install-linux.sh").read_bytes().replace(b"\r\n", b"\n"))
     print(json.dumps({"zip": str(out.resolve()), "bytes": out.stat().st_size, "sha256": digest, "version": version,
                       "setup": str(setup_out.resolve()), "setup_sha256": sha(setup_out)}, indent=2))
     return 0

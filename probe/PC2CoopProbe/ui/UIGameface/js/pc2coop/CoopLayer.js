@@ -1235,6 +1235,9 @@ const iconButton = (icon, tip, onSelect, toggled) => h('div', { style: { marginL
 const BOARD_KINDS = [['task', 'Aufgabe'], ['area', 'Baugebiet'], ['proposal', 'Vorschlag'], ['comment', 'Kommentar'], ['meet', 'Treffpunkt']];
 const BOARD_WORD = { task: 'Aufgabe', area: 'Baugebiet', proposal: 'Vorschlag', comment: 'Kommentar', meet: 'Treffpunkt' };
 const BOARD_ICON = { task: 'clipboard', area: 'flag', proposal: 'thoughts', comment: 'pinActive', meet: 'marker' };
+// The kinds a player can switch off in the park: board kinds, park notifications, quick marks.
+const MARK_FILTERS = [['comment', 'pinActive', 'Kommentare'], ['proposal', 'thoughts', 'Vorschläge'], ['area', 'flag', 'Baugebiete'],
+    ['task', 'clipboard', 'Aufgaben'], ['meet', 'marker', 'Treffpunkte'], ['note', 'notifications', 'Park-Meldungen'], ['ping', 'Pinned', 'Kurze Markierungen']];
 const AREA_SIZES = [10, 20, 40];
 // A small info icon whose tooltip carries an explanation (TP-18, TP-20: no explanation texts on the page).
 const infoTip = (tip, extra) => h(HoverTip, Object.assign({ tip }, extra || {}),
@@ -1430,9 +1433,18 @@ class Lobby extends StateComponent {
             this.setState({ title: '', text: '', kind, planSeq: team.planSeq, planForm: false });
         };
         const out = [section('Brett des Parks', infoTip('Alles auf dem Brett steht auch als Marker im Park. Aufgaben brauchen keinen Ort.'))];
+        // What the park shows (owner's test 2026-11-22): one switch per kind, as round icon buttons;
+        // switched off, a kind leaves the park and this list (on this PC only).
+        const hidden = list(coop.markHidden);
+        out.push(h('div', { key: 'filter', style: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', margin: '0 0 0.4rem -0.3rem' } },
+            MARK_FILTERS.map(([kind, icon, word]) => h('div', { key: kind },
+                iconButton(icon, (hidden.indexOf(kind) >= 0 ? 'Ausgeblendet: ' : 'Im Park zu sehen: ') + word,
+                    () => request('mark_filter', kind), hidden.indexOf(kind) < 0)))));
+        const shown = items.filter((item) => hidden.indexOf(item.kind) < 0);
         if (items.length === 0) out.push(muted('Noch nichts geplant.', { padding: '0.2rem 0 0.4rem' }));
+        else if (shown.length === 0) out.push(muted('Alle Einträge sind ausgeblendet.', { padding: '0.2rem 0 0.4rem' }));
         // Entries as rows with a type icon and icon buttons (TP-17): tick, thumbs, who, take me there, delete.
-        items.forEach((item) => out.push(h('div', { key: item.id, style: { display: 'flex', alignItems: 'center', padding: '0.3rem 0',
+        shown.forEach((item) => out.push(h('div', { key: item.id, style: { display: 'flex', alignItems: 'center', padding: '0.3rem 0',
             borderBottomWidth: '0.05rem', borderBottomStyle: 'solid', borderBottomColor: ACCENT_A(0.15) } },
             glyph('img/icons/' + (BOARD_ICON[item.kind] || 'clipboard') + '.svg', '1.2rem', false,
                 { marginRight: '0.5rem', filter: C('accentText-filter'), opacity: item.done ? 0.55 : 1 }),
@@ -1849,8 +1861,11 @@ class MiniLobby extends StateComponent {
         const gap = 0.8;
         const room = box ? box.room / unit - 2 * gap : 40;
         if (room < 14) return null;   // no free stretch in the bar: the tile "Multiplayer" says it too
-        const height = box ? box.height / unit : 3;
-        const top = box ? (box.top / unit).toFixed(2) + 'rem' : '2.25rem';
+        // As high as the game's round buttons at most: the franchise page's header buttons are a
+        // tall card, and the line took its height (owner's test 2026-11-22: "zu dick").
+        const band = box ? box.height / unit : 3;
+        const height = Math.min(band, 3);
+        const top = box ? (box.top / unit + (band - height) / 2).toFixed(2) + 'rem' : '2.25rem';
         const right = box ? (box.right / unit + gap).toFixed(2) + 'rem' : '12rem';
         const status = statusOf(coop);
         const parkPage = coop.role === 'host' && coop.stage === 'lobby' && onGameParkPage();
@@ -1990,6 +2005,35 @@ class JoinFailed extends StateComponent {
     }
 }
 
+// What the mouse points at in the park (a board entry, a park notification): the game's tooltip at
+// the mouse, instead of a label in the world that wrapped and covered others (owner's test
+// 2026-11-22). Lua finds it (pc2coopqa.lua, shared.pointed); the tooltip follows the mouse.
+class PointedTip extends StateComponent {
+    componentDidMount() {
+        super.componentDidMount && super.componentDidMount();
+        this._move = () => {
+            const coop = (this.state && this.state.coop) || {};
+            if (!coop.pointed) return;
+            const now = Date.now();
+            if (now - (this._last || 0) > 40) { this._last = now; this.setState({ tick: now }); }
+        };
+        try { document.addEventListener('mousemove', this._move); } catch (error) { /* stays where it opened */ }
+    }
+    componentWillUnmount() {
+        try { document.removeEventListener('mousemove', this._move); } catch (error) { /* gone */ }
+        super.componentWillUnmount && super.componentWillUnmount();
+    }
+    render(props, state) {
+        const coop = state.coop || {};
+        const p = coop.pointed;
+        if (!p || coop.context !== 'park') return null;
+        const at = mouseAt || { x: (window.innerWidth || 1920) / 2, y: (window.innerHeight || 1080) / 2 };
+        const text = String(p.title || '') + (p.sub ? ' · ' + p.sub : '');
+        return h('div', { style: { position: 'absolute', left: (at.x + 18) + 'px', top: (at.y + 14) + 'px', width: '1px', height: '1px' } },
+            h(TooltipContainer, { target: this, tooltip: literal(text), modifiers: 'wide' }));
+    }
+}
+
 // The game's pause menu (Esc) is open: the mod's park layer steps back like the game's own HUD
 // does; only dialogs stay (owner's test 2026-11-22: the window lay over the pause menu).
 let pauseMenuShown = false;
@@ -2015,6 +2059,7 @@ class CoopLayer extends preact.Component {
             shown && h(ConnectionPill, null),
             shown && h(RequestCard, null),
             shown && h(ContextMenu, null),
+            shown && h(PointedTip, null),
             shown && h(ChatArea, null),
             h(JoinProgress, null),
             h(MiniLobby, null),

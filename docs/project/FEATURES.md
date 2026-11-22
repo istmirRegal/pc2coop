@@ -44,6 +44,7 @@ der Bereich nicht, die nächste freie Nummer ab 230.
 | FEAT-010 | Startskript der Python-Alpha (`START.cmd`) | Legacy | vor 1.4.1 |
 | FEAT-011 | PC2Coop-Setup.exe (installieren, aktualisieren, entfernen) | Implemented | 2.1.0 |
 | FEAT-012 | Eine ZIP für GitHub, Nexus und Vortex | Implemented | 2.1.0 |
+| FEAT-013 | Linux-Installer (`install-linux.sh`) | Implemented | 2.3.0 |
 
 ## Sitzung und Lobby — [features/session-and-lobby.md](../features/session-and-lobby.md)
 

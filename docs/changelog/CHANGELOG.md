@@ -5,6 +5,21 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
 
 ## Unveröffentlicht
 
+## 2.3.0 – 2026-11-22
+
+Markierungen aufgeräumt, und PC2Coop für Linux.
+
+- **Markierungen nach Art ein- und ausblenden:** Im Multiplayer-Fenster, Reiter „Planen“, steht
+  oben eine Reihe Symbole – Kommentare, Vorschläge, Baugebiete, Aufgaben, Treffpunkte,
+  Park-Meldungen, kurze Markierungen. Ausgeschaltet verschwindet die Art im Park und in der Liste.
+- **Text ohne Zeilensalat:** Zeigst du mit der Maus auf eine Markierung, steht ihr Text als
+  Tooltip des Spiels an der Maus, nicht mehr umbrochen über allem.
+- **Kurze Markierungen** zeigen nur den Namen in der Farbe des Spielers. Liegen mehrere nah
+  beieinander, stehen die Namen übereinander statt durcheinander.
+- Die Sitzungszeile im Hauptmenü ist auch auf der Franchise-Seite schmal.
+- **Linux (Steam/Proton):** PC2Coop-Linux-install.sh installiert, aktualisiert und entfernt –
+  wie Setup unter Windows, ohne Zusatzprogramme. Danke für den Vorschlag aus einem GitHub-Issue!
+
 ## 2.2.0 – 2026-11-22
 
 Nach dem ersten großen eigenen Test: ruhiger, aufgeräumter – und kein Absturz mehr beim Beenden.

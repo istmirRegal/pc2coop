@@ -89,6 +89,11 @@ Gemeinsam planen, entscheiden, spielen. Konzept: `docs/KONZEPT.md`. Code:
 - **Seit 2.2.0:** im Park nur ein Punktkreis; der Text („Nicht getestet: River Trek“) steht in
   einer Zeile da, solange die Maus darauf zeigt (gilt auch für Brett-Einträge). Vorher standen
   zweizeilige Schilder über allem.
+- **Seit 2.3.0:** Der Text steht als Tooltip des Spiels an der Maus (`PointedTip`, Lua
+  `shared.pointed` aus `managers/pc2coopqa.lua`), nicht mehr als Schild in der Welt. Im Reiter
+  „Planen“ eine Reihe Symbol-Schalter je Art (Kommentar, Vorschlag, Baugebiet, Aufgabe,
+  Treffpunkt, Park-Meldung, kurze Markierung; UI-Aktion `mark_filter`, `shared.markHidden`, auf
+  diesem PC bis Spielende): ausgeschaltet nicht im Park und nicht in der Liste.
 
 ### FEAT-141 – Sicherungspunkte mit Abstimmung
 - **Status:** Implemented · **Seit:** 1.12.0

@@ -148,6 +148,21 @@ local TABS = {team = true, visit = true, plan = true, history = true, session = 
 local planAt = nil          -- {x, y, z}: the spot a context action picked for the next board entry
 local planKind, planSeq = "comment", 0
 local fromMark = false     -- the entry was started from the mark's menu with the window closed
+local pointedSeen = nil
+local MARK_KINDS = {comment = true, proposal = true, area = true, task = true, meet = true, note = true, ping = true}
+local function markHiddenList()
+    local out = {}
+    global.pcall(function()
+        for kind in global.pairs(global.require("pc2coop.shared").markHidden or {}) do out[#out + 1] = kind end
+    end)
+    global.table.sort(out)
+    return out
+end
+-- What the mouse points at in the park (pc2coopqa.lua): {title, sub}, or false.
+local function pointedNow()
+    local ok, p = global.pcall(function() return global.require("pc2coop.shared").pointed end)
+    return ok and p or false
+end
 
 -- Where a new marker goes: the spot of a context action, the own fresh ping, else the view's middle.
 local function anchor()
@@ -291,6 +306,7 @@ local function buildState()
         labels = menu ~= nil and menu.labelsEnabled == true,
         chatLines = chatLinesShown(),
         report = session.ReportState and session.ReportState() or false,
+        markHidden = markHiddenList(), pointed = pointedNow(),
         stage = view.stage or false, parkTitle = view.parkTitle or "", guard = view.guard ~= false,
         context = view.context or false, dlc = view.dlc,
         choice = view.choice or false, canChoose = choosing(), parks = choosing() and parkList or {},
@@ -465,6 +481,17 @@ local actions = {
     take_ok = function() if session.DismissTakeAsk then session.DismissTakeAsk() end end,
     -- "Problembericht erstellen" (FEAT-223): the newest logs, anonymised, as one file on the desktop.
     report = function() if session.Report then session.Report(); lastState = nil end end,
+    -- Marks in the park by kind (owner's test 2026-11-22): comment, proposal, area, task, meet,
+    -- note (park notifications), ping (quick marks). On this PC, until the game ends.
+    mark_filter = function(arg)
+        if not MARK_KINDS[arg or ""] then return end
+        global.pcall(function()
+            local shared = global.require("pc2coop.shared")
+            shared.markHidden = shared.markHidden or {}
+            shared.markHidden[arg] = not shared.markHidden[arg] or nil
+        end)
+        lastState = nil
+    end,
     chatlines = function(arg)
         chatLinesOff = arg == "0"
         global.pcall(function() global.require("pc2coop.shared").chatLinesOff = chatLinesOff end)
@@ -594,6 +621,9 @@ function Ui.Tick()
         if not frontendMenu then global.require("pc2coop.visitor").Tick() end
         ensureBridge()
         local ctx = ensureContext()
+        -- What the mouse points at changed: at once, the tooltip should not lag behind.
+        local okS, seq = global.pcall(function() return global.require("pc2coop.shared").pointedSeq end)
+        if okS and seq ~= pointedSeen then pointedSeen, lastState = seq, nil end
         if frames % 10 == 0 or lastState == nil then
             local state = json(buildState())
             if state ~= lastState then

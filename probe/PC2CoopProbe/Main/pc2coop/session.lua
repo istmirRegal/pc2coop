@@ -15,7 +15,7 @@ local World = global.require("pc2coop.world")
 local shared = global.require("pc2coop.shared")
 
 -- Mod version; must match the database's probeVersion (checked by the tests).
-Session.VERSION = "2.2.0"
+Session.VERSION = "2.3.0"
 -- Errors with their stack, written sparingly (guard.lua); the last messages for a report.
 Session._guard = global.require("pc2coop.guard")
 Session._ring = {}

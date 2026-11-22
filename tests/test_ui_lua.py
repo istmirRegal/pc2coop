@@ -215,6 +215,20 @@ class UiTests(unittest.TestCase):
         self.ui._Request('2|chatlines|1')
         self.assertTrue(self.state()['chatLines'])
 
+    def test_marks_can_be_hidden_by_kind_and_the_pointed_one_reaches_the_ui(self):
+        # Owner's test 2026-11-22: switch kinds of marks off; the text at the mouse, not in the world.
+        source = (SOURCE.parent / 'shared.lua').read_text(encoding='utf8')
+        self.lua.eval('function(s) package.preload["pc2coop.shared"] = function() return assert(load(s, "shared", "t", _G))() end end')(source)
+        self.assertFalse(self.state()['markHidden'])
+        self.ui._Request('1|mark_filter|note')
+        self.ui._Request('2|mark_filter|ping')
+        self.ui._Request('3|mark_filter|nonsense')
+        self.assertEqual(sorted(self.state()['markHidden']), ['note', 'ping'])
+        self.ui._Request('4|mark_filter|ping')
+        self.assertEqual(self.state()['markHidden'], ['note'])
+        self.lua.execute('local s = require("pc2coop.shared"); s.pointed = {title = "River Trek", sub = "Meldung des Parks"}; s.pointedSeq = 1')
+        self.assertEqual(self.state()['pointed'], {'title': 'River Trek', 'sub': 'Meldung des Parks'})
+
     def test_an_entry_from_the_mark_menu_closes_the_window_again(self):
         # Owner's test 2026-11-22: after an entry the window stayed open, and the next mark had no menu.
         self.lua.execute('''view.role = "host"; view.context = "park"

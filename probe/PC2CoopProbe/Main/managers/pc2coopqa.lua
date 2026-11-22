@@ -85,10 +85,16 @@ Manager.Advance=function(self,delta)
                 end
             end
         end
-        -- Pings: a tag above each beacon.
+        -- Pings: the player's name above each beacon, in the player's colour, one short word (owner's
+        -- test 2026-11-22: "Name - hier!" wrapped and overlapped); marks close together stack their
+        -- names. Kinds the player switched off in the window (shared.markHidden) are not drawn.
+        local shared=global.require("pc2coop.shared")
+        local hidden=shared.markHidden or {}
         local pings,names={}, {}
         for _,p in global.pairs(view.players or {}) do names[p.sid]=p end
-        if view.role then
+        local okCam,camAt=global.pcall(function() return global.api.world.GetWorldAPIs().CameraModeManager:GetPosYPRZoom() end)
+        local placed={}
+        if view.role and not hidden.ping then
             for _,ping in global.ipairs(self.session.Pings()) do
                 local who=names[ping.sid]
                 if who then
@@ -101,31 +107,43 @@ Manager.Advance=function(self,delta)
                         if ping.entity and okP and at then lx,ly,lz=at:GetX(),at:GetY()+3,at:GetZ() end
                     end
                     pings[#pings+1]=ping
-                    tags[#tags+1]={key="ping:" .. ping.sid,name=who.name,activity=self.lang.World("hier!"),color=who.color,x=lx,y=ly,z=lz}
+                    local far=okCam and camAt and global.math.sqrt((lx-camAt:GetX())^2+(ly-camAt:GetY())^2+(lz-camAt:GetZ())^2) or 30
+                    local step=1.2+0.035*far
+                    for _,other in global.ipairs(placed) do
+                        if (other.x-lx)^2+(other.z-lz)^2<(step*3)^2 and global.math.abs(other.y-ly)<step then ly=other.y+step end
+                    end
+                    placed[#placed+1]={x=lx,y=ly,z=lz}
+                    tags[#tags+1]={key="ping:" .. ping.sid,name=who.name,activity="",color=who.color,x=lx,y=ly,z=lz}
                     colour=colour or who.color
                 end
             end
         end
         -- Team board and park events: a quiet ring of dots each (the nearest 15 within 300 m); the
-        -- text only while the mouse points at it, in one short line (owner's test 2026-11-22: the
-        -- labels stood over everything and wrapped oddly).
+        -- text only while the mouse points at it, as the game's tooltip at the mouse (owner's test
+        -- 2026-11-22: world labels stood over everything and wrapped oddly).
+        local pointedBest=nil
         if view.role then
             local okRay,sx,sy,sz,dx,dy,dz=global.pcall(global.require("pc2coop.world").CursorRay)
+            -- How close the mouse ray passes (in units of the allowed distance); nil when too far.
             local function pointed(x,y,z)
-                if not okRay or not sx or not dx then return false end
+                if not okRay or not sx or not dx then return nil end
                 local px,py,pz=x-sx,y-sy,z-sz
                 local t=px*dx+py*dy+pz*dz
-                if t<=0 then return false end
+                if t<=0 then return nil end
                 local qx,qy,qz=px-t*dx,py-t*dy,pz-t*dz
                 local limit=3+0.04*t
-                return qx*qx+qy*qy+qz*qz<=limit*limit
+                local q=(qx*qx+qy*qy+qz*qz)/(limit*limit)
+                return q<=1 and q or nil
+            end
+            local function offer(q,title,sub)
+                if q and (not pointedBest or q<pointedBest.q) then pointedBest={q=q,title=title,sub=sub} end
             end
             local cam=global.api.world.GetWorldAPIs().CameraModeManager
             local okC,camPos=global.pcall(function() return cam:GetPosYPRZoom() end)
             local near={}
             local words={area="Baugebiet",task="Aufgabe",comment="Kommentar",meet="Treffpunkt"}
             for _,item in global.ipairs(view.board or {}) do
-                if item.x and item.x~=false and not (item.kind=="task" and item.done) then
+                if item.x and item.x~=false and not (item.kind=="task" and item.done) and not hidden[item.kind] then
                     local d=okC and camPos and ((item.x-camPos:GetX())^2+(item.z-camPos:GetZ())^2) or 0
                     if d<90000 then near[#near+1]={d=d,item=item} end
                 end
@@ -134,18 +152,23 @@ Manager.Advance=function(self,delta)
             for i=1,global.math.min(15,#near) do
                 local item=near[i].item
                 pings[#pings+1]={sid="board:" .. item.id,x=item.x,y=item.y,z=item.z,age=0,radius=item.kind=="area" and item.radius or nil}
-                if pointed(item.x,item.y,item.z) then
-                    local what=self.lang.World(words[item.kind] or "")
-                    if item.assignee and item.assignee~="" then what=what .. " - " .. item.assignee end
-                    tags[#tags+1]={key="board:" .. item.id,name=item.title,activity=what,x=item.x,y=item.y+4,z=item.z}
+                local what=words[item.kind] or "Vorschlag"
+                if item.assignee and item.assignee~="" then what=what .. " · " .. item.assignee end
+                offer(pointed(item.x,item.y,item.z),global.tostring(item.title or ""),what)
+            end
+            if not hidden.note then
+                for i,e in global.ipairs(view.events or {}) do
+                    pings[#pings+1]={sid="event:" .. i,x=e.x,y=e.y,z=e.z,age=e.age}
+                    offer(pointed(e.x,e.y,e.z),self.lang.World(e.label or "Meldung"),"Meldung des Parks")
                 end
             end
-            for i,e in global.ipairs(view.events or {}) do
-                pings[#pings+1]={sid="event:" .. i,x=e.x,y=e.y,z=e.z,age=e.age}
-                if pointed(e.x,e.y,e.z) then
-                    tags[#tags+1]={key="event:" .. i,name=self.lang.World(e.label or "Meldung"),activity="",x=e.x,y=e.y+4,z=e.z}
-                end
-            end
+        end
+        -- The UI shows it at the mouse (CoopLayer.js PointedTip); written only when it changes.
+        local key=pointedBest and (pointedBest.title .. "|" .. pointedBest.sub) or nil
+        if key~=self.pointedKey then
+            self.pointedKey=key
+            shared.pointed=pointedBest and {title=pointedBest.title,sub=pointedBest.sub} or nil
+            shared.pointedSeq=(shared.pointedSeq or 0)+1
         end
         -- Author of what the local player selects or holds.
         self.authorFrames=(self.authorFrames or 0)+1
