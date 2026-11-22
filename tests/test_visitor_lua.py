@@ -124,7 +124,8 @@ package.preload.TransformQ = function() return {FromOrPos = function(q, p) retur
 cam.focus = vec(0, 0, 0)
 cam.pos = vec(0, 5, -5)
 function cam:GetPlacementFocusPos() return self.focus end
-function cam:GetKeyBindings() return {Forward = "W", Backward = "S", Left = "A", Right = "D", SpeedMod = "Shift"} end
+cam.keys = {Forward = "W", Backward = "S", Left = "A", Right = "D", SpeedMod = "Shift", RotateLeft = "Q", RotateRight = "E"}
+function cam:GetKeyBindings() return cam.keys end
 local requestMode = cam.RequestMode
 function cam:RequestMode(name, init) requestMode(self, name, init); self.init = init end
 keys = {}
@@ -191,6 +192,21 @@ class ThirdPersonTests(unittest.TestCase):
         self.assertGreater(abs(x2), 1)
         self.assertAlmostEqual(y2, 0.3)
 
+    def test_space_hops_and_q_e_turn_nothing_while_visiting(self):
+        # Owner's test 2026-11-22: Space should jump (not pause), Q/E only distracted.
+        self.v.Start()
+        self.assertEqual(self.lua.eval('cam.keys.RotateLeft'), 'PC2Coop_NoKey')
+        self.assertEqual(self.lua.eval('cam.keys.RotateRight'), 'PC2Coop_NoKey')
+        self.v.OnKey('space', True)
+        self.tick(10)
+        self.assertGreater(self.lua.eval('V._Lift()'), 0.3)
+        self.v.OnKey('space', False)
+        self.tick(60)
+        self.assertEqual(self.lua.eval('V._Lift()'), 0)
+        self.v.Stop()
+        self.assertEqual(self.lua.eval('cam.keys.RotateLeft'), 'Q')
+        self.assertEqual(self.lua.eval('cam.keys.RotateRight'), 'E')
+
     def test_starts_and_turns_smoothly(self):
         self.v.Start()
         self.lua.execute('V._TestKeys({W = true})')
@@ -242,7 +258,7 @@ class ThirdPersonTests(unittest.TestCase):
         self.v.Start()
         self.v.OnKey('t', True)
         self.tick(61)
-        self.assertEqual(list(self.lua.eval('commands').values())[-1], 'visitor|1|0', 'no mouse look while the wheel is open')
+        self.assertEqual(list(self.lua.eval('commands').values())[-1], 'visitor|1|1', 'mouse look stays: its travel picks the wedge')
         self.v.OnMouse(40, -40)                          # up right: the second wedge
         self.assertEqual(self.lua.eval('V.Wheel().selected'), 2)
         self.v.OnKey('4', True)                          # number keys are the game's: no change

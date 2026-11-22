@@ -420,9 +420,11 @@ end
 local function flushActions(force)
     for key, burst in global.pairs(bursts) do
         if force or frames - burst.last >= 45 then
+            -- No line in the feed any more (owner's test 2026-11-22): the game changes objects by
+            -- itself too, so "… hat <Objekt> bearbeitet" came every few seconds with internal
+            -- names. Who built what stays at the object (FEAT-098); the log keeps a count.
             bursts[key] = nil
-            if burst.n == 1 then addFeed(burst.name .. " hat " .. global.tostring(burst.res) .. " " .. burst.verb)
-            else addFeed(burst.name .. " hat " .. burst.n .. " Objekte " .. burst.verb) end
+            emit("session:actions|" .. burst.verb .. "|" .. burst.n)
         end
     end
 end

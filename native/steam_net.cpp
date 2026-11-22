@@ -867,9 +867,35 @@ void poll_middle_button() {
 // Without a renewal for two seconds everything switches off, so the cursor is never caught.
 
 // The cursor is hidden while mouse look holds it in the middle (P6 finding A10): before, it stood
-// visible in the centre of the screen. ShowCursor keeps a counter: hidden once, shown once.
+// visible in the centre of the screen. ShowCursor only counts for the thread that calls it, and
+// this runs on the game's Lua thread, not the window's: the cursor stayed (owner's test
+// 2026-11-22). So the game window's WM_SETCURSOR (sent on the window's thread whenever the
+// mouse moves, also by SetCursorPos) sets no cursor while hidden. The DLL is pinned, so the
+// window procedure below stays valid for the whole game.
+WNDPROC original_proc = nullptr;
+HWND cursor_window = nullptr;
+volatile LONG cursor_off = 0;
+
+LRESULT CALLBACK cursor_proc(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
+    if (message == WM_SETCURSOR && cursor_off && LOWORD(lparam) == HTCLIENT) {
+        SetCursor(nullptr);
+        return TRUE;
+    }
+    return CallWindowProcW(original_proc, window, message, wparam, lparam);
+}
+
 void set_cursor_hidden(bool hide) {
     static bool hidden = false;
+    if (hide && !cursor_window) {
+        HWND window = GetForegroundWindow();
+        DWORD pid = 0;
+        GetWindowThreadProcessId(window, &pid);
+        if (window && pid == GetCurrentProcessId() && IsWindowUnicode(window)) {
+            original_proc = reinterpret_cast<WNDPROC>(SetWindowLongPtrW(window, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(cursor_proc)));
+            if (original_proc) cursor_window = window;
+        }
+    }
+    InterlockedExchange(&cursor_off, hide ? 1 : 0);
     if (hide == hidden) return;
     hidden = hide;
     ShowCursor(hide ? FALSE : TRUE);
@@ -883,10 +909,10 @@ void poll_visitor() {
     GetWindowThreadProcessId(window, &pid);
     if (pid != GetCurrentProcessId()) { set_cursor_hidden(false); return; }
     set_cursor_hidden(mouse_look);
-    static bool down[11] = {};
-    static const int keys[11] = {VK_TAB, 'T', 'E', 'V', '1', '2', '3', '4', '5', '6', 'F'};
-    static const char* names[11] = {"tab", "t", "e", "v", "1", "2", "3", "4", "5", "6", "f"};
-    for (int i = 0; visitor_keys && i < 11; ++i) {
+    static bool down[12] = {};
+    static const int keys[12] = {VK_TAB, 'T', 'E', 'V', '1', '2', '3', '4', '5', '6', 'F', VK_SPACE};
+    static const char* names[12] = {"tab", "t", "e", "v", "1", "2", "3", "4", "5", "6", "f", "space"};
+    for (int i = 0; visitor_keys && i < 12; ++i) {
         bool pressed = (GetAsyncKeyState(keys[i]) & 0x8000) != 0;
         if (pressed != down[i]) {
             down[i] = pressed;

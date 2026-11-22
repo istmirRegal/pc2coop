@@ -106,8 +106,20 @@ Manager.Advance=function(self,delta)
                 end
             end
         end
-        -- Team board and park events: a beacon and a label each (the nearest 15 within 300 m).
+        -- Team board and park events: a quiet ring of dots each (the nearest 15 within 300 m); the
+        -- text only while the mouse points at it, in one short line (owner's test 2026-11-22: the
+        -- labels stood over everything and wrapped oddly).
         if view.role then
+            local okRay,sx,sy,sz,dx,dy,dz=global.pcall(global.require("pc2coop.world").CursorRay)
+            local function pointed(x,y,z)
+                if not okRay or not sx or not dx then return false end
+                local px,py,pz=x-sx,y-sy,z-sz
+                local t=px*dx+py*dy+pz*dz
+                if t<=0 then return false end
+                local qx,qy,qz=px-t*dx,py-t*dy,pz-t*dz
+                local limit=3+0.04*t
+                return qx*qx+qy*qy+qz*qz<=limit*limit
+            end
             local cam=global.api.world.GetWorldAPIs().CameraModeManager
             local okC,camPos=global.pcall(function() return cam:GetPosYPRZoom() end)
             local near={}
@@ -122,13 +134,17 @@ Manager.Advance=function(self,delta)
             for i=1,global.math.min(15,#near) do
                 local item=near[i].item
                 pings[#pings+1]={sid="board:" .. item.id,x=item.x,y=item.y,z=item.z,age=0,radius=item.kind=="area" and item.radius or nil}
-                local what=self.lang.World(words[item.kind] or "")
-                if item.assignee and item.assignee~="" then what=what .. " - " .. item.assignee end
-                tags[#tags+1]={key="board:" .. item.id,name=item.title,activity=what,x=item.x,y=item.y+9,z=item.z}
+                if pointed(item.x,item.y,item.z) then
+                    local what=self.lang.World(words[item.kind] or "")
+                    if item.assignee and item.assignee~="" then what=what .. " - " .. item.assignee end
+                    tags[#tags+1]={key="board:" .. item.id,name=item.title,activity=what,x=item.x,y=item.y+4,z=item.z}
+                end
             end
             for i,e in global.ipairs(view.events or {}) do
                 pings[#pings+1]={sid="event:" .. i,x=e.x,y=e.y,z=e.z,age=e.age}
-                tags[#tags+1]={key="event:" .. i,name=self.lang.World(e.label or "Meldung"),activity=self.lang.World("Meldung des Parks"),x=e.x,y=e.y+12,z=e.z}
+                if pointed(e.x,e.y,e.z) then
+                    tags[#tags+1]={key="event:" .. i,name=self.lang.World(e.label or "Meldung"),activity="",x=e.x,y=e.y+4,z=e.z}
+                end
             end
         end
         -- Author of what the local player selects or holds.

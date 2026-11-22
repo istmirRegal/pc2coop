@@ -52,9 +52,18 @@ send('Grüße'.encode())
 send(b'x' * 4096)
 send(b'y' * 4097)
 begin(None); nibbles[1](None); end(None)
-header, system, actual = path.read_bytes().split(b'\n',2)
+header, system, pinned, actual = path.read_bytes().split(b'\n',3)
 assert b'no-lua-abi=1' in header
 assert system.startswith(b'system|windows=') and b'|ram-gb=' in system and b'|mods=' in system, system
+assert pinned == b'dll:pinned', pinned
+# Lua frees the DLL when the game closes its Lua states; pinned, it must stay loaded.
+kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+kernel32.GetModuleHandleW.restype = ctypes.c_void_p
+kernel32.GetModuleHandleW.argtypes = [ctypes.c_wchar_p]
+kernel32.FreeLibrary.argtypes = [ctypes.c_void_p]
+for _ in range(3):
+    kernel32.FreeLibrary(dll._handle)
+assert kernel32.GetModuleHandleW(str(args.dll.resolve())), 'DLL was unloaded although pinned'
 assert actual == all_bytes+b'\n\n'+'Grüße'.encode()+b'\n'+b'x'*4096+b'\n'+b'[diagnostic record rejected]\n'*2
 
 # Problem report (FEAT-223): the newest logs in one file; ids, names and the user folder replaced.

@@ -29,6 +29,14 @@ local WALK, RUN = 3.2, 7.5     -- metres per second
 -- second; the gait follows the real speed, with a margin so it does not flicker.
 local ACCEL, DECEL, TURN = 9, 12, 10
 local vel = {x = 0, z = 0}      -- metres per frame
+-- Space: a hop of the figure (owner's test 2026-11-22); lift above the ground in metres.
+local lift, jumpVel = 0, nil
+local JUMP, GRAVITY = 4.2, 12   -- metres per second, metres per second squared
+local savedRotate = nil          -- the camera's Q/E bindings while they are muted
+local muteRotate                 -- defined below Visitor.Start's helpers
+-- One table for every module context (shared.lua); a stand-in where it is missing (tests).
+local okShared, shared = global.pcall(global.require, "pc2coop.shared")
+if not okShared or global.type(shared) ~= "table" then shared = {} end
 local STEP = 0.6               -- highest step the figure climbs
 local active = false
 local mode = "third"           -- "third" or "first"
@@ -150,7 +158,7 @@ local function placeFigure()
         local state = gait
         if gait == "walk" and meal and frames - meal.frame < MEAL_FRAMES then state = "walk" .. meal.kind
         elseif gait == "idle" and emote and frames - emote.frame < EMOTE_FRAMES then state = emote.kind end
-        global.pcall(function() figure.fig:Place(pos.x, pos.y, pos.z, facing, state) end)
+        global.pcall(function() figure.fig:Place(pos.x, pos.y + lift, pos.z, facing, state) end)
         return
     end
     global.pcall(function()
@@ -159,7 +167,7 @@ local function placeFigure()
             if not (E.HaveRequestsCompleted(figure.token) and X.HasTransform(figure.entity)) then return end
             figure.ready = true
         end
-        X.SetTransform(figure.entity, global.require("TransformQ").FromOrPos(rotationY(facing + Visitor.FIGURE_YAW), V(pos.x, pos.y, pos.z)))
+        X.SetTransform(figure.entity, global.require("TransformQ").FromOrPos(rotationY(facing + Visitor.FIGURE_YAW), V(pos.x, pos.y + lift, pos.z)))
     end)
 end
 
@@ -222,7 +230,9 @@ end
 local function keepInput()
     if frames - lastNet >= 60 then
         lastNet = frames
-        net("visitor|1|" .. ((active and not riding and not guestView and not wheel and not listOpen and not shopMenu) and "1" or "0"))
+        -- The emote wheel picks its wedge by the mouse travel the DLL sends in mouse look; with
+        -- mouse look off there was no travel, so no emote was ever chosen (owner's test 2026-11-22).
+        net("visitor|1|" .. ((active and not riding and not guestView and not listOpen and not shopMenu) and "1" or "0"))
     end
 end
 
@@ -238,11 +248,33 @@ function Visitor.Start(view)
     active, riding, guestView, wheel, startedAt = true, nil, false, nil, frames
     lastNet = -1000
     keepInput()
+    muteRotate(true)
     if native then Visitor.WatchGuest() end
     return true
 end
 
+-- Q and E turn the game's camera; while visiting they only distracted (owner's test 2026-11-22).
+-- The bindings point to a name nothing is bound to (InputManager then says "not pressed", tested
+-- in the test copy) and come back when the visit ends.
+muteRotate = function(mute)
+    global.pcall(function()
+        local keys = camera():GetKeyBindings()
+        if global.type(keys) ~= "table" then return end
+        if mute and not savedRotate then
+            savedRotate = {keys.RotateLeft, keys.RotateRight}
+            keys.RotateLeft, keys.RotateRight = "PC2Coop_NoKey", "PC2Coop_NoKey"
+        elseif not mute and savedRotate then
+            keys.RotateLeft, keys.RotateRight = savedRotate[1], savedRotate[2]
+            savedRotate = nil
+        end
+    end)
+end
+Visitor._MuteRotate = muteRotate
+
 function Visitor.Stop()
+    muteRotate(false)
+    shared.visitBlocksPause = false
+    lift, jumpVel = 0, nil
     if riding or guestView then global.pcall(function() global.require("Editors.Shared.BaseUIMode").SetNewMode("Select") end) end
     global.pcall(function() camera():RequestDefaultMode() end)
     dropFigure()
@@ -514,6 +546,11 @@ function Visitor.OnKey(name, down)
         return "stop"
     end
     if name == "e" and down and not riding then return "interact" end
+    -- Space: the figure hops; the game's own pause on Space is held back meanwhile (world.lua).
+    if name == "space" then
+        if down and mode == "third" and not riding and not guestView and not wheel and lift == 0 then jumpVel = JUMP end
+        return nil
+    end
     -- No number keys (P6 A14): the game handles them too, so they did two things at once. The
     -- wheel goes by the mouse, the shop list by a click.
     if name == "v" and down and not riding and not wheel then return "view" end
@@ -605,6 +642,11 @@ local function advanceFigure()
     if speed < (gait == "idle" and 0.6 or 0.3) then gait = "idle"
     elseif speed > (gait == "run" and mid - 0.8 or mid + 0.4) then gait = "run"
     else gait = "walk" end
+    if jumpVel then
+        lift = lift + jumpVel / 60
+        jumpVel = jumpVel - GRAVITY / 60
+        if lift <= 0 then lift, jumpVel = 0, nil end
+    end
     if speed > 0.2 then
         -- Turn towards where it goes, the short way round, not at once.
         local want = global.math.atan(vel.x, vel.z)
@@ -626,6 +668,8 @@ end
 -- Every frame: the controller, and noticing when the player leaves with the game's own keys.
 function Visitor.Tick()
     frames = frames + 1
+    -- While the figure walks, Space is a hop, not the game's pause (owner's test 2026-11-22).
+    shared.visitBlocksPause = active and mode == "third" and not riding and not guestView
     if not active then return end
     keepInput()
     if mode == "third" and not riding and not guestView then
@@ -702,11 +746,13 @@ end
 -- QA: walk without a keyboard (the game's own cameras read the real InputManager).
 function Visitor._TestKeys(keys) testKeys = keys end
 function Visitor._Facing() return facing end   -- test seam
+function Visitor._Lift() return lift end       -- test seam
 
 function Visitor._Reset()
     active, riding, guestView, frames, lastList, listFrame = false, nil, false, 0, {}, -1000
     pos, figure, wheel, mode, preferred, pendingYaw = nil, nil, nil, "third", "third", 0
     gait, emote, shopMenu, meal, toFigure = "idle", nil, nil, nil, nil
+    lift, jumpVel, savedRotate = 0, nil, nil
 end
 
 return Visitor

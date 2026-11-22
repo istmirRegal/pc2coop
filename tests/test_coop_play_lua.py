@@ -116,16 +116,18 @@ class CoopPlayTests(unittest.TestCase):
         self.assertEqual((hud['bPaused'], hud['nTimeScaleIndex']), (False, 3))
         self.assertTrue(any('Host lässt das Spiel laufen (x5)' in t for t in self.toasts('200')))
 
-    def test_many_placements_are_one_log_line(self):
+    def test_building_puts_no_lines_in_the_feed_only_a_count_in_the_log(self):
+        # Owner's test 2026-11-22: "… hat <Objekt> bearbeitet" every few seconds was noise.
         for part in range(101, 106):
             self.peers['200'].local_change(f'sync:up|{part}||0|{ROCK}')
         self.pump(4)
         self.peers['300'].local_change(f'sync:up|201||0|{ROCK}')
         self.pump(4)
         self.host_ticks()
-        self.assertIn('Alex hat 5 Objekte platziert', self.feed())
-        self.assertIn('Sam hat AQ_Rock_04 platziert', self.feed())
-        self.assertEqual(sum('platziert' in line for line in self.feed()), 2)
+        self.assertFalse([line for line in self.feed() if 'platziert' in line])
+        logs = list(self.peers['100'].lua.eval('logs').values())
+        self.assertIn('session:actions|platziert|5', logs)
+        self.assertIn('session:actions|platziert|1', logs)
 
     def test_host_cannot_place_a_friends_object_so_it_is_removed_everywhere(self):
         gid = self.build('200')

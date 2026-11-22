@@ -28,8 +28,14 @@ function World.HookHUD(module, trace)
             return shutdown(self, ...)
         end
     end
-    module.ChangeSimulationSpeedSettings = function(self, ...)
-        local results = pack(change(self, ...))
+    module.ChangeSimulationSpeedSettings = function(self, paused, ...)
+        -- Visiting as the figure: Space is a hop, so the game's own pause stays off (a speed
+        -- change still goes through; the session's own changes come with applyingTime).
+        if shared.visitBlocksPause and not shared.applyingTime and paused ~= nil then
+            if global.select("#", ...) == 0 or (...) == nil then return end
+            paused = nil
+        end
+        local results = pack(change(self, paused, ...))
         shared.hud = self
         if not shared.applyingTime and shared.onTime then
             global.pcall(shared.onTime, self.bPaused == true, global.tonumber(self.nTimeScaleIndex) or 1)

@@ -135,8 +135,16 @@ bool pc2_diagnostic_inbox(char* data, DWORD capacity, DWORD* size) noexcept {
     return ok;
 }
 
-BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID) {
+BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved) {
     if (reason == DLL_PROCESS_ATTACH) module_handle = instance;
+    // Unloaded while the game still runs would mean a crash (see pc2_bootstrap). The line tells
+    // a report which way the DLL went; no lock wait in the loader lock.
+    if (reason == DLL_PROCESS_DETACH && TryAcquireSRWLockExclusive(&file_lock)) {
+        const char* line = reserved ? "dll:detach|process-exit\n" : "dll:detach|unloaded-while-running\n";
+        DWORD done = 0;
+        if (log_file != INVALID_HANDLE_VALUE) WriteFile(log_file, line, static_cast<DWORD>(strlen(line)), &done, nullptr);
+        ReleaseSRWLockExclusive(&file_lock);
+    }
     return TRUE;
 }
 
@@ -169,6 +177,14 @@ extern "C" __declspec(dllexport) int pc2_bootstrap(void*) noexcept {
         } catch (...) {}
         image_range(GetModuleHandleW(nullptr), exe_base, exe_end);
         image_range(module_handle, own_base, own_end);
+        // Crash on quitting (owner, every version): Lua frees the DLL when the game closes its Lua
+        // states (package.loadlib -> FreeLibrary), but Steam still holds our callback objects and
+        // Windows our exception handler - both would then point into unmapped code. Pinned, the
+        // DLL stays until the process ends.
+        HMODULE pinned = nullptr;
+        bool pin = GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN,
+                                      reinterpret_cast<LPCWSTR>(&crash_watch), &pinned) != FALSE;
+        append(pin ? "dll:pinned\n" : "dll:pin-failed\n", pin ? 11 : 15);
         AddVectoredExceptionHandler(0, crash_watch);
     }
     return 0;

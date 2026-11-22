@@ -125,8 +125,9 @@ local function sizeAt(x, y, z)
     if not camAt or not x then return 1 end
     local dx, dy, dz = x - camAt[1], (y or camAt[2]) - camAt[2], z - camAt[3]
     -- About 1/25 of the distance: a ring of a few dozen pixels at any distance (at 1/60 it vanished
-    -- from 45 m, test copy).
-    return global.math.max(0.5, global.math.min(3, global.math.sqrt(dx * dx + dy * dy + dz * dz) / 25))
+    -- from 45 m, test copy). Up to 500 m (was 75 m: zoomed far out, a mark was too small to find,
+    -- owner's test 2026-11-22).
+    return global.math.max(0.5, global.math.min(20, global.math.sqrt(dx * dx + dy * dy + dz * dz) / 25))
 end
 -- Sets an item's scale when it changed noticeably.
 local function resize(item, scale)

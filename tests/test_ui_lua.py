@@ -215,6 +215,26 @@ class UiTests(unittest.TestCase):
         self.ui._Request('2|chatlines|1')
         self.assertTrue(self.state()['chatLines'])
 
+    def test_an_entry_from_the_mark_menu_closes_the_window_again(self):
+        # Owner's test 2026-11-22: after an entry the window stayed open, and the next mark had no menu.
+        self.lua.execute('''view.role = "host"; view.context = "park"
+            ctx = {x = 1, y = 2, z = 3, frame = 5}
+            session.Context = function() return ctx end
+            session.CloseContext = function() ctx = nil end
+            session.BoardAdd = function(...) calls.board = select("#", ...) end''')
+        self.ui._Request('1|ctx|comment')
+        self.assertTrue(self.state()['open'])
+        self.ui._Request('2|board_add|comment|Schatten|mehr Bäume||')
+        self.assertTrue(self.lua.eval('calls.board'))
+        self.assertFalse(self.state()['open'])
+        # Opened by hand first (after the game's 45-frame bounce guard): it stays open after the entry.
+        self.lua.execute('for i = 1, 50 do ui.Tick() end')
+        self.ui._Request('3|open|')
+        self.lua.execute('ctx = {x = 1, y = 2, z = 3, frame = 9}')
+        self.ui._Request('4|ctx|comment')
+        self.ui._Request('5|board_add|comment|Bank||')
+        self.assertTrue(self.state()['open'])
+
     def test_guests_cannot_pick_or_start(self):
         self.lua.execute('ui.SetFrontend(menuHud); view.role, view.stage = "client", "lobby"')
         self.lua.execute('ui._Request("1|choose|save|1"); ui._Request("2|start|")')

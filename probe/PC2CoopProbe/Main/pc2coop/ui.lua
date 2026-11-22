@@ -147,6 +147,7 @@ local TABS = {team = true, visit = true, plan = true, history = true, session = 
 
 local planAt = nil          -- {x, y, z}: the spot a context action picked for the next board entry
 local planKind, planSeq = "comment", 0
+local fromMark = false     -- the entry was started from the mark's menu with the window closed
 
 -- Where a new marker goes: the spot of a context action, the own fresh ping, else the view's middle.
 local function anchor()
@@ -380,7 +381,10 @@ local actions = {
             if not x then session.Notice("Keine Stelle gefunden. Markiere zuerst eine.", "ff922b"); return end
         end
         session.BoardAdd(kind, x, y, z, global.tonumber(radius) or 0, title, text, assignee)
-        planAt = nil
+        -- Started from the mark's menu: back to the park, the window closes again (owner's test
+        -- 2026-11-22: it stayed open, and with it open the next mark showed no menu).
+        if planAt and fromMark then Ui.SetOpen(false) end
+        planAt, fromMark = nil, false
     end,
     board_vote = function(arg)
         local id, value = global.string.match(arg or "", "^(b%d+)|([01])$")
@@ -394,6 +398,7 @@ local actions = {
         local found = contextCache and contextCache.frame == c.frame and contextCache.state or {}
         if arg == "comment" or arg == "area" or arg == "meet" or arg == "proposal" then
             planAt, planKind, planSeq, panelTab = {c.x, c.y, c.z}, arg, planSeq + 1, "plan"
+            fromMark = not open
             Ui.SetOpen(true)
         elseif arg == "invite" and found.ride then
             session.InviteRide(found.ride.key, found.ride.name)

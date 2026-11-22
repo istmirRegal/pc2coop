@@ -171,7 +171,7 @@ Steuerzeilen ohne Nummer: `S|<name>` (Synchronisation starten), `X` (stoppen), `
 `task-error`, `park-retry` (Park kam nicht, neu angefragt), `rate-limited` (ein Mitspieler über
 dem Limit einer Nachrichtenart), seit 2.1.0 `code` (Sitzungscode), `snap` (Stand alle 30 s),
 `recent` (letzte Netz-Ereignisse), `report`, `report-done`, `report-error`, `report-failed`
-(FEAT-222, FEAT-223) und ohne Präfix `error|<wo>|x<n>|<Stapel>` aus guard.lua – Diagnose im Log
+(FEAT-222, FEAT-223), `actions` (Anzahl Bauaktionen statt Zeilen im Verlauf, seit 2.1.1) und ohne Präfix `error|<wo>|x<n>|<Stapel>` aus guard.lua – Diagnose im Log
 (FEAT-216), werden von QA-Werkzeugen als erwartete Zeilen benutzt.
 
 ## Schutz gegen Fluten und kaputte Werte (seit 2.0.0)
