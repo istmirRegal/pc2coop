@@ -131,7 +131,7 @@ Spiel zeigt Vorschauen nur für das eigene Werkzeug.
 - Erste Benutzung einer Funktion: ein kurzer Hinweis im Spiel (einmal pro Spielstart:
   Mittelklick-Menü und Multiplayer-Reiter).
 - Tooltips an den eigenen Knöpfen.
-- LIESMICH: vollständige Bedienung und Grenzen.
+- LIESMICH im Paket: nur installieren in drei Schritten; Bedienung und Grenzen auf GitHub (README).
 
 ## Reihenfolge
 

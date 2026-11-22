@@ -43,7 +43,7 @@ class Peer:
         self.sid, self.name = sid, name
         self.lua = LuaRuntime(unpack_returned_tuples=True)
         self.lua.execute(FAKES)
-        for module in ('shared', 'world', 'rides', 'visitor', 'board', 'figure', 'shop'):
+        for module in ('shared', 'world', 'rides', 'visitor', 'board', 'figure', 'shop', 'guard', 'lang'):
             source = (SOURCE.parent / f'{module}.lua').read_text(encoding='utf8')
             self.lua.eval('function(n, s) package.preload["pc2coop." .. n] = function() return assert(load(s, n, "t", _G))() end end')(module, source)
         loader = self.lua.eval('function(s) return assert(load(s, "session", "t", _G))() end')
@@ -356,7 +356,7 @@ class VersionTests(SessionTests):
         self.assertNotIn('Alt', names)
         state = old.lua.eval('session.JoinState()')
         self.assertEqual(state['phase'], 'failed')
-        self.assertIn('UPDATE.cmd', state['reason'])
+        self.assertIn('Nach Update suchen', state['reason'])
         self.assertIsNone(old.lua.eval('session.View().role'))
 
 

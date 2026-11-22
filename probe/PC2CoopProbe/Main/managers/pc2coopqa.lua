@@ -51,18 +51,16 @@ Manager.Init=function(self,properties,environment)
 end
 
 Manager.Advance=function(self,delta)
-    local ok,failure=global.pcall(self.qa.Tick,self.parkManager)
-    if not ok then self.diagnostic.Write("[PC2CoopQA] tick-error:" .. global.tostring(failure)) end
-    ok,failure=global.pcall(self.live.Tick,self.qa.IsOwnTestPark())
-    if not ok then self.diagnostic.Write("[PC2CoopLive] live:tick-error:" .. global.tostring(failure)) end
-    ok,failure=global.pcall(self.sync.Tick)
-    if not ok then self.diagnostic.Write("[PC2CoopSync] sync:tick-error|" .. global.tostring(failure)) end
-    ok,failure=global.pcall(self.session.Tick)
-    if not ok then self.diagnostic.Write("[PC2CoopSession] session:tick-error|" .. global.tostring(failure)) end
-    global.pcall(self.ui.Tick)
+    -- Errors are written with their stack and only now and then (guard.lua, FEAT-222).
+    local guard=self.session._guard
+    guard.Call("qa.tick",self.qa.Tick,self.parkManager)
+    guard.Call("live.tick",self.live.Tick,self.qa.IsOwnTestPark())
+    guard.Call("sync.tick",self.sync.Tick)
+    guard.Call("session.tick",self.session.Tick)
+    guard.Call("ui.tick",self.ui.Tick)
     -- The other players in the park: name tag, ground marker, view wedge, ghost of what
     -- they hold, tint on what they edit. Eased every frame.
-    global.pcall(function()
+    guard.Call("presence",function()
         local view=self.session.View()
         local tags,remote,locked={}, {}, {}
         local colour=nil

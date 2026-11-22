@@ -1,6 +1,6 @@
 # ADR-010: Nexus-Paket ohne Skripte, DLL mit Versionsangaben
 
-- **Status:** Akzeptiert
+- **Status:** Teilweise ersetzt durch ADR-023 (ein Paket mit Setup.exe statt zwei Paketen; die DLL-Versionsangaben gelten weiter)
 - **Datum:** 2026-11-19
 - **Betrifft:** FEAT-006, FEAT-008
 

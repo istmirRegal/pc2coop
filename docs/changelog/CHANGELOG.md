@@ -5,149 +5,57 @@ Für Spieler: was sich in jeder Version geändert hat. Interne Änderungen stehe
 
 ## Unveröffentlicht
 
+## 2.1.0 – 2026-11-22
+
+Einfacher installieren, Probleme leichter finden.
+
+- **Eine ZIP für alle.** Auf GitHub und Nexus Mods liegt dieselbe Datei. Entpacken,
+  PC2Coop-Setup.exe doppelklicken, „Installieren“ – fertig. Setup findet das Spiel selbst,
+  merkt, wenn ACSE fehlt (und öffnet dann die Download-Seite), und holt auf Knopfdruck Updates.
+- **Vortex** legt PC2Coop jetzt richtig ins Spiel, nur den Mod-Ordner.
+- **Problembericht.** Klappt etwas nicht, erstellt „Problembericht erstellen“ eine Datei auf dem
+  Desktop (im Park: Multiplayer → Einstellungen; im Hauptmenü unten auf der Seite
+  „Multiplayer“). Steam-IDs und Namen sind darin ersetzt. Einfach dem Entwickler schicken.
+- Fehler der Mod werden mit der genauen Stelle aufgeschrieben; stürzt das Spiel ab, steht es im
+  Log. Bei einem Fehler der Mod läuft das Spiel weiter.
+- Haben zwei Spieler verschiedene Versionen, sagt die Meldung jetzt: Setup → „Nach Update suchen“.
+
+**Wer PC2Coop schon hat:** Das alte UPDATE.cmd kann diese Version nicht installieren. Einmal die
+neue ZIP herunterladen und Setup starten – danach aktualisiert Setup selbst.
+
 ## 2.0.0 – 2026-11-21
 
-Neue Oberfläche im Stil des Spiels (UX-Overhaul P0 bis P6, mit den Funden aus dem ersten
-eigenen Test). Während der Entwicklung hieß diese Version 1.14.0; wegen des Umfangs (neue
-Oberfläche, Englisch, Sicherheit) heißt sie 2.0.0.
+Die große Überarbeitung: PC2Coop sieht aus wie ein Teil des Spiels, spricht Englisch und ist
+sicherer übers Netz. (Während der Entwicklung hieß diese Version 1.14.0.)
 
-- **Englisch:** Läuft Planet Coaster 2 nicht auf Deutsch, spricht die Mod Englisch – Fenster,
-  Hauptmenü, Hinweise, Meldungen und Schilder. Chat und Brett bleiben, wie sie geschrieben wurden.
+**Neu**
+- Englisch: Läuft Planet Coaster 2 nicht auf Deutsch, ist auch die Mod englisch.
+- Seite „Multiplayer“ im Hauptmenü: acht Plätze, Freunde einladen mit einem Klick, Chat. Den
+  Park öffnet der Host auf den Seiten des Spiels, alle laden ihn mit.
+- Im Park: runder Knopf „Multiplayer“ links oben, das Fenster klappt darunter auf. Du baust
+  weiter, während es offen ist.
+- Chat unten links mit Enter (abschaltbar unter „Für dich“).
+- Eine Karte oben für alles, was eine Antwort braucht: Beitritt, Abstimmungen, Testfahrten,
+  Übernahmen.
+- Beitreten in vier sichtbaren Schritten, bis zum Laden abbrechbar.
 
-- Das Multiplayer-Fenster öffnest du im Park über einen runden Knopf links oben, wie die Knöpfe
-  des Spiels dort. Das Fenster klappt direkt darunter aus. Der Reiter rechts an der Bauleiste ist
-  weg, die Leiste ist wieder symmetrisch.
-- Fenster und Listen scrollen mit dem Mausrad und haben die Scrollleiste des Spiels; keine
-  Einstellung ist mehr verdeckt.
-- „Enter Chat“ und „Markieren“ stehen in der Hinweiszeile des Spiels statt in einem eigenen
-  Kasten über der Bauleiste.
-- Die Sitzungsleiste im Hauptmenü sieht aus wie der Newsletter-Kasten und hat dieselben Kanten.
-- Auf den Spielseiten (Sandbox, Franchise …) steht oben, dass der Park für alle öffnet.
-- „+ Einladen“ markiert den Platz, bis du rechts einen Freund wählst.
-- Markierungen (Ping) verdecken nichts mehr: Auf einem Objekt blinkt dessen Umriss in deiner
-  Farbe, auf dem Boden liegt ein kleiner Punktkreis mit freier Mitte. Baugebiete sind ein
-  Punktkreis statt einer großen Scheibe.
-- „Für dich“: Der Chat unten links lässt sich ausblenden; Enter öffnet ihn trotzdem.
-- Stabiler bei wackeliger Verbindung: Kommt der Park beim Beitreten nicht an, fragt die Mod
-  nach 20 Sekunden neu (dreimal), statt ewig zu warten. Nach jedem Neuladen hast du wieder das
-  Brett, die Regeln und die Bewertungen.
-- Sicherer: Ein Mitspieler kann die anderen nicht mehr mit Chat, Einladungen oder
-  Brett-Einträgen fluten und keine Bauplan-Dateien anderer überschreiben.
-- Der Installer nennt den Spiel-Build, mit dem das Paket getestet wurde (jetzt 26494896).
-  Vorher nannte er immer den alten Build 26255360 und meldete deshalb bei jedem
-  „noch nicht getestet“.
-- Das alte Multiplayer-Fenster in der Mitte des Hauptmenüs ist weg; die Seite „Multiplayer“
-  öffnet, sobald das Menü es erlaubt.
-- Besuch: Die Figur fährt an, bremst und dreht sich weich. Eingänge und Läden werden auch in
-  Blickrichtung der Kamera und etwas zur Seite gefunden. Der Mauszeiger ist beim Umsehen weg.
-  Die Tastenhinweise sehen aus wie die des Spiels. Zahlentasten tun im Besuch nichts mehr
-  (Emotes mit der Maus, Kaufen per Klick).
-- Die Knöpfe des Spiels für Pause, Tempo und Rückgängig sagen im Tooltip, warum sie in der
-  Sitzung gesperrt sind (Regel „nur der Host“, nur der eigene letzte Schritt).
-- Die Spieler oben rechts verdecken keine Fenster des Spiels mehr (z. B. Gelände oder
-  Szeneriepinsel). Ist dort ein Fenster offen, rücken sie links daneben.
-- Fehlt die Steam-Verbindung der Mod (zum Beispiel wenn der Virenscanner die DLL blockiert),
-  sagen die Kachel und die Seite „Multiplayer“, woran es liegt und was hilft.
-- Die Freundesliste zeigt nur, wer gerade erreichbar ist. Ist keiner online, steht das da.
-- „Zurückholen…“ bei einem Sicherungspunkt fragt erst nach.
-- Fragt jemand, ob er bei deinem Objekt weitermachen darf, steht das in der Anfrage-Karte oben
-  statt in einer Meldung unten links.
-- Alle Meldungen der Mod mit Umlauten (vorher z. B. „Gaeste eingeschlossen“, „faehrt …“).
-- Die Log-Datei öffnet sich im Editor wieder als normaler Text; vorher zeigte er oft nur
-  chinesische Zeichen. Dieselbe Meldung steht nicht mehr hundertfach darin.
-- Beitreten zeigt vier Schritte (Verbinden, Zustimmung, Park kommt, Park lädt) mit
-  Fortschritt, und du kannst bis zum Laden abbrechen.
-- „Sitzung starten“ ist gesperrt, bis Steam antwortet. Klappt es nicht, siehst du warum.
-- Eine Einladung ohne Antwort zeigt nach 2 Minuten „keine Antwort“; du kannst noch einmal
-  einladen.
-- Antwortet der Host nicht, steht oben „Keine Verbindung zum Host“ mit der Zeit und „Verlassen“;
-  nach einer halben Minute fragst du „Warten“ oder „Verlassen“. Kommt die Verbindung wieder,
-  wird die Anzeige kurz grün.
-- Geht der Host ins Hauptmenü, fragt ein Dialog, ob du mitkommst oder im Park wartest.
-- Ist der Host weg, sagt dir ein Dialog „Die Sitzung ist beendet“. Du kannst im Park allein
-  weiterspielen oder ins Hauptmenü gehen.
-- Das Emote-Rad sieht aus wie die Radialmenüs des Spiels, mit den Gast-Symbolen des Spiels.
-- Fahrgeschäfte: Die Bewertung steht als Sterne da; deine Wertung gibst du mit fünf Sternen statt
-  mit den Knöpfen 1 bis 5.
-- Besuch wie der Laufmodus des Spiels: Die Leiste oben ist weg, die Tasten stehen unten rechts.
-  Die Bauleiste ist im Besuch ausgeblendet. Was E vor einem Eingang tut, steht unter der
-  Bildmitte, mit Grund, wenn es gerade nicht geht. Ein Laden zeigt ein kleines Kauf-Panel.
-- Neu im Besuch: Taste **F** öffnet die Fahrgeschäfte links, solange ist die Maus frei zum Klicken.
-- Die sechs Emote-Knöpfe sind weg; Emotes gibt es mit T (Rad).
-- Wer beitreten möchte, wartet auf der Multiplayer-Seite als Karte in einem Platz; der Host
-  lässt ihn mit Haken oder X zu oder lehnt ab.
-- Öffnet der Host einen Park, sehen alle anderen sofort „… öffnet einen Park“. Im Park steht
-  einmal „Alle sind da“, sobald niemand mehr lädt.
-- Neu im Hauptmenü: die Seite „Multiplayer“ im Stil des Spiels (Esc führt zurück). Acht Plätze
-  für die Spieler; ein Klick auf einen freien Platz lädt Freunde ein. Eingeladene stehen blass im
-  Platz, bis sie kommen. Daneben der Chat.
-- Den Park öffnet der Host jetzt auf den Seiten des Spiels („Sandbox“, „Franchise“). Alle in der
-  Sitzung laden ihn mit. Die eigene Parkliste der Mod ist weg.
-- Die kleine Sitzungskarte im Hauptmenü ist jetzt eine Leiste oben rechts und bleibt auf allen
-  Seiten des Hauptmenüs sichtbar.
-- Die Kachel „Multiplayer“ zeigt, ob eine Sitzung offen ist oder ein Freund eine hat.
-- Vorschläge auf dem Brett zeigen „Dagegen“ nicht mehr als gewählt, wenn du noch gar nicht
-  abgestimmt hast.
-- Brett: Jeder Eintrag hat ein Icon für seine Art. Wer für eine Aufgabe oder ein Baugebiet
-  zuständig ist, kannst du jetzt auch nachträglich ändern. Beim neuen Eintrag wählst du Art,
-  Zuständig und Größe mit Pfeilen wie im Optionsmenü.
-- Verlauf: Park-Meldungen haben „Hinbringen“ und „Ausblenden“. „Seit deinem letzten Besuch“
-  kommt beim Beitritt einmal als Meldung und steht danach im Verlauf.
-- Im Pausemenü kannst du die Sitzung jetzt auch verlassen oder (als Host) beenden.
-- Schilder im Park zeigen keinen Punkt mehr vor dem Text.
-- Der Reiter „Einstellungen“ sieht aus wie das Optionsmenü des Spiels: Schalter und
-  Auswahl mit Pfeilen. Was eine Regel bedeutet, steht im Tooltip. Mitspieler sehen die Regeln
-  gesperrt. Die Erklärtexte „Deine Rolle“ und „Abwesenheit“ sind jetzt Tooltips.
-- „Beenden“ fragt jetzt nach („Für alle beenden?“), solange noch jemand in der Sitzung ist.
-- Tooltips der Mod liegen nicht mehr unter dem Multiplayer-Fenster.
-- Namensschilder im Park zeigen nur noch den Namen, in der Farbe des Mitspielers. Was er gerade
-  tut, siehst du, wenn du mit der Maus auf seinen Namen oben rechts fährst.
-- Die Spieler oben rechts zeigen statt abgeschnittenem Text ein Icon (baut, schaut zu, hält
-  etwas, lädt). Der Tooltip sagt, was er tut, und dass ein Klick ihm folgt.
-- Das Multiplayer-Fenster im Park ist jetzt ein Fenster wie die des Spiels am linken Rand. Du
-  kannst weiterbauen, während es offen ist. Vier Reiter: Spieler, Planen, Verlauf, Einstellungen.
-  Freunde lädst du über „+ Einladen“ ein. Der Chat rückt bei offenem Fenster daneben.
-- „Besuchen“ ist ein Knopf im Fuß des Fensters statt eines eigenen Reiters.
-- Einträge auf dem Brett haben Icon-Knöpfe (Haken, Daumen, Hinbringen, Löschen); ein neuer Eintrag
-  geht über „+ Neuer Eintrag“.
-- Änderst du Akzentfarbe oder Farbenblind-Modus, folgt die Mod-Oberfläche nach etwa einer
-  Sekunde, auch die farbigen Streifen der Meldungen.
-- Die Krone des Hosts ist in der Spielerliste des Fensters wieder zu sehen.
-- „Hinbringen“ und „Folgen“ stehen in der Spieler-Karte in einer eigenen Zeile und passen wieder.
-- F8 öffnet kein Entwickler-Menü mehr. Sitzung starten, einladen und verlassen geht im
-  Multiplayer-Fenster (F7).
-- Neu im Multiplayer-Fenster, Reiter „Einstellungen“: „Für dich“ mit dem Schalter „Mitspieler in
-  der Welt zeigen“ (vorher nur im Entwickler-Menü).
-- Dunkle Flächen der Mod (Chat, Meldungen, Karten) und die Linien im Fenster folgen jetzt
-  deiner Akzentfarbe.
-- Auch die Meldungen sagen jetzt „Sitzung“ statt „Lobby“.
-- Wird eine Änderung von dir zurückgenommen, steht der Grund jetzt direkt am Objekt, mit
-  Namen: „Vici baut hier gerade“ oder „Vici war schneller“. Das Objekt blinkt kurz in Vicis
-  Farbe. Vorher kam nur eine Meldung ohne Namen.
-- Die Oberfläche der Mod benutzt die Farben des Spiels. Sie folgt deiner Akzentfarbe und den
-  Farbenblind-Modi.
-- Die Oberfläche wächst mit Auflösung und UI-Skalierung wie das Spiel (vorher feste Pixel,
-  bei 1440p und 4K zu klein).
-- Abschnittstitel im Multiplayer-Fenster ohne Großbuchstaben, wie im Spiel.
-- Größere, besser lesbare Schrift in der Größenordnung des Spiels.
-- Einheitliche Begriffe:
-  - „Sitzung“ statt „Lobby“ und „Park hosten“
-  - „Hinbringen“ wie im Spiel
-- Meldungen jetzt mit Umlauten.
-- Neu: eine Anfrage-Karte oben für alles, was eine Antwort braucht: Beitrittsanfragen,
-  Abstimmungen, Testfahrt-Einladungen und „Bewerten“ nach einem Bauduell. Vorher konnten sich
-  zwei Banner überdecken, und Beitrittsanfragen standen nur im Fenster.
-- Die Wettbewerbs-Uhr steht jetzt unter den Spielern oben rechts. Die Spielerleiste bleibt
-  beim Mitfahren sichtbar (nur Avatare).
-- Verbindungsprobleme erscheinen als Hinweis oben in der Mitte, „Nicht synchron“ mit dem Knopf
-  „Neu synchronisieren“ direkt daneben. Vorher stand das nur im Fenster oder als großer Kasten
-  in der Bildmitte.
-- Icons sind sichtbar, z. B. die Krone des Hosts. Vorher waren sie unsichtbar.
-- Der kurze Mittelklick (Markieren) öffnet jetzt ein Radialmenü mit Icons statt einer Liste.
-  Unten rechts steht der Hinweis „Mittelklick Markieren“, damit man es findet.
-- Neu: Chat unten links. **Enter** öffnet die Eingabe, Enter sendet, Esc schließt. Nachrichten
-  und Ereignisse wie „Vici ist beigetreten“ stehen dort und blenden nach ein paar Sekunden aus;
-  Warnungen erscheinen als Karten darüber.
+**Besser**
+- Alles im Stil des Spiels: Farben, Schrift, Knöpfe, Scrollen und Tooltips; folgt Akzentfarbe,
+  Farbenblind-Modus, Auflösung und UI-Skalierung.
+- Markieren verdeckt nichts mehr: Am Objekt blinkt sein Umriss, am Boden liegt ein Punktkreis.
+- Klare Hinweise, wenn der Host nicht mehr antwortet, ins Hauptmenü geht oder die Sitzung endet,
+  jeweils mit Warten, Mitkommen oder Verlassen.
+- Wird eine Änderung zurückgenommen, steht am Objekt, warum („Vici baut hier gerade“).
+- Besuch: weichere Figur, Tasten wie im Laufmodus des Spiels, Kaufen per Klick.
+- Stabiler bei wackeliger Verbindung: Kommt der Park nicht an, fragt die Mod neu. Nach dem
+  Neuladen sind Brett, Regeln und Bewertungen wieder da.
+- Sicherer: Niemand kann die anderen mit Nachrichten fluten oder fremde Dateien überschreiben.
+
+**Behoben**
+- Gespeicherte Parks ließen sich manchmal nicht öffnen („unknown park“).
+- Die Log-Datei zeigte im Editor nur chinesische Zeichen.
+- Der Installer warnte bei jedem, die Spielversion sei nicht getestet.
+- Meldungen ohne Umlaute, unsichtbare Icons, Tooltips unter dem Fenster.
 
 ## 1.13.0 – 2026-11-19
 

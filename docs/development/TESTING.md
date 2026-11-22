@@ -83,6 +83,14 @@ gleiches Steam-Konto; geprüft 2026-11-20):
 - 1440p und 4K gehen hier nicht (Bildschirm 1080p, randlos). Die Mod-Oberfläche ist ganz in
   `rem` gebaut (außer Mauskoordinaten) und skaliert wie das Spiel mit `min(B/1920, H/1080)`.
 
+**Setup und Problembericht in der Testkopie:**
+- Setup nur über die Befehlszeile, nie das Fenster, und immer mit `--game` auf die Testkopie:
+  `build\setup\PC2Coop-Setup.exe --status|--install --game <Testkopie> --source <entpacktes PC2Coop>`.
+  Ohne `--game` sucht Setup das Spiel des Eigners – nicht benutzen.
+- Bericht per QA-Skript in einen eigenen Ordner (nur mit Dev-Flag, nie auf den Desktop des
+  Eigners): `require("pc2coop.session").Report("<Scratch-Ordner>")`, danach
+  `python tools/read_report.py <Datei>`.
+
 ## 3. Was nicht automatisch geprüft werden kann
 
 Zwei echte PCs, echte Steam-Verbindung zwischen zwei Konten, echte Maus/Tasten, Controller.

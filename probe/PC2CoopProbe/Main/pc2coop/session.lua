@@ -15,7 +15,10 @@ local World = global.require("pc2coop.world")
 local shared = global.require("pc2coop.shared")
 
 -- Mod version; must match the database's probeVersion (checked by the tests).
-Session.VERSION = "2.0.0"
+Session.VERSION = "2.1.0"
+-- Errors with their stack, written sparingly (guard.lua); the last messages for a report.
+Session._guard = global.require("pc2coop.guard")
+Session._ring = {}
 local COLORS = {"ff6b6b", "4dabf7", "51cf66", "fcc419", "cc5de8", "ff922b", "22b8cf", "f06595"}
 local net, sync
 local emit = function() end
@@ -260,6 +263,7 @@ end
 local LIMIT = 3900
 
 function send(sid, payload)
+    Session._Remember(payload, true)
     net.NetCommand("send|" .. sid .. "|" .. payload)
 end
 
@@ -1107,7 +1111,7 @@ local function onMessage(from, payload)
             local name, theirGame = clean(f[2] or "?"), clean(f[6] or "")
             if f[5] ~= Session.VERSION then
                 local version = clean(f[5] or "alt")
-                addFeed(name .. " hat PC2Coop " .. version .. ", du " .. Session.VERSION .. ". Beide führen UPDATE.cmd aus.")
+                addFeed(name .. " hat PC2Coop " .. version .. ", du " .. Session.VERSION .. ". Ihr braucht dieselbe Version: PC2Coop-Setup → „Nach Update suchen“.")
                 send(from, "reject|" .. Session.VERSION .. "|" .. gameVersion)
                 return
             end
@@ -1285,7 +1289,7 @@ local function onMessage(from, payload)
             emit("session:rejected-version|" .. hostVersion .. "|" .. hostGame)
             if hostVersion ~= Session.VERSION then
                 Session._RefuseJoin("Der Host hat PC2Coop " .. hostVersion .. ", du " .. Session.VERSION
-                    .. ". Beende das Spiel und führe UPDATE.cmd aus.")
+                    .. ". Ihr braucht dieselbe Version: Spiel beenden, PC2Coop-Setup → „Nach Update suchen“.")
             else
                 Session._RefuseJoin("Der Host hat Spielversion " .. hostGame .. ", du " .. gameVersion
                     .. ". Aktualisiert beide Planet Coaster 2 in Steam.")
@@ -1393,6 +1397,8 @@ local function onNet(event)
         me, myName = f[2], clean(f[3])
         global.require("pc2coop.rides").SetTag(me)
         emit("session:net-ready|" .. me .. "|" .. myName)
+    elseif kind == "report:done" or kind == "report:error" then
+        Session._ReportResult(kind, f[2])
     elseif kind == "lobby:entered" then
         -- Steam can report one entry twice; this module instance answers it once.
         if helloLobby == f[2] then return end
@@ -1402,6 +1408,9 @@ local function onNet(event)
             return
         end
         lobbyId, hostId, helloLobby = f[2], f[3], f[2]
+        -- The same short code in the host's and the guests' logs: their reports fit together.
+        Session._code = Session._Code(lobbyId)
+        emit("session:code|" .. Session._code)
         joining, hostName, Session._ended, Session._starting = false, clean(f[4] or ""), nil, nil
         local phase = memory.lobby == lobbyId and memory.phase or nil
         if hostId ~= me and f[5] == "0" then
@@ -1678,6 +1687,7 @@ end
 
 function Session.Init(logger, diagnostic, syncModule, parkManager)
     emit, net, sync, manager = logger, diagnostic, syncModule, parkManager
+    Session._guard.Init(function(line) emit(line) end, function() Session._DumpRing("first-error") end)
     global.pcall(function() gameVersion = clean(global.api.game.GetVersionString()) end)
     if context == "park" then
         shared.onTime = function(paused, index) Session._LocalTime(paused, index) end
@@ -2747,16 +2757,18 @@ function Session.Tick()
         Session._starting = nil
         failJoin("Steam hat nicht geantwortet. Versuch es noch einmal.", false)
     end
+    if Session._report and Session._report.state == "busy" then Session._ReportWait(onNet) end
     if not Session.Available() then return end
+    if role and frames % 1800 == 0 then Session._Snapshot() end
     for _ = 1, 64 do
         local event = net.NetPoll()
         if not event then break end
-        local ok, failure = global.pcall(onNet, event)
-        if not ok then emit("session:error|" .. global.tostring(failure)) end
+        Session._Remember(event)
+        Session._guard.Call("session.net", onNet, event)
     end
     for i = #tasks, 1, -1 do
         local ok, failure = global.coroutine.resume(tasks[i])
-        if not ok then emit("session:task-error|" .. global.tostring(failure)) end
+        if not ok then Session._TaskError(tasks[i], failure) end
         if not ok or global.coroutine.status(tasks[i]) == "dead" then global.table.remove(tasks, i) end
     end
     if role == "host" then
@@ -2778,4 +2790,126 @@ end
 
 -- Test seam: drive the session without Steam.
 Session._onNet = onNet
+
+-- Diagnosis (FEAT-222, FEAT-223) --------------------------------------------------------
+-- The last 200 network events, oldest first; runs of the same kind count up ("x12").
+function Session._Remember(event, outgoing)
+    local kind, _, sub = global.string.match(event, "^([^|]*)|?([^|]*)|?([^|]*)")
+    if outgoing then kind = "out:" .. global.string.sub(kind or "", 1, 16)
+    elseif kind == "msg" then kind = "msg:" .. global.string.sub(sub or "", 1, 16) end
+    local ring = Session._ring
+    local last = ring[#ring]
+    if last and last.kind == kind then
+        last.n, last.bytes, last.frame = last.n + 1, last.bytes + #event, frames
+        return
+    end
+    ring[#ring + 1] = {kind = kind, frame = frames, bytes = #event, n = 1}
+    if #ring > 200 then global.table.remove(ring, 1) end
+end
+
+function Session._DumpRing(reason)
+    local ring, parts = Session._ring, {}
+    for _, e in global.ipairs(ring) do
+        parts[#parts + 1] = e.kind .. "@" .. e.frame .. ":" .. e.bytes .. (e.n > 1 and ("x" .. e.n) or "")
+    end
+    for i = 1, #parts, 40 do
+        emit("session:recent|" .. reason .. "|" .. global.table.concat(parts, ",", i, global.math.min(#parts, i + 39)))
+    end
+end
+
+-- Every 30 s in a session: one line with the state, for the timeline of a report.
+function Session._Snapshot()
+    local ok, view = global.pcall(Session.View)
+    if not ok or global.type(view) ~= "table" then return end
+    local lang = "?"
+    global.pcall(function() lang = global.require("pc2coop.lang").Code() end)
+    local acts = {}
+    for i, p in global.ipairs(view.players or {}) do
+        acts[#acts + 1] = i .. ":" .. (global.string.gsub(global.tostring(p.act or "-"), "[|,=%s]", "_"))
+    end
+    emit("session:snap|role=" .. global.tostring(role) .. "|players=" .. #(view.players or {}) .. "|stage=" .. global.tostring(stage)
+        .. "|context=" .. global.tostring(context) .. "|conflicts=" .. global.tostring(view.conflicts or 0) .. "|lang=" .. lang
+        .. "|faults=" .. Session._guard.Count() .. "|code=" .. global.tostring(Session._code) .. "|frame=" .. frames
+        .. "|acts=" .. global.table.concat(acts, ","))
+end
+
+-- Six letters from the lobby id (no Steam id needed in the log to match two reports).
+function Session._Code(text)
+    local h = 5381
+    text = global.tostring(text or "")
+    for i = 1, #text do h = (h * 33 + global.string.byte(text, i)) % 2147483647 end
+    local chars, out = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", ""
+    for _ = 1, 6 do
+        local n = h % 32
+        out = out .. global.string.sub(chars, n + 1, n + 1)
+        h = global.math.floor(h / 32)
+    end
+    return out
+end
+
+function Session._TaskError(task, failure)
+    local stack = nil
+    global.pcall(function() stack = global.debug.traceback(task, global.tostring(failure)) end)
+    Session._guard.Report("session.task", failure, stack)
+end
+
+-- "Problembericht erstellen": the DLL writes the newest logs into one file on the desktop and
+-- replaces the Steam ids and these names (P0 = this player). outdir only in developer mode.
+function Session.Report(outdir)
+    local lang, names, seen = "de", {}, {}
+    global.pcall(function() lang = global.require("pc2coop.lang").Code() end)
+    local function add(sid, name)
+        sid = global.tostring(sid or "")
+        if sid == "" or seen[sid] then return end
+        seen[sid] = true
+        names[#names + 1] = clean(sid) .. "=" .. (global.string.gsub(clean(name or ""), "=", ""))
+    end
+    add(me, myName)
+    local ok, view = global.pcall(Session.View)
+    if ok and global.type(view) == "table" then
+        for _, p in global.ipairs(view.players or {}) do add(p.sid, p.name) end
+    end
+    add(hostId, hostName)
+    Session._DumpRing("report")
+    for _, e in global.ipairs(Session._guard.Recent()) do
+        emit("session:report-error|" .. e.where .. "|x" .. e.count .. "|" .. global.string.sub(e.message, 1, 200))
+    end
+    Session._report = {state = "busy", frame = frames}
+    emit("session:report|code=" .. global.tostring(Session._code) .. "|faults=" .. Session._guard.Count())
+    if not (net and net.HasNet and net.HasNet()) then
+        Session._report = {state = "error", reason = "Die Mod-DLL ist nicht geladen."}
+        return
+    end
+    -- clean() would cut a folder to 32 characters; only the separator has to go.
+    local folder = global.string.gsub(outdir or "", "[|%c]", "")
+    net.NetCommand("report|" .. lang .. "|" .. folder .. "|" .. Session.VERSION .. "|" .. global.table.concat(names, "|"))
+end
+
+Session.REPORT_REASONS = {desktop = "Der Desktop-Ordner wurde nicht gefunden.", write = "Die Datei ließ sich nicht schreiben.",
+    logs = "Es gibt noch keine Log-Datei."}
+function Session._ReportResult(kind, value)
+    if kind == "report:done" then
+        Session._report = {state = "done", file = global.string.sub((global.string.gsub(value or "", "[|%c]", "")), 1, 120)}
+        emit("session:report-done")
+    else
+        Session._report = {state = "error", reason = Session.REPORT_REASONS[value or ""] or "Unbekannter Fehler."}
+        emit("session:report-failed|" .. global.tostring(value))
+    end
+end
+
+-- Without Steam the session does not poll; the report's answer still has to come in.
+function Session._ReportWait(handler)
+    if not Session.Available() and net and net.HasNet and net.HasNet() then
+        for _ = 1, 16 do
+            local event = net.NetPoll()
+            if not event then break end
+            if global.string.sub(event, 1, 7) == "report:" then handler(event) end
+        end
+    end
+    if Session._report and Session._report.state == "busy" and frames - Session._report.frame > 900 then
+        Session._report = {state = "error", reason = "Keine Antwort von der Mod-DLL."}
+    end
+end
+
+function Session.ReportState() return Session._report end
 return Session

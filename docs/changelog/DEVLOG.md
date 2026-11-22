@@ -3,6 +3,37 @@
 Für Entwickler: interne Änderungen, Funde, Refactors, bekannte Probleme. Neueste zuerst.
 Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 
+## 2026-11-22 – 2.1.0: Setup.exe, eine ZIP, Problembericht
+
+- Wunsch des Eigners: eine Datei, die auch Leute ohne Erfahrung installieren können, auf GitHub
+  und Nexus gleich; Vortex soll gehen; bei Problemen soll ein Log genügen.
+- Vortex beim Eigner (nur gelesen): PC2Coop 1.13.0 lag richtig im Staging, aber keine
+  `vortex.deployment*.json` im Spielordner – Vortex hatte nie eingespielt; der ACSE-Eintrag war
+  leer. Die PC2-Erweiterung (`game-planetcoaster2`) wählt Installer nach Ordnernamen: „Win64“ →
+  Root-Installer, der alles unter dem obersten Ordner in den Spielordner legt; Ordner mit
+  `Main.ovl` → „ACSE Mod“ nach `ovldata`. Daher `Mod/PC2CoopProbe` im ZIP (ADR-023).
+- Setup in C# 5, weil csc.exe bei Windows dabei ist (keine neue Software). Fallstricke: eine
+  WinExe schreibt auf stdout in der Konsolen-Codepage → Tests lasen `None`; jetzt UTF-8 über
+  `Console.OpenStandardOutput`. Ohne Manifest würde Windows eine EXE mit „Setup“ im Namen als
+  Installer erkennen und nach Administratorrechten fragen → `asInvoker`.
+- Altes UPDATE.cmd bricht bei 2.1.0 ab (install.ps1 fehlt), die alte Version bleibt. Bewusst:
+  Skripte im Paket lösen bei Nexus die Quarantäne aus (ADR-010).
+- ACSE: GPL-3 (OpenNaja/ACSE) erlaubt das Mitliefern mit Lizenz und Quelle; der Eigner fragt das
+  ACSE-Team zuerst, bis dahin bietet Setup die Nexus-Seite an.
+- Diagnose: `guard.lua` statt nackter `pcall` an den Tick-Stellen – vorher stand ein Fehler,
+  der jedes Frame kam, 60-mal pro Sekunde im Log und ohne Zeile. `xpcall` mit Argumenten geht,
+  weil das Spiel Lua ≥ 5.2 hat (`table.unpack`). Der Fuzz-Orakel sucht „error“ in jeder Zeile,
+  daher heißt der Zähler im Schnappschuss `faults`.
+- DLL: `report.cpp` (Bericht, Systemzeile), Vectored Exception Handler in `diagnostic.cpp`
+  ohne Loader-Lock (Bildbereiche beim Start gemerkt, TryAcquire). Bauen braucht jetzt
+  `shell32.lib`, `ole32.lib`, `version.lib`.
+- Feature-IDs: FEAT-138/139 waren vergeben → FEAT-222/223; Setup FEAT-011, ZIP FEAT-012.
+- Fund in der Testkopie: `PlanetCoaster2.exe` liegt im Hauptordner des Spiels, nicht in `Win64`
+  (Steam-Installation geprüft, nur gelesen). Setup verlangte zuerst `Win64\PlanetCoaster2.exe`
+  und hätte das Spiel nirgends erkannt; die nachgebauten Spielordner der Tests hatten denselben
+  Fehler. Jetzt beides erlaubt (wie install.ps1), Tests mit der echten Lage. Die Systemzeile
+  sucht `appmanifest_2688950.acf` deshalb einige Ordner aufwärts.
+
 ## 2026-11-21 – Version 2.0.0 statt 1.14.0
 
 - Wunsch des Eigners: Der Umfang seit 1.13.0 (UX-Overhaul, Englisch, Sicherheit und
@@ -13,7 +44,7 @@ Spieler-Änderungen: `docs/changelog/CHANGELOG.md`.
 - Dabei gefunden: `install.ps1` hatte Hash und Build des Spiels von vor dem Update am
   2026-11-17 fest im Skript (26255360) und warnte deshalb jeden Spieler mit dem aktuellen Build.
   Jetzt liest es beides aus `payload-manifest.json` (`package_release.py`: `EXE_HASH`,
-  `TESTED_BUILD`); Test `tests/test_installer_ps1.py`.
+  `TESTED_BUILD`); Test test_installer_ps1.py (seit 2.1.0 entfernt, Setup ersetzt das Skript).
 
 ## 2026-11-21 – Sicherheit und Stabilität geprüft (coop-anything-Methoden)
 

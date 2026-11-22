@@ -28,3 +28,8 @@ Klare Verantwortung, kleinere Pakete, keine fremden Binärdateien.
 - README/LIESMICH nennen ACSE als Voraussetzung.
 
 _Nachträglich dokumentiert am 2026-11-20 aus Code, Commits und Gesprächen._
+
+_Nachtrag 2026-11-22 (ADR-023):_ ACSE (OpenNaja/ACSE) steht unter GPL-3; unverändert mitliefern
+mit Lizenz und Quellenhinweis wäre erlaubt. Der Eigner fragt das ACSE-Team vorher. Bis dahin
+bleibt ACSE draußen; Setup erkennt ein fehlendes ACSE und bietet die Seite bei Nexus an.
+Mitgeliefert würde es nur, wo noch keins ist (die Kollision von 1.12.2 kam vom Überschreiben).

@@ -13,8 +13,9 @@ Wo was liegt. Zeilenzahlen grob (Stand 1.13.0), um die Größe einzuschätzen.
 | `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/CoopLayer.js` | gesamte Oberfläche (Preact, ~2500 Zeilen) |
 | `probe/PC2CoopProbe/ui/UIGameface/js/pc2coop/Texts.js` | englische Texte (`createTranslator`), geladen, wenn das Spiel nicht Deutsch läuft (ADR-022) |
 | `probe/PC2CoopProbe/ui/UIGameface/js/common/debug/DebugToolImports.js` | ersetzt das gleichnamige Spielmodul, startet `CoopLayer.js`, Namensschild-Stil |
-| `native/` | DLL-Quellen: `steam_net.cpp` (Steam, Dateien, Tasten), `diagnostic.cpp` (Log, Exporte), `string_probe.cpp`, `version.rc` |
-| `alpha-dist/` | was in den Paketen landet: `INSTALL.cmd`, `UPDATE.cmd`, `UNINSTALL.cmd`, `install.ps1`, `update.ps1`, `LIESMICH.txt` (+ Legacy `START.cmd`, `start.ps1`) |
+| `native/` | DLL-Quellen: `steam_net.cpp` (Steam, Dateien, Tasten), `diagnostic.cpp` (Log, Exporte, Absturz-Notiz), `report.cpp` (Problembericht, Systemzeile), `string_probe.cpp`, `version.rc` |
+| `setup/` | `PC2CoopSetup.cs` (PC2Coop-Setup.exe, C#), `app.manifest` (ADR-023) |
+| `alpha-dist/` | `LIESMICH.txt` (Anleitung im Paket, deutsch und englisch) und Legacy `START.cmd`, `start.ps1`; die Skript-Installer gibt es seit 2.1.0 nicht mehr |
 | `tools/` | Build, Pakete, QA (siehe unten) |
 | `tests/` | Unit-Tests (Python + `lupa`), `tests/native/test_outbox.cpp` |
 | `pc2coop/` | Legacy-Python (FEAT-218), nicht ausgeliefert |
@@ -38,6 +39,7 @@ Wo was liegt. Zeilenzahlen grob (Stand 1.13.0), um die Größe einzuschätzen.
 | `viz.lua` | 410 | Darstellung der Mitspieler im Park (Marker, Sichtkegel, Geister, Färbung, Figuren) | `Viz.Init`, `Viz.Update`, `Viz.Clear`, `Viz.SetEnabled` |
 | `labels.lua` | 100 | Namensschilder über die Coaster-Labels des Spiels | `Labels.Init`, `Labels.Show`, `Labels.Pin`, `Labels.Clear` |
 | `lang.lua` | 40 | Sprache für Schilder, die Lua zeichnet (ADR-022) | `Lang.Set`, `Lang.Code`, `Lang.World` |
+| `guard.lua` | 80 | Fehler mit Stapel, sparsam ins Log (FEAT-222) | `Guard.Call`, `Guard.Report`, `Guard.Count`, `Guard.Recent` |
 | `ui.lua` | 540 | Zustand für die Oberfläche (DataStore `pc2coop`), Aktionen aus `Request` | `Ui.Init`, `Ui.Tick`, `Ui.Toggle`, `Ui.SetOpen`, `Ui._Request` |
 | `world.lua` | 290 | Spiel-Zugriffe: Kamera, Zeit, Zahlen, HUD-/Meldungs-Hooks, DLC | `World.HookHUD`, `World.HookNotifications`, `World.Camera`, `World.SetCamera`, `World.FocusPoint`, `World.Time`, `World.SetTime`, `World.Numbers`, `World.RequiredDLC`, `World.LeaveTool` |
 | `board.lua` | 160 | Brett-Daten (Gebiete, Aufgaben, Kommentare, Treffpunkte, Vorschläge) | `Board.Add`, `Board.Set`, `Board.Remove`, `Board.Apply`, `Board.Lines`, `Board.Tally` |
@@ -60,7 +62,9 @@ Wo was liegt. Zeilenzahlen grob (Stand 1.13.0), um die Größe einzuschätzen.
 | `tools/build_native.py` | DLL bauen (MSVC, Versionskopf, `version.rc`) |
 | `tools/build_probe.py`, `tools/cobra_worker.py` | Mod-OVL mit Cobra Tools bauen und prüfen |
 | `tools/verify_native.py` | DLL-Exporte prüfen |
-| `tools/package_release.py` | Release-Zip und Nexus-Zip (`--nexus`) |
+| `tools/package_release.py` | die eine Spieler-ZIP + `.sha256` (ADR-023) |
+| `tools/build_setup.py` | PC2Coop-Setup.exe mit dem csc.exe von Windows bauen |
+| `tools/read_report.py` | Problembericht oder Log zusammenfassen (FEAT-223) |
 | `tools/game_bot.py`, `tools/qa_step.py`, `tools/qa_command.py`, `tools/qa_lua.py` | Testkopie steuern |
 | `tools/e2e_real_game.py` | Ende-zu-Ende mit Python-Brücke (Legacy) |
 | `tools/game_watchdog.ps1`, `tools/screenshot_game.ps1`, `tools/game_input.ps1`, `tools/dismiss_driver_dialog.ps1` | Testkopie überwachen, Bilder, Eingaben |
@@ -80,6 +84,8 @@ Wo was liegt. Zeilenzahlen grob (Stand 1.13.0), um die Größe einzuschätzen.
 | `tests/test_presence_extras_lua.py`, `tests/test_coop_play_lua.py` | Anwesenheit, Team-Funktionen |
 | `tests/test_ui_lua.py` | Oberflächen-Zustand und Aktionen |
 | `tests/test_texts_js.py`, `tests/test_lang_lua.py` | englische Texte (Node) und Schilder in Lua (ADR-022) |
+| `tests/test_setup_exe.py`, `tests/test_package_release.py` | Setup auf nachgebauten Spielordnern, ZIP-Aufbau und Vortex (ADR-023) |
+| `tests/test_diagnosis_lua.py`, `tests/test_read_report.py` | Fehler mit Stapel, Schnappschuss, Bericht (FEAT-222, FEAT-223) |
 | `tests/test_fuzz_session_lua.py` | Fuzzing der Sitzung über ein gestörtes Netz, bösartige Nachrichten (`SECURITY.md`) |
 | `tests/test_viz_lua.py` | Markierungen verdecken nichts (Umriss, Punktring) |
 | `tests/test_parks_lua.py`, `tests/test_diagnostic_lua.py`, `tests/test_probe_lua.py`, `tests/test_qa_lua.py`, `tests/test_live_lua.py` | übrige Module, Version, QA |

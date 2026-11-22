@@ -113,6 +113,7 @@ Steuerzeilen ohne Nummer: `S|<name>` (Synchronisation starten), `X` (stoppen), `
 | `mods` | Mod-Ordner | FEAT-037 |
 | `visitor` | Tasten/Maus im Besucher-Modus | FEAT-195 |
 | `now` | Echtzeit | FEAT-197 |
+| `report` | Problembericht auf den Desktop (geht auch ohne Steam) | FEAT-223 |
 
 ## DLL-Ereignisse (DLL → Lua)
 
@@ -132,6 +133,7 @@ Steuerzeilen ohne Nummer: `S|<name>` (Synchronisation starten), `X` (stoppen), `
 | `key:mdown`, `key:mup`, `key:menu`, `key:dev`, `key:chat` | FEAT-196 (`key:dev` nur mit Dev-Flag) |
 | `key:ping` | nur noch Lua-Zweig, DLL sendet es nicht mehr (FEAT-095) |
 | `now` | FEAT-197 |
+| `report:done`, `report:error` | FEAT-223 |
 
 ## sync-Zeilen (sync.lua → session.lua, `sync:<art>|…`)
 
@@ -167,7 +169,9 @@ Steuerzeilen ohne Nummer: `S|<name>` (Synchronisation starten), `X` (stoppen), `
 `loading-park`, `park-sent`, `park-note`, `peer-stalled`, `rejected-version`,
 `content-refused`, `ride-refused`, `resync`, `host-gone`, `host-in-menu`, `feed`, `error`,
 `task-error`, `park-retry` (Park kam nicht, neu angefragt), `rate-limited` (ein Mitspieler über
-dem Limit einer Nachrichtenart) – Diagnose im Log
+dem Limit einer Nachrichtenart), seit 2.1.0 `code` (Sitzungscode), `snap` (Stand alle 30 s),
+`recent` (letzte Netz-Ereignisse), `report`, `report-done`, `report-error`, `report-failed`
+(FEAT-222, FEAT-223) und ohne Präfix `error|<wo>|x<n>|<Stapel>` aus guard.lua – Diagnose im Log
 (FEAT-216), werden von QA-Werkzeugen als erwartete Zeilen benutzt.
 
 ## Schutz gegen Fluten und kaputte Werte (seit 2.0.0)

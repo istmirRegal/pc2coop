@@ -14,7 +14,7 @@ bei Fehlern passiert und wie das geprüft wird. Netzformat: `NETWORKING.md`, Gru
 | Fremde (keine Lobby-Mitglieder) | nichts: die DLL nimmt ihre Verbindung nicht an | – |
 | der eigene PC | wer im Spielordner schreiben darf, kann jede Mod ersetzen – wie bei jeder Mod | – |
 
-Spieler-Text dazu in `alpha-dist/LIESMICH.txt` („Lade nur Leute ein, denen du deinen Park
+Spieler-Text dazu in `README.md` („Lade nur Leute ein, denen du deinen Park
 anvertraust“).
 
 ## Was aus dem Netz kommt
@@ -27,13 +27,15 @@ anvertraust“).
 | Dateien (DLL) | Namen nur `pc2coop-…` aus `[A-Za-z0-9._-]`, ≤ 64 Zeichen, kein Pfad (`safe_name`). Park: nur vom Lobby-Besitzer, nur `pc2coop-join.bin/.trn`, ≤ 256 MB, nicht während des Ladens. Baupläne: nur `pc2coop-ride-<Absender-Id>-<n>.blueprint` (beim Host), ≤ 16 MB, ≤ 400 je Spieler und Spielstart. Notizen: nur feste Namen, ≤ 2 MB. Löschen nur `pc2coop-…`. |
 | Oberfläche | Preact-Textknoten, kein `innerHTML`/`eval`; Chat und Brett gehen durch `keep()` (nicht übersetzt, als Text). Spiel-Komponenten bekommen `literal()` ohne `|[]`. Chat kann also kein HTML/JavaScript einschleusen. |
 | Entwicklerkanal (QA) | Nur mit `pc2coop-dev.flag` neben der DLL; die Pakete enthalten sie nicht, das Netz kann sie nicht anlegen (Dateinamen). F8 nur damit. |
-| Updates | `UPDATE.cmd` lädt nur vom GitHub-Release und nur mit passender SHA-256-Datei. |
+| Updates | PC2Coop-Setup.exe fragt nur `releases/latest` des eigenen Repositorys, nimmt nur dessen Download-Links, prüft die SHA-256-Datei und entpackt nur `PC2Coop/payload-manifest.json` und `PC2Coop/Mod/PC2CoopProbe/<Datei>` (`..`, `:` oder andere Wurzel → Abbruch); jede Mod-Datei wird gegen das Manifest geprüft. Ein heruntergeladenes Programm wird nie gestartet (ADR-023). |
+| Problembericht | Nur lokal: die DLL schreibt eine Datei auf den Desktop, nichts wird verschickt. Steam-IDs, Lobby-IDs, Namen der Mitspieler und der Windows-Benutzername sind ersetzt; einen anderen Ordner gibt es nur mit Dev-Flag. Der Befehl kommt nur von der eigenen Oberfläche, nicht aus dem Netz. |
 
 ## Was bei Fehlern passiert
 
 | Fall | Verhalten |
 |---|---|
-| Lua-Fehler | Jeder Spiel-API-Aufruf in `pcall`; Tick in `frontend.lua`/Manager geschützt, Fehler ins Log (`tick-error`), das Spiel läuft weiter. `viz.lua` schaltet sich bei einem Fehler ab und räumt seine Entitäten weg. |
+| Lua-Fehler | Jeder Spiel-API-Aufruf in `pcall`; Tick in `frontend.lua`/Manager und jedes DLL-Ereignis über `Guard.Call`: Fehler mit Datei, Zeile und Aufrufweg ins Log, sparsam (1., 10., 100. Mal …), das Spiel läuft weiter (FEAT-222). `viz.lua` schaltet sich bei einem Fehler ab und räumt seine Entitäten weg. |
+| Absturz des Spiels | Die DLL schreibt die ersten schweren Ausnahmen mit Ort (Spiel/DLL + Versatz) ins Log, bevor der Absturz-Dialog des Spiels kommt; der Problembericht nimmt auch die Logs der zwei Spielstarts davor mit. |
 | JavaScript-Fehler | `render`/`poll` mit try/catch; die Ebene zeichnet dann nichts, die Oberfläche des Spiels bleibt. |
 | DLL | Ausnahmen in Befehlen und Poll abgefangen (`net:error|command-exception`); verweigerte Sends warten in der Ausgangsschlange; nimmt ein Spieler 60 s nichts an: `net:peer-stalled`. |
 | Spieler stürzt ab / geht | Der Host sieht ihn gehen, der Platz wird frei; er kann wieder beitreten (Dialog „Wieder beitreten?“). |
@@ -76,4 +78,6 @@ anvertraust“).
 - Steam-Namen, die mit „[“ beginnen, laufen im Verlauf durch die Textübersetzung des Spiels
   (`shown`) – nur Anzeige.
 - Logs enthalten Steam-Namen und -IDs: nur privat weitergeben, nie ins Repository.
-- Die DLL ist nicht signiert (SmartScreen-Hinweis); Integrität über die SHA-256 des Releases.
+- DLL und Setup sind nicht signiert (SmartScreen fragt bei Setup); Integrität über die SHA-256
+  des Releases und das Manifest. Wer das GitHub-Konto übernimmt, könnte ein Update verteilen –
+  das Konto deshalb mit 2FA schützen.

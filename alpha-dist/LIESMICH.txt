@@ -1,319 +1,51 @@
-PC2Coop 2.0.0 - Planet Coaster 2 live zusammen bauen, ueber Steam
+PC2Coop {version} – Planet Coaster 2 live zusammen bauen
+(English below)
 
-Sprache: Die Mod spricht Deutsch, wenn das Spiel auf Deutsch laeuft, sonst Englisch.
-English: see README-EN.txt.
+INSTALLIEREN
+1. Diese ZIP entpacken: Rechtsklick → „Alle extrahieren…“.
+2. Im entpackten Ordner PC2Coop-Setup.exe doppelklicken und „Installieren“ drücken.
+   Zeigt Windows „Der Computer wurde durch Windows geschützt“: auf „Weitere
+   Informationen“ und dann „Trotzdem ausführen“ klicken. Setup ist nicht signiert,
+   das ist alles.
+3. Fehlt der Mod-Loader ACSE, sagt Setup es und öffnet die Download-Seite.
 
-Installation (jeder Spieler, einmalig)
-0. ACSE (Mod-Loader fuer Planet Coaster 2) von Nexus Mods installieren, falls noch nicht
-   vorhanden. Es ist nicht in diesem Paket. Wer schon eine fruehere PC2Coop-Version hatte,
-   hat ACSE bereits. Ohne ACSE bricht INSTALL.cmd mit einem Hinweis ab und installiert nichts.
-1. ZIP in einen eigenen Ordner entpacken.
-2. Planet Coaster 2 beenden, INSTALL.cmd doppelklicken. Der Steam-Ordner wird gesucht.
-   Falls nicht gefunden: INSTALL.cmd -GameDir "D:\SteamLibrary\steamapps\common\Planet Coaster 2"
-Das ist alles. Ausser ACSE kein Zusatzprogramm, kein Browser, keine Netzwerk-Einrichtung.
+Dann im Spiel: Hauptmenü → „Multiplayer“. Alle Mitspieler brauchen dieselbe Version.
+Neue Version: Setup starten → „Nach Update suchen“.
 
-Aktualisieren
-Planet Coaster 2 beenden, UPDATE.cmd doppelklicken. Es holt die neueste Version von
-GitHub, prueft die Pruefsumme und installiert sie. Alle Mitspieler brauchen dieselbe
-Version: der Host lehnt andere Versionen ab und sagt euch, wer aktualisieren muss.
-Die neue Version liegt danach unter %LOCALAPPDATA%\PC2Coop\<Version>\PC2Coop.
-Windows-Hinweis: Meldet SmartScreen oder der Virenscanner die Datei
-PC2CoopDiagnostic.dll, liegt das daran, dass sie nicht signiert ist.
+KLAPPT ETWAS NICHT?
+Im Multiplayer-Fenster unter „Einstellungen“ auf „Problembericht erstellen“ klicken.
+Die Datei landet auf dem Desktop – schick sie dem Entwickler (Discord oder GitHub).
+Steam-IDs und Namen der Mitspieler sind darin ersetzt, Chat steht nie drin.
 
-Spielen
-1. Host: im Hauptmenue die Kachel "Multiplayer" -> "Sitzung starten". Die Kachel zeigt
-   auch, ob gerade eine Sitzung offen ist oder ein Freund eine hat.
-2. Freunde einladen: auf der Seite "Multiplayer" einen freien Platz "+ Einladen" anklicken
-   und den Freund waehlen (oder "Steam-Overlay"). Eingeladene warten blass in ihrem Platz;
-   nach 2 Minuten ohne Antwort steht dort "keine Antwort" mit "Noch einmal einladen".
-   Freunde nehmen die Einladung in Steam an - oder sehen auf ihrer Seite "Multiplayer"
-   "hat eine offene Sitzung" und klicken "Beitreten". Beim Beitreten zeigen vier Schritte,
-   wie weit es ist (Verbinden, Zustimmung, Park kommt, Park laedt); "Abbrechen" geht, bis
-   der Park laedt.
-3. Auf der Seite seht ihr alle Spieler mit Profilbild und ob jemand DLCs oder Mods hat, die
-   dem Host fehlen oder umgekehrt. Rechts ist der Chat: ins Feld klicken, schreiben, Enter.
-4. Host: den Park oeffnest du auf den Seiten des Spiels - auf der Seite "Multiplayer" die
-   Kachel "Sandbox" (neuer Park oder einer deiner Parks) oder "Franchise". Alle sehen
-   "<Host> oeffnet einen Park"; sobald dein Park offen ist, wird er bei allen uebertragen
-   und geladen. Im Park steht einmal "Alle sind da", wenn niemand mehr laedt.
-   Karriere und Herausforderungen folgen spaeter.
-5. Waehrend der Host im Menue einen Park sucht, zeigt eine Leiste oben rechts auf jeder
-   Seite des Hauptmenues den Stand - mit "Oeffnen" und "Verlassen".
-6. Zurueck ins Hauptmenue heisst: zurueck in die Sitzung, nicht raus. Geht der Host ins
-   Hauptmenue, fragt dich ein Dialog, ob du mitkommst oder im Park wartest; den naechsten
-   Park laden alle. Wer schon im Park ist, kann auch dort hosten: Multiplayer-Fenster ->
-   "Sitzung starten".
-7. Gemeinsam bauen. Oben rechts siehst du, wer im Park ist; ein Icon zeigt, was er gerade
-   tut, mit der Maus darauf steht es ausfuehrlich. Ueber der Stelle, auf die ein Mitspieler
-   schaut, schwebt sein Namensschild. Beitritte, Austritte und Chat erscheinen unten links;
-   Enter oeffnet die Chat-Eingabe. Einen Mitspieler oben rechts anklicken: deine Kamera
-   fliegt zu ihm und folgt ihm (nochmal klicken beendet das).
+MIT VORTEX ODER VON HAND
+Vortex: diese ZIP wie jede andere Mod installieren und „Deploy“ ausführen. Dann aber
+nicht zusätzlich Setup benutzen.
+Von Hand: den Ordner Mod\PC2CoopProbe nach <Spielordner>\Win64\ovldata kopieren.
 
-Was ihr braucht: Steam-Freundschaft (die Sitzung ist nur fuer Steam-Freunde des Hosts
-sichtbar). Ein Frontier-Konto oder das Franchise braucht ihr dafuer nicht.
-
-Wenn der Beitritt nicht klappt
-- "Einladung abgelaufen": die Sitzung gibt es nicht mehr (alte Einladung). Lass dich
-  neu einladen.
-- "Park konnte nicht geladen werden": "Erneut versuchen" holt den Park noch einmal.
-- Kann Steam die Sitzung nicht erstellen oder antwortet nicht, sagt ein Dialog es.
-- Wer ins Hauptmenue zurueckgeht, bleibt in der Sitzung; "Beenden" (Host) schliesst sie.
-  Solange noch jemand dabei ist, fragt "Beenden" erst nach.
-
-Die anderen sehen
-- Bodenmarke: eine kleine farbige Scheibe dort, wohin ein Mitspieler schaut, mit seinem
-  Namen und dem, was er gerade tut ("baut Wege", "platziert ein Fahrgeschaeft").
-- Sichtkegel: eine gepunktete Linie von seiner Kamera zu diesem Punkt zeigt Richtung und
-  Bereich, den er sieht.
-- Geist: was ein Mitspieler gerade in der Hand hat, siehst du eingefaerbt an der Stelle,
-  an der er es haelt - auch waehrend er noch einen Platz sucht. Fahrgeschaefte, Shops
-  und Bauplaene erscheinen als grosse Scheibe mit Namen (kein Modell).
-- Gesperrt: ein Objekt, das ein Mitspieler gerade bearbeitet, ist eingefaerbt. Nimmst du
-  es trotzdem auf, wird dein Werkzeug zurueckgesetzt und du siehst, wer es bearbeitet.
-  Legt er es ab, ist es wieder frei.
-- Ping: kurz mit der mittleren Maustaste klicken setzt an der Stelle unter dem Mauszeiger
-  eine Markierung ("hier!") fuer alle, sichtbar etwa 8 Sekunden. Auf einem Objekt blinkt
-  dessen Umriss in deiner Farbe, sonst liegt ein Kreis aus kleinen Punkten am Boden - die
-  Markierung verdeckt nichts. Gedrueckt halten dreht wie
-  gewohnt die Kamera und pingt nicht. "Hinbringen" im Multiplayer-Fenster fliegt zum Ping.
-- Folgen: Mitspieler oben rechts anklicken (oder "Folgen" im Multiplayer-Fenster) - deine
-  Kamera zeigt, was er sieht. Bewegst du die Kamera selbst, endet das Folgen.
-- Urheber: Waehlst du ein Objekt aus (Info-Fenster offen) oder nimmst es in die Hand,
-  steht daran, wer es erstellt und wer es zuletzt bearbeitet hat. Der Host merkt sich das
-  pro Park (Datei pc2coop-authors-<Park>.txt im Spielordner), auch ueber Speichern und Laden.
-Im Multiplayer-Fenster, Reiter "Einstellungen", Abschnitt "Fuer dich", laesst sich diese
-Anzeige abschalten ("Mitspieler in der Welt zeigen").
-
-Das Multiplayer-Fenster
-Der runde Knopf "Multiplayer" links oben (unter den Knoepfen des Spiels), F7 oder
-Pausemenue -> "Multiplayer" oeffnet das Fenster; es klappt direkt unter dem Knopf am linken
-Rand aus. Du kannst weiterbauen, waehrend es offen ist. Fenster und Listen scrollen mit dem
-Mausrad. Vier Reiter:
-- Spieler: Mitspieler mit "Hinbringen" und "Folgen", Beitrittsanfragen (Host), "+ Einladen".
-  Unten: "Besuchen" (Besucher-Modus) und "Verlassen" bzw. "Beenden".
-- Planen: das Brett des Parks - Baugebiete ("Wikingerland", mit Auftrag, Zustaendigem und
-  Groesse), Aufgaben (offen/erledigt), Bauvorschlaege (alle stimmen dafuer oder dagegen),
-  Kommentare und Treffpunkte. Alles mit Ort erscheint fuer alle als Marker im Park. Der Host
-  speichert das Brett pro Park (pc2coop-board-<Park>.txt), es bleibt ueber Spielstarts.
-- Verlauf: Meldungen des Parks (Defekte, festsitzende Gaeste, Blitzschlag ... - mit
-  "Hinbringen" und "Ausblenden"), Sicherungspunkte und das Protokoll der Sitzung. Was sich
-  seit deinem letzten Besuch geaendert hat, kommt beim Beitritt einmal als Meldung.
-- Einstellungen: Fuer dich, Regeln, Inhalte, Wettbewerb. Erklaerungen stehen in Tooltips.
-Was eine Antwort braucht (Beitrittsanfrage, Abstimmung, Testfahrt-Einladung, "Bewerten" nach
-einem Bauduell), erscheint oben als Karte mit den Knoepfen dafuer.
-Im Pausemenue kannst du die Sitzung auch verlassen oder (als Host) beenden.
-
-Mittelklick: zeigen und handeln
-Ein kurzer Klick mit der mittleren Maustaste setzt einen Ping fuer alle und oeffnet um den
-Mauszeiger ein Radialmenue fuer genau diese Stelle (die Mitte schliesst es):
-- Steht dort ein Fahrgeschaeft: "Testfahrt mit allen" (alle bekommen oben eine Einladung mit
-  "Mitfahren") und "Mitfahren".
-- Bearbeitet dort gerade jemand etwas: Uebernahme anfragen - er bekommt die Bitte, fertig
-  zu bauen und freizugeben. Wegnehmen kann man es ihm nicht.
-- "Kommentar", "Vorschlag", "Baugebiet", "Treffpunkt": oeffnet "Planen" mit dieser Stelle.
-
-Regeln (Host, Reiter Einstellungen)
-- Spieltempo und Pause: alle oder nur der Host.
-- Fremde Bauten abreissen: erlaubt oder erst fragen (dann wird es beim Abreissen
-  zurueckgestellt und der Urheber gefragt).
-- Besucher-Modus: erlaubt oder aus.
-- Schnellwahl: "Locker", "Geordnet", "Nur bauen". Mitspieler sehen die Regeln gesperrt.
-Die Regeln bleiben bestehen, wenn der Host einen anderen Park laedt.
-Zurueck zu einem Sicherungspunkt geht nur, wenn alle zustimmen; Rueckgaengig (Strg+Z)
-betrifft nur deine eigenen Schritte.
-
-Wettbewerb (Host, Reiter Einstellungen)
-- Bauduell: Thema eingeben, 15/30/60 Minuten. Jeder baut in seinem Baugebiet (Planen:
-  Baugebiet mit dir als Zustaendigem). Oben rechts laeuft fuer alle die Uhr. Danach bewertet
-  jeder die Bauten der anderen, Gestaltung und Technik getrennt (1-5); das Ergebnis sehen
-  alle.
-- Koop gegen die Uhr: gemeinsam die Aufgaben vom Brett schaffen, mit Zeitlimit.
-Szenarien und Herausforderungen des Spiels laufen wie gewohnt beim Host: ihre Ziele gelten
-fuer alle gemeinsam, denn es ist ein Park mit einem Spielstand.
-
-Besucher-Modus (Knopf "Besuchen" im Multiplayer-Fenster)
-- Du laeufst als Figur durch den Park, die Kamera hinter dir. Wie im Laufmodus des Spiels
-  gibt es keine Leiste oben: die Tasten stehen unten in der Hinweiszeile, die Bauleiste ist
-  solange weg.
-  Die Figur ist ein Parkgast des Spiels mit dessen Lauf-, Renn- und Stehbewegungen. Sie
-  sieht aus wie dein Avatar aus dem Startbildschirm, so gut es geht: Alter und Geschlecht
-  sowie die Farben von Oberteil, Hose und Haaren stimmen; Kopf, Frisur und Kleidungsstueck
-  waehlt PC2Coop aus den Gast-Modellen des Grundspiels.
-  Maus bewegen: umsehen (der Mauszeiger ist dann weg), WASD laufen, Shift rennen. Die Figur
-  faehrt weich an und bremst weich. Du laeufst nicht durch Gebaeude, Deko und Bahnen und
-  gehst Stufen und Wege hoch.
-- T gedrueckt halten: Emote-Rad im Look der Radialmenues des Spiels (Winken, Jubeln,
-  Lachen, Super, Naja, Uebel) - Maus in die Richtung, T loslassen sendet. Die
-  anderen sehen deine Figur das Emote spielen (winken, jubeln, lachen ...).
-- V: zwischen Ansicht von hinten (deine Figur) und Ich-Sicht wechseln. Die Ich-Sicht ist
-  der eingebaute Laufmodus des Spiels - mit Boden, Treppen, Springen (Alt), Ducken (Strg),
-  Schwimmen, Lampe (L) und Einsteigen an Eingaengen mit der Taste des Spiels. Die anderen
-  sehen dich in beiden Ansichten als Figur.
-- E: das, was vor deiner Figur ist, wie im Spiel: am Eingang eines Fahrgeschaefts
-  einsteigen (unter der Bildmitte steht, was geht, z. B. "Einsteigen: Boardslide" oder
-  warum nicht), Rutschen-Treppen, Shows. Gefunden wird, was vor der Figur oder in
-  Blickrichtung der Kamera liegt. Nach der Fahrt geht es am Ausgang weiter.
-- F: die Fahrgeschaefte links, mit Werten, Bewertungen als Sterne und "Mitfahren" - das
-  bringt dich auch ohne Laufen in eine Bahn. Solange die Liste offen ist, ist die Maus
-  frei. Deine Wertung: fuenf Sterne anklicken, dazu ein kurzer Vorschlag; der Host
-  speichert sie pro Park.
-- E vor einem Shop oder Automaten: ein kleines Kauf-Panel mit Artikeln und Preisen; die Maus
-  ist dann frei, ein Klick kauft, E oder Tab schliesst. Die Zahlentasten nutzt der Besuch
-  nicht (das Spiel hat eigene Funktionen darauf). Der Preis geht in die Parkkasse wie bei
-  einem Gast, alle sehen "<Name> kauft ...", und deine Figur isst oder trinkt eine Weile
-  beim Gehen. Geschlossene Shops verkaufen nichts.
-- Tab: zurueck zum Bauen.
-- Noch nicht: Toiletten, Hunger/Laune (das steckt im Spiel selbst und laesst sich von
-  aussen nicht steuern).
-
-Verbindung weg?
-- Hakt die Verbindung, steht oben "Keine Verbindung zum Host" mit der Zeit und "Verlassen";
-  nach einer halben Minute fragt ein Dialog "Warten" oder "Verlassen". Kommt sie zurueck,
-  wird die Anzeige kurz gruen; ging dabei etwas verloren, laedt dein Spiel den Park des
-  Hosts automatisch neu.
-- Ist dein Spiel abgestuerzt: neu starten. Spielt der Host noch, bietet das Hauptmenue
-  "Wieder beitreten" an. Du bekommst den aktuellen Park und deine Farbe zurueck.
-- Ist der Host weg (beendet oder abgestuerzt), sagt dir ein Dialog "Die Sitzung ist
-  beendet". Du kannst im Park allein weiterspielen oder ins Hauptmenue gehen. Der Host
-  hostet neu und laedt wieder ein.
-
-Ein Park, ein Spielstand
-- Der Park des Hosts ist der echte: dort laufen Besucher, Geld, Defekte und Wartung, und
-  nur der Host speichert.
-- Bei Mitspielern geht nichts von selbst kaputt, und Bauen kostet dort nichts. Ihre
-  Besucher sind nur Kulisse und koennen sich von denen des Hosts unterscheiden.
-- Pause und Spieltempo gelten fuer alle: wer pausiert oder vorspult, tut es fuer alle
-  (mit Hinweis, wer es war).
-- Im Multiplayer-Fenster stehen die Zahlen des Host-Parks (Besucher, Geld), wer wie viel
-  gebaut hat und der Verlauf. Meldungen des Host-Parks (Fahrgeschaeft defekt, kein Strom
-  ...) erscheinen bei allen unten links.
-- Rueckgaengig (Strg+Z) nimmt nur deinen eigenen letzten Schritt zurueck. Stammt der
-  neueste Schritt von einem Mitspieler, ist Rueckgaengig gesperrt, damit niemand
-  versehentlich fremde Arbeit abreisst.
-- Baut ein Mitspieler etwas, das im Park des Hosts nicht moeglich ist (z. B. ausserhalb
-  der Parkgrenze), wird es bei allen wieder entfernt und im Verlauf vermerkt.
-
-Wenn etwas nicht ankommt
-Kann eine Aenderung eines Mitspielers bei dir nicht uebernommen werden, wird sie einmal
-wiederholt. Klappt es dann immer noch nicht, steht oben "Nicht synchron" mit dem Knopf
-"Neu synchronisieren": dein Spiel laedt dann den aktuellen Park des Hosts neu. Der Host
-sieht im Verlauf, wer nicht mehr synchron ist.
-
-Franchise
-Hostet ihr aus einem Franchise-Park, speichert der Host wie gewohnt: der gemeinsame
-Stand landet im Franchise. Danach kann jedes Franchise-Mitglied dort auch allein
-weiterbauen, wie es das Spiel vorsieht (Frontier erlaubt pro Park einen Bearbeiter
-gleichzeitig; im Co-op ist das der Host, die anderen bauen live ueber ihn mit).
-
-Stand dieser Version
-Live synchronisiert und im Spiel getestet:
-- Deko, Szenerie, Gebaeudeteile: platzieren, klonen, verschieben, drehen,
-  Groesse aendern, loeschen - auch waehrend jemand selbst etwas haelt.
-- Gelaende (Pinsel), Wege (Spline-Wege), Parkname.
-- Fahrgeschaefte (ebene, keine Achterbahnen): neu platzieren und abreissen - einzeln
-  ueber ihr Menue oder mehrere per Mehrfachauswahl.
-- Stempel und Pools aus Formen, Loeschen von Wegen und Pools per Mehrfachauswahl (seit
-  1.12.3 kommt das auch bei den Mitspielern an), ebene Fahrgeschaefte aus Bauplaenen,
-  Parkverwaltung: Eintrittspreis, Parkname, Kredit, Fahrgeschaefte oeffnen/schliessen
-  (allein getestet, nachgestellter Mitspieler).
-- Anzeige der Mitspieler (Marke, Sichtkegel, Geist, Sperr-Faerbung), Pause/Tempo,
-  Zahlen und Meldungen des Host-Parks, Schutz vor Absturz, wenn ein Mitspieler das
-  Objekt loescht, das man gerade haelt (allein getestet, mit nachgestelltem Mitspieler).
-- Mitspieler oben rechts anklicken = ihm folgen, nochmal klicken = aufhoeren.
-  Mittlere Maustaste kurz klicken = Ping; gedrueckt halten oder ziehen pingt nicht.
-- Besucher-Modus in Ich-Sicht: laufen, mitfahren, bewerten, Emotes (allein getestet,
-  nachgestellter Mitspieler).
-- Wege-Pinsel und -Radierer, Wege und Objekte unter dem Mauszeiger loeschen, ebene
-  Fahrgeschaefte abreissen (allein getestet, nachgestellter Mitspieler).
-- Achterbahnen, Schienenfahrgeschaefte und Wasserrutschen (mit ihrer Plattform): neu
-  bauen, im Streckeneditor aendern, abreissen, aus Bauplaenen setzen. Eine Bahn geht als
-  kleine Bauplan-Datei an alle, sobald du den Streckeneditor verlaesst - solange du noch
-  baust, sehen die anderen die vorige Fassung. Wer eine Bahn im Streckeneditor offen hat,
-  sperrt sie fuer die anderen (allein getestet, mit nachgestelltem Mitspieler).
-Eingebaut, aber noch nicht im Spiel bestaetigt:
-- Das Zusammenspiel der Sperren zwischen zwei echten Spielern.
-- Neu in 2.0.0: Oberflaeche im Stil des Spiels - Seite "Multiplayer" im Hauptmenue,
-  runder Knopf links oben mit dem Fenster darunter, Hinweise in der Hinweiszeile des Spiels,
-  Besuch ohne Leiste oben, Emote-Rad und Sterne, Anzeigen fuer Verbindung, Beitritt und
-  Sitzungsende (allein getestet, nachgestellter Mitspieler; erster Test des Herausgebers
-  mit echter Maus, seine Funde sind eingearbeitet).
-- Neu in 1.13.0: Besucher-Figur als animierter Parkgast im Look deines Avatars, Ansicht
-  wechseln (V) mit der Ich-Sicht des Spiels, Eingaenge wie im Spiel (E), Kaufen an Shops und
-  Automaten mit Essen/Trinken beim Gehen (allein getestet, nachgestellter Mitspieler).
-- Neu in 1.12.0: Multiplayer-Reiter in der Bauleiste, Brett (Planen), Bauvorschlaege,
-  Mittelklick-Menue, Testfahrt-Einladung, Uebernahme anfragen, Verlauf mit Meldungen und
-  "Seit deinem letzten Besuch", Sicherungspunkte mit Abstimmung, Regeln, Wettbewerb,
-  Besucher-Modus mit Figur, Maus-Steuerung, Emote-Rad und Kollision.
-- Gezeichnete Flaechen.
-- Wasser (Seen), weitere Parkverwaltung (Shop- und Fahrpreise, Forschung),
-  Fahrgeschaefte verschieben, Ein- und Ausgaenge von Fahrgeschaeften.
-- Achterbahnen als Ganzes verschieben, Rueckgaengig bei Achterbahnen, alles mit zwei
-  echten Spielern.
-Noch NICHT synchronisiert (folgt):
-- Wege mit Anfassern nachtraeglich bearbeiten (du bekommst einen Hinweis).
-- Farben oder Zuege einer Achterbahn ohne Aenderung an der Strecke: kommen erst mit der
-  naechsten Streckenaenderung mit.
-  Diese Dinge sind beim Beitritt im uebertragenen Park enthalten, spaetere
-  Aenderungen daran aber nur beim jeweiligen Spieler.
-- Die Besucher selbst werden nicht uebertragen (siehe "Ein Park, ein Spielstand").
-
-Gleichzeitiges Bearbeiten desselben Objekts: wer es zuerst aufnimmt, hat es. Kommen
-zwei Aenderungen trotzdem gleichzeitig an, entscheidet der Host; die spaetere wird
-zurueckgenommen und der Spieler bekommt einen Hinweis.
-Einstellungen (Parkname, Preise, Oeffnen/Schliessen): aendern zwei Spieler sie gleichzeitig,
-gilt die Reihenfolge beim Host - am Ende haben alle denselben Wert.
-Bekannte Grenze: Malen zwei Spieler gleichzeitig an derselben Stelle im Gelaende (oder nehmen
-gleichzeitig Kredite auf), kann der Park bei den Spielern leicht unterschiedlich werden.
-"Neu synchronisieren" (oben in der Mitte) laedt dann den Stand des Hosts.
-
-Sicherheit und Datenschutz
-- Nur Steam-Freunde: die Sitzung ist nur fuer Steam-Freunde des Hosts sichtbar, und die
-  Mod tritt nur Sitzungen bei, deren Host in deiner Steam-Freundesliste steht.
-- Der Host entscheidet: wen du einlaedst, der kommt direkt hinein. Jeder andere Freund,
-  der beitreten will, erscheint als Anfrage (Karte oben, im Hauptmenue in einem Platz)
-  und bekommt den Park erst nach "Zulassen".
-- Startet das Spiel mit einer Sitzung im Gepaeck (Link oder Startparameter statt einer
-  angeklickten Einladung), fragt die Mod erst nach, bevor sie beitritt.
-- Aus dem Netz landen genau zwei Dateien auf deiner Platte: der Park des Hosts
-  (pc2coop-join.bin/.trn im Spielordner), nur vom Host der Sitzung, und sie werden nach
-  dem Laden wieder geloescht. Nichts anderes, was ein Mitspieler schickt, wird gespeichert
-  oder ausgefuehrt.
-- Kein eigener Server: die Verbindung laeuft ueber Steam. UPDATE.cmd spricht nur mit
-  GitHub (istmirRegal/pc2coop) und installiert nur, wenn die Pruefsumme stimmt.
-- Keine Administratorrechte; der Installer schreibt nur in Win64\ovldata des Spiels.
-- In der Sitzung sehen alle Mitspieler deine DLC-Liste, die Ordnernamen deiner anderen
-  Mods und dein Steam-Profilbild (aus Steam, nicht von uns gespeichert).
-- Die Log-Datei bleibt auf deinem PC. Sie enthaelt Steam-Namen und Steam-IDs der
-  Mitspieler - bedenke das, wenn du sie weitergibst.
-- Grenzen: Wer mitspielt, darf bauen und damit auch abreissen - lade nur Leute ein, denen
-  du deinen Park anvertraust. Der Park des Hosts wird vom Spiel geladen wie ein Park aus
-  dem Workshop. Updates sind so vertrauenswuerdig wie das GitHub-Konto des Herausgebers.
-- Alle Mitspieler brauchen dieselbe Mod- und dieselbe Spielversion; sonst lehnt der Host
-  den Beitritt ab und sagt, wer aktualisieren muss.
-
-Voraussetzungen
-- Windows x64, eigene Steam-Lizenz Planet Coaster 2. Alle Mitspieler sollten dieselbe
-  Spielversion haben (Steam aktualisiert automatisch). Getestet mit Build 26494896
-  (1.12.12.1045899); neuere Builds werden installiert und funktionieren meist ebenfalls.
-  Findet die Mod im Spiel nicht, was sie braucht, bleibt der Multiplayer aus und die
-  Log-Datei enthaelt "game build not supported".
-- DLCs: Das Multiplayer-Fenster zeigt, wem welches DLC fehlt. Standard ist "Nur gemeinsame
-  Inhalte":
-  Objekte aus einem DLC, das nicht alle haben, werden nicht gebaut (Hinweis an den
-  Bauenden). Der Host kann das im Reiter Einstellungen abschalten. Steht im Park
-  des Hosts schon DLC-Inhalt, braucht ihr dieses DLC trotzdem zum Laden.
-- Andere Mods (z. B. ForgeUtils) stoeren PC2Coop nicht. Neue Objekte aus Mods, die ein
-  Mitspieler nicht hat, kann sein Spiel nicht anzeigen - das Fenster zeigt Unterschiede.
-
-Probleme melden
-Log-Datei: <Spielordner>\Win64\ovldata\PC2CoopProbe\pc2coop-diagnostic-*.log
-Den Spielordner oeffnet Steam: Rechtsklick auf Planet Coaster 2 > Verwalten > Lokale Dateien
-durchsuchen. Jeder Spielstart legt eine neue Datei an; schick die neueste (nach Datum sortieren).
-
-Entfernen
-PC2 beenden, UNINSTALL.cmd doppelklicken.
-
-Lizenz und Quellcode
-Eigener Code: MIT (LICENSE-PC2Coop.txt, source\).
+Mehr: https://github.com/istmirRegal/pc2coop · Lizenz: MIT (LICENSE.txt).
 ACSE ist nicht enthalten (eigener Download, eigene Lizenz).
-Keine Spieldateien, Spielstaende oder fremden Assets enthalten.
+
+
+PC2Coop {version} – build live together in Planet Coaster 2
+
+INSTALL
+1. Extract this ZIP: right-click → "Extract All…".
+2. In the extracted folder, double-click PC2Coop-Setup.exe and press "Install".
+   If Windows says "Windows protected your PC": click "More info", then "Run anyway".
+   Setup is just not signed.
+3. If the mod loader ACSE is missing, Setup tells you and opens its download page.
+
+Then in the game: main menu → "Multiplayer". Everyone needs the same version.
+New version: start Setup → "Check for update".
+
+SOMETHING NOT WORKING?
+In the multiplayer window under "Settings", click "Create problem report". The file
+lands on your desktop – send it to the developer (Discord or GitHub). Steam IDs and the
+other players' names are replaced in it, chat is never in it.
+
+WITH VORTEX OR BY HAND
+Vortex: install this ZIP like any other mod and deploy. Then don't use Setup as well.
+By hand: copy the folder Mod\PC2CoopProbe into <game folder>\Win64\ovldata.
+
+More: https://github.com/istmirRegal/pc2coop · Licence: MIT (LICENSE.txt).
+ACSE is not included (separate download, separate licence).

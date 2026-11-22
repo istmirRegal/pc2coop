@@ -3,6 +3,9 @@
 #include <windows.h>
 #include <cstdio>
 #include <cstring>
+#include <string>
+
+std::string pc2_system_line();
 
 namespace {
 HMODULE module_handle = nullptr;
@@ -18,6 +21,49 @@ struct Record {
     bool overflow = false;
 };
 thread_local Record record;
+
+// Crash note (FEAT-222): the first few fatal exceptions of this game run go into the log
+// before the game's own handler runs. First chance - the game may still handle one.
+ULONG_PTR exe_base = 0, exe_end = 0, own_base = 0, own_end = 0;
+
+void image_range(HMODULE module, ULONG_PTR& base, ULONG_PTR& end) noexcept {
+    base = end = reinterpret_cast<ULONG_PTR>(module);
+    if (!module) return;
+    auto dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(module);
+    if (dos->e_magic != IMAGE_DOS_SIGNATURE) return;
+    auto nt = reinterpret_cast<const IMAGE_NT_HEADERS*>(reinterpret_cast<const char*>(module) + dos->e_lfanew);
+    if (nt->Signature == IMAGE_NT_SIGNATURE) end = base + nt->OptionalHeader.SizeOfImage;
+}
+
+LONG CALLBACK crash_watch(EXCEPTION_POINTERS* info) noexcept {
+    static volatile LONG written = 0;
+    DWORD code = info && info->ExceptionRecord ? info->ExceptionRecord->ExceptionCode : 0;
+    switch (code) {
+    case EXCEPTION_ACCESS_VIOLATION: case EXCEPTION_STACK_OVERFLOW: case EXCEPTION_ILLEGAL_INSTRUCTION:
+    case EXCEPTION_INT_DIVIDE_BY_ZERO: case EXCEPTION_PRIV_INSTRUCTION:
+    case 0xC0000374:   // heap corruption
+    case 0xC0000409:   // fail fast / stack buffer overrun
+        break;
+    default:
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+    if (InterlockedIncrement(&written) > 8) return EXCEPTION_CONTINUE_SEARCH;
+    ULONG_PTR at = reinterpret_cast<ULONG_PTR>(info->ExceptionRecord->ExceptionAddress);
+    const char* where = "other";
+    ULONG_PTR offset = at;
+    if (at >= exe_base && at < exe_end) { where = "game"; offset = at - exe_base; }
+    else if (at >= own_base && at < own_end) { where = "PC2CoopDiagnostic.dll"; offset = at - own_base; }
+    char line[256];
+    int size = sprintf_s(line, "exception|code=0x%08lX|in=%s+0x%llX|thread=%lu|first-chance (the game may still handle it)\n",
+                         static_cast<unsigned long>(code), where, static_cast<unsigned long long>(offset), GetCurrentThreadId());
+    // Never wait here: the crashing thread may hold the lock itself.
+    if (size > 0 && TryAcquireSRWLockExclusive(&file_lock)) {
+        DWORD done = 0;
+        if (log_file != INVALID_HANDLE_VALUE) WriteFile(log_file, line, static_cast<DWORD>(size), &done, nullptr);
+        ReleaseSRWLockExclusive(&file_lock);
+    }
+    return EXCEPTION_CONTINUE_SEARCH;
+}
 
 void append(const char* bytes, DWORD size) noexcept {
     AcquireSRWLockExclusive(&file_lock);
@@ -114,6 +160,17 @@ extern "C" __declspec(dllexport) int pc2_bootstrap(void*) noexcept {
     int size = sprintf_s(header, "PC2COOP diagnostic=1 pid=%lu thread=%lu no-lua-abi=1\n",
                          GetCurrentProcessId(), GetCurrentThreadId());
     if (size > 0) append(header, static_cast<DWORD>(size));
+    static bool once = false;
+    if (!once) {
+        once = true;
+        try {
+            std::string system = pc2_system_line() + "\n";
+            append(system.data(), static_cast<DWORD>(system.size()));
+        } catch (...) {}
+        image_range(GetModuleHandleW(nullptr), exe_base, exe_end);
+        image_range(module_handle, own_base, own_end);
+        AddVectoredExceptionHandler(0, crash_watch);
+    }
     return 0;
 }
 

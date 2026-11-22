@@ -289,6 +289,7 @@ local function buildState()
         chat = session.Chat(), toasts = session.Toasts(), chatKey = chatKeys,
         labels = menu ~= nil and menu.labelsEnabled == true,
         chatLines = chatLinesShown(),
+        report = session.ReportState and session.ReportState() or false,
         stage = view.stage or false, parkTitle = view.parkTitle or "", guard = view.guard ~= false,
         context = view.context or false, dlc = view.dlc,
         choice = view.choice or false, canChoose = choosing(), parks = choosing() and parkList or {},
@@ -457,6 +458,8 @@ local actions = {
         if key then session.InviteRide(key, name) end
     end,
     take_ok = function() if session.DismissTakeAsk then session.DismissTakeAsk() end end,
+    -- "Problembericht erstellen" (FEAT-223): the newest logs, anonymised, as one file on the desktop.
+    report = function() if session.Report then session.Report(); lastState = nil end end,
     chatlines = function(arg)
         chatLinesOff = arg == "0"
         global.pcall(function() global.require("pc2coop.shared").chatLinesOff = chatLinesOff end)

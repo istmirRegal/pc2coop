@@ -20,7 +20,7 @@ betrifft, eine Alternative bewusst verworfen wurde oder der Eigner eine Richtung
 | [ADR-007](ADR-007-reiter-multiplayer-neben-nicht-in-der-tabbar.md) | Reiter „Multiplayer“ neben, nicht in der TabBar | Abgelöst (ADR-021) | 2026-11-18 |
 | [ADR-008](ADR-008-qa-befehle-nur-mit-dev-flag-und-nur-im-eigenen-t.md) | QA-Befehle nur mit Dev-Flag und nur im eigenen Testpark | Akzeptiert | 2026-11-14 |
 | [ADR-009](ADR-009-keine-acse-dateien-in-paketen.md) | Keine ACSE-Dateien in Paketen | Akzeptiert | 2026-11-19 |
-| [ADR-010](ADR-010-nexus-paket-ohne-skripte-dll-mit-versionsangaben.md) | Nexus-Paket ohne Skripte, DLL mit Versionsangaben | Akzeptiert | 2026-11-19 |
+| [ADR-010](ADR-010-nexus-paket-ohne-skripte-dll-mit-versionsangaben.md) | Nexus-Paket ohne Skripte, DLL mit Versionsangaben | Teilweise ersetzt (ADR-023) | 2026-11-19 |
 | [ADR-011](ADR-011-gast-figur-aus-der-gast-vorlage-des-spiels-compi.md) | Gast-Figur aus der Gast-Vorlage des Spiels (CompilePrefab) | Akzeptiert | 2026-11-19 |
 | [ADR-012](ADR-012-kein-avatar-prefab-des-startbildschirms-im-park.md) | Kein Avatar-Prefab des Startbildschirms im Park | Akzeptiert | 2026-11-18 |
 | [ADR-013](ADR-013-aussehen-aus-gruppe-und-farben-des-frontier-avat.md) | Aussehen aus Gruppe und Farben des Frontier-Avatars | Akzeptiert | 2026-11-19 |
@@ -33,6 +33,7 @@ betrifft, eine Alternative bewusst verworfen wurde oder der Eigner eine Richtung
 | [ADR-020](ADR-020-native-oberflaeche-spiel-bausteine-variablen-rem.md) | Native Oberfläche: Bausteine, Variablen und Einheiten des Spiels | Vorgeschlagen | 2026-11-20 |
 | [ADR-021](ADR-021-einstieg-ueber-runden-knopf-links-oben.md) | Einstieg über einen runden Knopf links oben | Akzeptiert | 2026-11-21 |
 | [ADR-022](ADR-022-englisch-nach-spielsprache.md) | Englisch nach der Sprache des Spiels | Akzeptiert | 2026-11-21 |
+| [ADR-023](ADR-023-eine-zip-mit-setup-fuer-alle-plattformen.md) | Eine ZIP mit Setup.exe für GitHub, Nexus und Vortex | Akzeptiert | 2026-11-22 |
 
 ## Vorlage
 

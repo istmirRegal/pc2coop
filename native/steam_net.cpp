@@ -20,6 +20,7 @@
 void pc2_diagnostic_event(const char*) noexcept;
 bool pc2_developer_mode() noexcept;
 int pc2_push_string(void* state, const char* text, size_t size) noexcept;
+std::string pc2_write_report(const std::string& args);
 
 namespace {
 // Visitor mode input (see poll_visitor).
@@ -706,12 +707,15 @@ void send_to(u64 id, const char* data, size_t size) {
 
 // Commands: host | invite | join|<lobby> | leave | send|<steamid>|<payload> | all|<payload>
 void command(const char* bytes, unsigned int size) {
-    pc2_diagnostic_event("net-stage:command");
-    if (!initialise()) return;
     std::string text(bytes, size);
     size_t bar = text.find('|');
     std::string verb = text.substr(0, bar);
     std::string rest = bar == std::string::npos ? "" : text.substr(bar + 1);
+    // The problem report (FEAT-223) also works when Steam is not there.
+    if (verb == "report") { queue(pc2_write_report(rest)); return; }
+    static int logged = 0;
+    if (logged < 3) { ++logged; pc2_diagnostic_event("net-stage:command"); }
+    if (!initialise()) return;
     if (verb == "host") {
         created_result->Set(api.CreateLobby(api.Matchmaking(), 1 /* friends only */, 8));
     } else if (verb == "invite") {

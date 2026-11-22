@@ -48,8 +48,8 @@ CASES = {
     'Wartung fällig: Conlan': 'Maintenance due: Conlan',
     'Die Sitzung ist voll.': 'The session is full.',
     'Beitritt nicht möglich (Steam-Code 5). Lass dich neu einladen.': 'Can’t join (Steam code 5). Ask for a new invitation.',
-    'Der Host hat PC2Coop 1.13.0, du 1.14.0. Beende das Spiel und führe UPDATE.cmd aus.':
-        'The host has PC2Coop 1.13.0, you have 1.14.0. Quit the game and run UPDATE.cmd.',
+    'Der Host hat PC2Coop 1.13.0, du 2.1.0. Ihr braucht dieselbe Version: Spiel beenden, PC2Coop-Setup → „Nach Update suchen“.':
+        'The host has PC2Coop 1.13.0, you have 2.1.0. You need the same version: quit the game, PC2Coop Setup → “Check for update”.',
     'Tipp: Markieren zeigt allen eine Stelle und bietet Aktionen dafür an (Kommentar, Testfahrt, Übernahme). '
     'Alles Weitere öffnet der runde Knopf „Multiplayer“ links oben.':
         'Tip: Mark shows everyone a spot and offers actions for it (comment, test ride, takeover). '

@@ -32,16 +32,18 @@ der Bereich nicht, die nächste freie Nummer ab 230.
 
 | ID | Funktion | Status | Seit |
 |---|---|---|---|
-| FEAT-001 | Installer (`INSTALL.cmd`) | Implemented | 1.4.1 |
+| FEAT-001 | Installer (INSTALL.cmd) | Replaced | 1.4.1 |
 | FEAT-002 | ACSE-Prüfung beim Installieren | Implemented | 1.12.2 |
-| FEAT-003 | Deinstallation (`UNINSTALL.cmd`) | Implemented | 1.4.1 |
-| FEAT-004 | Updater (`UPDATE.cmd`) | Implemented | 1.4.1 |
-| FEAT-005 | GitHub-Release-Paket | Implemented | 1.4.1 |
-| FEAT-006 | Nexus-Paket ohne Skripte | Implemented | 1.12.3 |
+| FEAT-003 | Deinstallation (UNINSTALL.cmd) | Replaced | 1.4.1 |
+| FEAT-004 | Updater (UPDATE.cmd) | Replaced | 1.4.1 |
+| FEAT-005 | GitHub-Release-Paket | Replaced | 1.4.1 |
+| FEAT-006 | Nexus-Paket ohne Skripte | Replaced | 1.12.3 |
 | FEAT-007 | Keine ACSE-Dateien in Paketen | Implemented | 1.12.3 |
 | FEAT-008 | Versionsangaben in der DLL | Implemented | 1.12.3 |
 | FEAT-009 | Spielbuild-Erkennung | Implemented | 1.4.2 |
 | FEAT-010 | Startskript der Python-Alpha (`START.cmd`) | Legacy | vor 1.4.1 |
+| FEAT-011 | PC2Coop-Setup.exe (installieren, aktualisieren, entfernen) | Implemented | 2.1.0 |
+| FEAT-012 | Eine ZIP für GitHub, Nexus und Vortex | Implemented | 2.1.0 |
 
 ## Sitzung und Lobby — [features/session-and-lobby.md](../features/session-and-lobby.md)
 
@@ -212,3 +214,5 @@ der Bereich nicht, die nächste freie Nummer ab 230.
 | FEAT-219 | Build-Pipeline | Implemented | 1.4.1 |
 | FEAT-220 | Automatische Tests | Implemented | 1.4.1 |
 | FEAT-221 | Dokumentations-Prüfung (`check_docs.py`) | Implemented | 1.13.0 |
+| FEAT-222 | Fehler mit Fundstelle, Schnappschuss, Absturz-Notiz | Implemented | 2.1.0 |
+| FEAT-223 | Problembericht | Implemented | 2.1.0 |

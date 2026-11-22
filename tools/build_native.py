@@ -35,12 +35,12 @@ command = [str(compiler), '/nologo', '/LD', '/MT', '/O2', '/W4', '/WX',
            '/I' + str(args.msvc / 'include')]
 command += ['/I' + str(include / p) for p in ('ucrt', 'shared', 'um')]
 command += [str(project / 'native' / 'diagnostic.cpp'), str(project / 'native' / 'string_probe.cpp'),
-            str(project / 'native' / 'steam_net.cpp'), str(output / 'version.res'),
+            str(project / 'native' / 'steam_net.cpp'), str(project / 'native' / 'report.cpp'), str(output / 'version.res'),
             '/Fo' + str(output) + '\\', '/link', '/DYNAMICBASE',
             '/NXCOMPAT', '/MACHINE:X64', '/OUT:' + str(output / 'PC2CoopDiagnostic.dll'),
             '/LIBPATH:' + str(args.msvc / 'lib' / 'x64')]
 command += ['/LIBPATH:' + str(library / p / 'x64') for p in ('ucrt', 'um')]
-command += ['kernel32.lib', 'bcrypt.lib', 'user32.lib']
+command += ['kernel32.lib', 'bcrypt.lib', 'user32.lib', 'shell32.lib', 'ole32.lib', 'version.lib']
 result = subprocess.run(command, cwd=output, text=True, capture_output=True)
 (output / 'compile.log').write_text(result.stdout + result.stderr, encoding='utf8')
 if result.returncode:

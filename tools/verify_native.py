@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('dll', type=Path)
@@ -19,6 +20,8 @@ if not args.child:
         subprocess.run([sys.executable, __file__, str(target), '--child'], check=True)
     raise SystemExit()
 
+# Developer marker first: the DLL reads it once (the report may then choose its folder).
+(args.dll.parent / 'pc2coop-dev.flag').write_text('test', encoding='ascii')
 dll = ctypes.CDLL(str(args.dll.resolve()))
 def callback(name):
     fn = getattr(dll, name)
@@ -49,7 +52,32 @@ send('Grüße'.encode())
 send(b'x' * 4096)
 send(b'y' * 4097)
 begin(None); nibbles[1](None); end(None)
-header, actual = path.read_bytes().split(b'\n',1)
+header, system, actual = path.read_bytes().split(b'\n',2)
 assert b'no-lua-abi=1' in header
+assert system.startswith(b'system|windows=') and b'|ram-gb=' in system and b'|mods=' in system, system
 assert actual == all_bytes+b'\n\n'+'Grüße'.encode()+b'\n'+b'x'*4096+b'\n'+b'[diagnostic record rejected]\n'*2
-print('Native DLL checks passed: all 256 bytes, UTF-8, NUL, empty, 4096-byte bound, overflow, partial byte; zero results.')
+
+# Problem report (FEAT-223): the newest logs in one file; ids, names and the user folder replaced.
+older = args.dll.parent / 'pc2coop-diagnostic-1.log'
+older.write_text('[S] 76561190000000001 joined|Vici says hi|C:\\Users\\Someone\\park\n'
+                 '[S] error|session.tick|x1|boom\n[S] lobby 109775240000000002\n', encoding='utf8')
+os.utime(older, (time.time() - 60, time.time() - 60))
+reports = args.dll.parent / 'reports'
+reports.mkdir()
+net_end = callback('pc2_net_end')
+assert begin(None) == 0
+for byte in b'report|de|' + str(reports).encode() + b'|2.1.0|76561190000000002=Hostname|76561190000000001=Vici':
+    nibbles[byte >> 4](None)
+    nibbles[byte & 15](None)
+assert net_end(None) == 0
+written = list(reports.glob('PC2Coop-Bericht-*.txt'))
+assert len(written) == 1, written
+report = written[0].read_bytes().decode('utf-8-sig', errors='replace')   # this run's log holds all 256 bytes
+for secret in ('76561190000000001', '109775240000000002', 'Vici', 'Someone'):
+    assert secret not in report, secret
+assert 'P1 joined|P1 says hi|C:\\Users\\<user>\\park' in report, report[:3000]
+assert 'L1' in report and 'PC2Coop 2.1.0' in report
+assert 'error|session.tick|x1|boom' in report.split('Auffällige Zeilen:')[1].split('========')[0]
+assert report.index('pc2coop-diagnostic-%d.log' % os.getpid()) < report.index('pc2coop-diagnostic-1.log')
+print('Native DLL checks passed: all 256 bytes, UTF-8, NUL, empty, 4096-byte bound, overflow, partial byte; zero results;'
+      ' system line; problem report anonymised.')

@@ -63,6 +63,52 @@ Werkzeuge für Entwickler und automatische Tests. Arbeitsweise: `docs/developmen
 - **Funktion:** `Win64\ovldata\PC2CoopProbe\pc2coop-diagnostic-<pid>.log` mit Ereignissen der
   Mod (`[PC2CoopSession] …`, `[PC2CoopSync] …`, `js|…`).
 - **Technik:** `Diagnostic.Write` (`diagnostic.lua`) → DLL. Enthält Steam-Namen und -IDs.
+  Seit 2.1.0 zweite Zeile `system|windows=…|ram-gb=…|cpus=…|game=…|steam-build=…|mods=…`
+  (`native/report.cpp`), dazu FEAT-222. Höchstens 4 MB pro Spielstart.
+
+### FEAT-222 – Fehler mit Fundstelle, Schnappschuss, Absturz-Notiz
+- **Status:** Implemented · **Seit:** 2.1.0
+- **Funktion:** Damit ein Log reicht, um einen Fehler zu finden: Fehler der Mod mit Datei, Zeile
+  und Aufrufweg; alle 30 s eine Zeile zum Stand der Sitzung; die letzten 200 Netz-Ereignisse
+  (nur Art und Größe) beim ersten Fehler und im Bericht; ein Sitzungscode, der bei Host und
+  Gästen gleich ist; schwere Ausnahmen des Spiels (Zugriffsfehler, Stapelüberlauf …) vor dem
+  Absturz.
+- **Technik:** `probe/PC2CoopProbe/Main/pc2coop/guard.lua`: `Guard.Call` (xpcall mit
+  `debug.traceback`) schreibt `error|<wo>|x<n>|<Stapel>` beim 1., 10., 100. und jedem 1000. Mal,
+  höchstens 100 Arten; `Guard.Report` für Coroutinen (`Session._TaskError`). Benutzt in
+  `Manager.Advance` (`managers/pc2coopqa.lua`: qa, live, sync, session, ui, presence), in
+  `Frontend.Tick` und für jedes DLL-Ereignis in `Session.Tick`. `Session._Snapshot` →
+  `session:snap|role=…|players=…|stage=…|context=…|conflicts=…|lang=…|faults=…|code=…|frame=…|acts=…`;
+  `Session._Remember` (ein- und ausgehend, gleiche Folgen als `x<n>`), `Session._DumpRing` →
+  `session:recent|<Grund>|…`; `Session._Code` (sechs Zeichen aus der Lobby-Id) →
+  `session:code|…`. DLL (`native/diagnostic.cpp`): Vectored Exception Handler, höchstens
+  8 Zeilen `exception|code=…|in=game+0x…|thread=…|first-chance …` je Spielstart, ohne zu
+  warten (TryAcquire), Adressen relativ zu Spiel-EXE oder DLL.
+- **Besonderheiten:** „first-chance“: Das Spiel kann eine solche Ausnahme noch selbst
+  behandeln; erst die letzte Zeile vor dem Ende des Logs zählt. Der Befehlskanal schreibt
+  `net-stage:command` nur noch dreimal. Tests: `tests/test_diagnosis_lua.py`,
+  `tools/verify_native.py`.
+
+### FEAT-223 – Problembericht
+- **Status:** Implemented · **Seit:** 2.1.0 · **Hängt ab von:** FEAT-216, FEAT-222
+- **Funktion:** „Problembericht erstellen“ legt die neuesten drei Logs dieses PCs als eine Datei
+  auf den Desktop (`PC2Coop-Bericht-<Datum>-<Zeit>.txt`, englisch `PC2Coop-report-…`). Steam-IDs, Lobby-IDs, die Namen der Mitspieler und der
+  Windows-Benutzername sind ersetzt (P0 = wer den Bericht erstellt, P1 … = die anderen,
+  L1 … = Lobbys). Oben stehen Version, Windows und die auffälligen Zeilen. Nichts wird
+  verschickt.
+- **Technik:** UI-Aktion `report` → `Session.Report` (Ringpuffer und Fehlerliste ins Log, dann
+  DLL-Befehl `report|<lang>|<Ordner>|<Version>|<sid>=<Name>|…`) → `native/report.cpp`
+  (`pc2_write_report`; lange Logs: Anfang 256 KB und Ende 1,25 MB) → Ereignis `report:done|<Datei>`
+  oder `report:error|logs|desktop|write` → `Session._ReportResult`; `Session.ReportState` im
+  UI-Zustand `report`. Ohne Steam wartet `Session._ReportWait` trotzdem auf die Antwort,
+  nach 15 s „Keine Antwort von der Mod-DLL.“. Einen eigenen Ordner gibt es nur mit Dev-Flag
+  (QA). Auswerten: `tools/read_report.py`.
+- **UI:** Im Park: Multiplayer → Einstellungen → „Für dich“; im Hauptmenü unten auf der Seite
+  „Multiplayer“. Knopf des Spiels, darunter der Stand („Auf dem Desktop gespeichert:“ und der
+  Dateiname in einer eigenen Zeile; daneben war im schmalen Fenster kein Platz).
+- **Besonderheiten:** Der Desktop-Ordner wird nicht geöffnet (das Spiel bleibt im Vordergrund).
+  Kein Chat im Log; Bewertungs-Kommentare können darin stehen. Tests:
+  `tests/test_diagnosis_lua.py`, `tools/verify_native.py`, `tests/test_read_report.py`.
 
 ### FEAT-217 – LAN-Alpha im Spiel
 - **Status:** Legacy · **Seit:** vor 1.4.1

@@ -101,7 +101,7 @@ UI-Skalierung 1.0 verdeckte er die Icon-Knöpfe am Ende der Bauleiste des Spiels
 
 | Abschnitt | Elemente | Aktionen | FEAT |
 |---|---|---|---|
-| „Für dich“ (nur auf deinem PC) | Schalter (`ToggleRow`) „Mitspieler in der Welt zeigen“; Tooltip: Name, Blickrichtung, gehaltenes Objekt, Sperr-Färbung. Schalter „Chat unten links einblenden“ (TP-32, seit 2.0.0; aus: keine einblendenden Zeilen, Enter zeigt den Verlauf trotzdem) | `labels`, `chatlines` | FEAT-091, FEAT-122 |
+| „Für dich“ (nur auf deinem PC) | Schalter (`ToggleRow`) „Mitspieler in der Welt zeigen“; Tooltip: Name, Blickrichtung, gehaltenes Objekt, Sperr-Färbung. Schalter „Chat unten links einblenden“ (TP-32, seit 2.0.0; aus: keine einblendenden Zeilen, Enter zeigt den Verlauf trotzdem). Knopf „Problembericht erstellen“ mit Stand daneben (seit 2.1.0; im Hauptmenü auch unten auf der Seite „Multiplayer“) | `labels`, `chatlines`, `report` | FEAT-091, FEAT-122, FEAT-223 |
 | „Inhalte“ | nur mit Mitspielern: DLC-Vergleich; Host: Schalter „Nur gemeinsame Inhalte“ | `guard` | FEAT-037, FEAT-038 |
 | „Wettbewerb“ | Host: Thema, Bauduell/Koop gegen die Uhr je 15/30/60 Min.; laufend: Uhr, Bewertung Gestaltung/Technik 1–5, Ergebnis; Host: „Zeit beenden, bewerten“/„Bewertung abschließen“/„Wettbewerb schließen“ | `comp_start`, `comp_rate`, `comp_next`, `goto` | FEAT-145–147 |
 | „Regeln dieser Sitzung“, Info-Icon mit der Rolle im Tooltip | Auswahl (`ListStepperRow`) „Schnellwahl“ Locker/Geordnet/Nur bauen (+ „Eigene“), „Spieltempo und Pause“ alle/nur der Host, „Fremde Bauten abreißen“ erlaubt/erst fragen; Schalter „Besucher-Modus“; Erklärung je Zeile im Tooltip; Mitspieler: gesperrt, Tooltip „Nur der Host ändert Regeln.“ | `rule_preset`, `rule` | FEAT-142–144 |
@@ -206,6 +206,7 @@ Entwickler-Seite: technische Werte und „API-Rekorder an/aus“, „Namensschil
 | `invite_ride` | key\|name | Testfahrt-Einladung | nein (seit P2; Radialmenü „Testfahrt mit allen“ über `ctx`) |
 | `invitation` | 1/0 | Einladung annehmen/später | ja |
 | `take_ok` | – | Übernahme-Frage gelesen („Verstanden“) | ja |
+| `report` | – | Problembericht erstellen (FEAT-223) | ja |
 | `lang` | de/en | Sprache des Spiels für Schilder, die Lua zeichnet (ADR-022) | nein (beim Start, automatisch) |
 | `paneltab` | team/plan/history/session (visit veraltet, zeigt „Spieler“) | Reiter | ja |
 | `board_add` | art\|titel\|text\|zuständig\|radius | Brett-Eintrag | ja |

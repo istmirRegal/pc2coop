@@ -1574,6 +1574,7 @@ class Lobby extends StateComponent {
             h('div', { key: 'chatlines' }, h(ToggleRow, { label: literal('Chat unten links einblenden'), toggled: coop.chatLines !== false, focusable: false,
                 tooltip: literal('Neue Nachrichten und was Mitspieler tun, kurz unten links. Enter öffnet den Chat trotzdem.'),
                 onToggle: (on) => request('chatlines', on ? '1' : '0') })),
+            reportRow(coop),
             section('Regeln dieser Sitzung', h(HoverTip, { tip: role, className: 'pc2coopRoleTip' },
                 glyph('img/icons/information.svg', '1.1rem', false, { filter: C('accentText-filter') }))),
             h('div', { key: 'preset' }, h(ListStepperRow, { label: literal('Schnellwahl'), items: presetItems.map(literal),
@@ -1617,6 +1618,25 @@ const pagePanel = (title, width, body, footer) => h('div', { className: 'Panel_r
         scroller('28rem', body, { backgroundColor: C('panel'), color: C('accentText') }, { padding: '0.5rem 0.9rem' }),
         footer && h('div', { style: { padding: '0.5rem 0.9rem', backgroundColor: C('area'), borderTopWidth: '0.05rem', borderTopStyle: 'solid',
             borderTopColor: ACCENT_A(0.2) } }, footer)));
+
+// "Problembericht erstellen" (FEAT-223): the newest logs as one file on the desktop, Steam ids and
+// names replaced. In the park under Einstellungen > Für dich, in the main menu below the panels.
+// The park window is narrow: the state goes under the button. The main menu page is wide but
+// ends at the bottom of a 1080p screen: there it goes beside the button (test copy 2026-11-22).
+function reportRow(coop, style, noteColor, beside) {
+    const report = coop.report || {};
+    const lines = report.state === 'busy' ? ['Bericht wird erstellt …']
+        : report.state === 'done' ? ['Auf dem Desktop gespeichert:', keep(report.file)]
+        : report.state === 'error' ? ['Bericht ging nicht: ' + report.reason]
+        : ['Klappt etwas nicht? Schick den Bericht dem Entwickler. Steam-IDs und Namen sind darin ersetzt.'];
+    const color = noteColor ? { color: noteColor } : {};
+    const note = beside
+        ? lines.map((line, i) => muted(line, Object.assign({ marginLeft: i ? '0.3rem' : '0.8rem' }, color)))
+        : lines.map((line, i) => muted(line, Object.assign({ marginTop: i ? 0 : '0.3rem' }, color)));
+    return h('div', { key: 'report', style: Object.assign({ display: 'flex', flexDirection: beside ? 'row' : 'column',
+        alignItems: beside ? 'center' : 'flex-start', margin: '0.5rem 0', pointerEvents: 'auto' }, style || {}) },
+        buttons([{ label: 'Problembericht erstellen', onSelect: () => request('report') }]), note);
+}
 
 class MultiplayerPage extends StateComponent {
     render(props, state) {
@@ -1665,7 +1685,8 @@ class MultiplayerPage extends StateComponent {
                     // Without Steam the panel itself says why; no status line repeating it.
                     steps || coop.available === false ? null : [statusLine, footer.length > 0 && h('div', { key: 'f' }, buttons(footer))]),
                 right,
-                isHost && coop.stage === 'lobby' && this.parkTiles()));
+                isHost && coop.stage === 'lobby' && this.parkTiles()),
+            reportRow(coop, { marginTop: '0.8rem' }, C('whiteColor'), true));
     }
 
     // Eight places (TP-05): players, invited friends (pale), a free place invites.

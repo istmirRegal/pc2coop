@@ -31,9 +31,9 @@ function Frontend.Tick(menu)
             idleSync, menu.parkLoadSaveManager)
         state.ui.SetFrontend(menu)
     end
-    local ok, failure = global.pcall(state.session.Tick)
-    if not ok then state.diagnostic.Write("[PC2CoopSession] frontend-tick-error|" .. global.tostring(failure)) end
-    global.pcall(state.ui.Tick)
+    local guard = state.session._guard
+    guard.Call("menu.session-tick", state.session.Tick)
+    guard.Call("menu.ui-tick", state.ui.Tick)
 end
 
 -- The menu's session instance (the menu's require does not cache modules).

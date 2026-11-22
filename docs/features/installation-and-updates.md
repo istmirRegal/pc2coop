@@ -3,78 +3,51 @@
 Alles, was die Mod auf den PC eines Spielers bringt, aktualisiert oder entfernt.
 Vorlage je Funktion: Funktion · Technik · UI · Besonderheiten.
 
-### FEAT-001 – Installer (`INSTALL.cmd`)
-- **Status:** Implemented · **Seit:** 1.4.1 · **Hängt ab von:** FEAT-005, FEAT-002
-- **Funktion:** Kopiert die Mod (`Main.ovl`, `Manifest.xml`, `PC2CoopDiagnostic.dll`) nach
-  `<Spiel>\Win64\ovldata\PC2CoopProbe`. Findet den Steam-Spielordner selbst; sonst
-  `INSTALL.cmd -GameDir "<Pfad>"`.
-- **Technik:** `alpha-dist/INSTALL.cmd` ruft `alpha-dist/install.ps1 -Action Install`.
-  `Install-IntoGame` prüft jede Datei gegen `payload-manifest.json` (SHA-256), schreibt ein
-  Protokoll `.pc2coop-alpha-install.json` in `ovldata`, sichert überschriebene Dateien unter
-  `.pc2coop-alpha-backups\<Zeit>` und rollt bei einem Fehler alles zurück. `Safe-ModPath`
-  erlaubt nur `ACSE/` und `PC2CoopProbe/`. Läuft Planet Coaster 2, bricht er ab.
-- **UI:** Konsolenfenster mit Meldungen auf Deutsch.
-- **Besonderheiten:** Keine Administratorrechte, schreibt nur in `Win64\ovldata`. Eine
-  fremde, veränderte Datei wird nie überschrieben („Andere Modversion vorhanden“). Prüft die
-  EXE nicht mehr hart: unbekannter Build → nur Hinweis (FEAT-009). Welcher Build getestet
-  ist, steht seit 2.0.0 im Paket (`payload-manifest.json`: `tested_exe_sha256`,
-  `tested_steam_build` aus `tools/package_release.py`); vorher standen Hash und Build fest im
-  Skript und waren seit dem Spiel-Update veraltet. Test: `tests/test_installer_ps1.py`.
+### FEAT-001 – Installer (INSTALL.cmd)
+- **Status:** Replaced (durch FEAT-011) · **Seit:** 1.4.1 · **Bis:** 2.0.0
+- **Funktion:** Kopierte die Mod nach `<Spiel>\Win64\ovldata\PC2CoopProbe` (Konsolenfenster).
+- **Technik:** INSTALL.cmd → install.ps1 (beide entfernt): Prüfung gegen `payload-manifest.json`,
+  Protokoll `.pc2coop-alpha-install.json`, Sicherungen, Rollback.
+- **Warum ersetzt:** PowerShell-Skripte stuften Nexus und Virenscanner als verdächtig ein
+  (ADR-010), also gab es ein zweites Paket zum Kopieren von Hand, an dem Spieler scheiterten.
+  Setup übernimmt Protokoll und Sicherungen unverändert (ADR-023).
 
 ### FEAT-002 – ACSE-Prüfung beim Installieren
 - **Status:** Implemented · **Seit:** 1.12.2 (Nexus), für alle Pakete seit 1.12.3
-- **Funktion:** Ohne Mod-Loader ACSE installiert der Installer nichts und sagt, wo es ACSE gibt.
-  Ein vorhandenes ACSE (auch `ACSEDebug`) wird benutzt und nie verändert.
-- **Technik:** `install.ps1`: `$bringsAcse` (Paket enthält `ACSE/*`) und `$hasAcse`
-  (`ACSE\Main.ovl` oder `ACSEDebug`); `$acseOther` überspringt ACSE-Dateien.
-- **UI:** Fehlermeldung „ACSE fehlt …“ im Installer-Fenster.
-- **Besonderheiten:** Ein ACSE, das ein älteres PC2Coop-Paket installiert hat, bleibt beim
-  Update erhalten (es steht danach nicht mehr im Protokoll und wird beim Deinstallieren
-  nicht entfernt). Getestet mit nachgebautem Spielordner.
+- **Funktion:** Ohne Mod-Loader ACSE installiert Setup nichts, sagt es und bietet die
+  Download-Seite bei Nexus an. Ein vorhandenes ACSE (auch `ACSEDebug`) wird benutzt und nie
+  verändert.
+- **Technik:** `setup/PC2CoopSetup.cs`, Funktion Install: `ACSE\Main.ovl` oder `ACSEDebug`
+  müssen da sein (Code 3 in der Befehlszeile).
+- **UI:** Zeile „ACSE fehlt – PC2Coop braucht diesen Mod-Loader“ mit Knopf „Herunterladen“.
+- **Besonderheiten:** ACSE-Einträge, die ein altes Paket ins Protokoll schrieb, bleiben dort
+  und werden nie entfernt. Test: `tests/test_setup_exe.py`.
 
-### FEAT-003 – Deinstallation (`UNINSTALL.cmd`)
-- **Status:** Implemented · **Seit:** 1.4.1
-- **Funktion:** Entfernt genau die Dateien, die laut Protokoll von PC2Coop stammen.
-- **Technik:** `install.ps1 -Action Uninstall` → `Uninstall-FromGame`: bricht ab, wenn eine
-  Datei seit der Installation verändert wurde; löscht leere Ordner `PC2CoopProbe`/`ACSE`.
-- **UI:** Konsolenfenster.
-- **Besonderheiten:** Logs und Sicherungen bleiben liegen.
+### FEAT-003 – Deinstallation (UNINSTALL.cmd)
+- **Status:** Replaced (durch FEAT-011, Knopf „Entfernen“) · **Seit:** 1.4.1 · **Bis:** 2.0.0
+- **Funktion:** Entfernte die Dateien laut Protokoll (install.ps1, entfernt).
 
-### FEAT-004 – Updater (`UPDATE.cmd`)
-- **Status:** Implemented · **Seit:** 1.4.1 · **Hängt ab von:** FEAT-005
-- **Funktion:** Holt die neueste Version von GitHub, prüft die Prüfsumme und installiert sie.
-- **Technik:** `alpha-dist/update.ps1`: liest das Repository aus `update.json`
-  (`release.json` beim Bauen), fragt `releases/latest` ab, lädt ZIP und `.sha256`, prüft
-  SHA-256, entpackt nach `%LOCALAPPDATA%\PC2Coop\<Version>\PC2Coop` und startet dort den
-  Installer. `-CheckOnly` zeigt nur die verfügbare Version und die Release-Notizen.
-- **UI:** Konsolenfenster; zeigt „Installierte Paketversion“ und „Neue Version verfuegbar“.
-- **Besonderheiten:** Spricht nur mit dem eigenen GitHub-Repository. Ohne `.sha256`-Asset
-  verweigert er den Download. Nicht im Nexus-Paket (FEAT-006).
+### FEAT-004 – Updater (UPDATE.cmd)
+- **Status:** Replaced (durch FEAT-011, Knopf „Nach Update suchen“) · **Seit:** 1.4.1 · **Bis:** 2.0.0
+- **Funktion:** Holte die neueste Version von GitHub, prüfte die Prüfsumme und startete den
+  Installer der neuen Version (update.ps1, entfernt).
+- **Besonderheiten:** Ein altes UPDATE.cmd findet 2.1.0, bricht aber ab, weil install.ps1 im
+  Paket fehlt; die bisherige Version bleibt installiert. Einmal von Hand Setup starten.
 
 ### FEAT-005 – GitHub-Release-Paket
-- **Status:** Implemented · **Seit:** 1.4.1
-- **Funktion:** Baut `PC2Coop-<Version>.zip` und `.sha256` für ein GitHub-Release.
-- **Technik:** `tools/package_release.py`: prüft Build-Reports (OVL- und DLL-Hash, DLL-Quellen
-  unverändert), legt Installer-Dateien, `update.json`, `payload/PC2CoopProbe`, Lizenz und den
-  eigenen Quellcode (`source/`) ins ZIP, schreibt `payload-manifest.json` und prüft das ZIP.
-- **UI:** –
-- **Besonderheiten:** Der Ablauf eines Releases steht in `docs/development/RELEASE.md`.
+- **Status:** Replaced (durch FEAT-012) · **Seit:** 1.4.1 · **Bis:** 2.0.0
+- **Funktion:** ZIP mit Installer-Skripten, Mod und Quellcode für GitHub.
 
 ### FEAT-006 – Nexus-Paket ohne Skripte
-- **Status:** Implemented · **Seit:** 1.12.3 (ohne Skripte seit 1.12.3-Neuauflage)
-- **Funktion:** `PC2Coop-<Version>-nexus.zip` zum Hineinkopieren in den Spielordner.
-- **Technik:** `package_release.py --nexus` → Funktion `nexus()`: nur
-  `Win64/ovldata/PC2CoopProbe/*`, `PC2Coop-LIESMICH.txt` (umgeschrieben über `NEXUS_README`),
-  `PC2Coop-LICENSE.txt`. `check()` bricht ab, wenn `.cmd/.ps1/.exe/...` oder ACSE im ZIP wären.
-- **UI:** –
-- **Besonderheiten:** Grund: Nexus stellte ein Paket mit PowerShell-Skripten unter Quarantäne
-  (ADR-010). Kein Updater: Updates kommen über Nexus.
+- **Status:** Replaced (durch FEAT-012) · **Seit:** 1.12.3 · **Bis:** 2.0.0
+- **Funktion:** ZIP mit `Win64\ovldata\PC2CoopProbe` zum Kopieren in den Spielordner.
+- **Warum ersetzt:** Kopieren von Hand ging schief; Vortex sortierte es beim Eigner nie ein.
 
 ### FEAT-007 – Keine ACSE-Dateien in Paketen
 - **Status:** Implemented · **Seit:** 1.12.3
 - **Funktion:** Pakete enthalten weder ACSE noch dessen Quellcode; Spieler laden ACSE selbst.
 - **Technik:** `package_release.py` kennt keine ACSE-Quellen mehr; `check()` verbietet
-  `/ACSE/` im ZIP. `install.ps1` verlangt ACSE (FEAT-002).
+  `/ACSE/` im ZIP. Setup verlangt ACSE (FEAT-002).
 - **Besonderheiten:** Wunsch des Projekteigners (Lizenzen/Rechte, ADR-009). Die alten
   Release-Dateien v1.4.1–v1.12.2 mit ACSE wurden von GitHub gelöscht.
 
@@ -100,3 +73,51 @@ Vorlage je Funktion: Funktion · Technik · UI · Besonderheiten.
 - **Technik:** `alpha-dist/START.cmd`, `alpha-dist/start.ps1`; braucht `runtime\python.exe`.
 - **Besonderheiten:** Wird nicht mehr ausgeliefert (nicht in `INSTALLER_FILES`). Nicht ändern,
   sondern bei Gelegenheit samt FEAT-218 entfernen (dann Status `Removed`).
+
+### FEAT-011 – PC2Coop-Setup.exe
+- **Status:** Implemented · **Seit:** 2.1.0 · **Hängt ab von:** FEAT-012, FEAT-002
+- **Funktion:** Doppelklick: ein kleines Fenster zeigt Spielordner, ACSE und installierte
+  Version. „Installieren“/„Aktualisieren auf x“, „Nach Update suchen“, „Entfernen“,
+  „Spiel starten“. Deutsch, wenn Windows deutsch ist, sonst Englisch.
+- **Technik:** `setup/PC2CoopSetup.cs` (C# 5, .NET Framework 4.x, das bei Windows dabei ist),
+  gebaut mit `tools/build_setup.py` (csc.exe von Windows, Manifest `setup/app.manifest`:
+  asInvoker, DPI). Spielordner: gemerkt in `%LOCALAPPDATA%\PC2Coop\setup.json`, sonst Steam
+  (Registry, `libraryfolders.vdf`, `appmanifest_2688950.acf`), sonst Ordnerauswahl.
+  Installieren: jede Datei gegen `payload-manifest.json` (SHA-256) prüfen, ersetzte Dateien nach
+  `.pc2coop-alpha-backups\<Zeit>` sichern (die neuesten drei bleiben), bei Fehler zurückrollen,
+  Protokoll `.pc2coop-alpha-install.json` mit Version schreiben (Format wie install.ps1, alte
+  Protokolle werden übernommen). Eine Datei, die die alte Version besaß und die neue nicht hat,
+  wird entfernt. Update: `releases/latest` des Repositorys aus `release.json`, nur Download-Links
+  dieses Repositorys, ZIP und `.sha256` prüfen, nur `PC2Coop/payload-manifest.json` und
+  `PC2Coop/Mod/PC2CoopProbe/<Datei>` entpacken (jeder andere Eintrag mit `..`, `:` oder außerhalb
+  von `PC2Coop/` bricht ab), dann wie Installieren. Ein heruntergeladenes Programm wird nie
+  gestartet. Entfernen: die drei Mod-Dateien und Protokoll-Einträge; Logs, Park-Notizen und ACSE
+  bleiben.
+- **UI:** Fenster mit den Zeilen Spiel/ACSE/PC2Coop, Knöpfen und einer Statuszeile. Befehlszeile
+  für Tests: `--install`, `--uninstall`, `--status`, `--check-update`, `--update` mit `--game`,
+  `--source`, `--api`, `--lang`, `--log`; Ausgabe `result=…`, Codes 0 ok, 1 Fehler,
+  2 Spiel läuft, 3 ACSE fehlt, 4 Vortex verwaltet die Mod, 5 kein Spiel, 6 keine Schreibrechte,
+  7 nicht entpackt/Paket beschädigt, 10 schon aktuell.
+- **Besonderheiten:** Fasst eine Vortex-Installation nicht an (Hardlinks oder
+  `vortex.deployment*.json` mit PC2CoopProbe) und sagt, dass Vortex sie verwaltet. Nicht
+  entpackt gestartet (Windows führt die EXE aus der ZIP-Ansicht allein aus): Hinweis „zuerst
+  entpacken“. Nicht signiert: SmartScreen fragt beim ersten Start. Läuft ohne
+  Administratorrechte; fehlen Schreibrechte, rät die Meldung zu „Als Administrator ausführen“.
+  Tests: `tests/test_setup_exe.py` (nur nachgebaute Spielordner, eigenes LOCALAPPDATA/TEMP,
+  GitHub nachgestellt), `tests/test_package_release.py`.
+
+### FEAT-012 – Eine ZIP für GitHub, Nexus und Vortex
+- **Status:** Implemented · **Seit:** 2.1.0 · **Entscheidung:** ADR-023
+- **Funktion:** Dieselbe `PC2Coop-<Version>.zip` (+ `.sha256` auf GitHub) für alle Wege:
+  Setup, Vortex oder von Hand kopieren.
+- **Technik:** `tools/package_release.py`: `PC2Coop/PC2Coop-Setup.exe`,
+  `PC2Coop/LIES MICH - READ ME.txt` (aus `alpha-dist/LIESMICH.txt`, `{version}` ersetzt, UTF-8
+  mit BOM, CRLF), `PC2Coop/LICENSE.txt`, `PC2Coop/payload-manifest.json` (Version, getesteter
+  Steam-Build und EXE-Hash, SHA-256 jeder Mod-Datei), `PC2Coop/Mod/PC2CoopProbe/*`. `check()`:
+  alles unter `PC2Coop/`, kein ACSE, keine Skripte (`.cmd`, `.ps1`, `.bat`, `.vbs`, `.js`, `.py` …),
+  als Programme genau Setup und die DLL. Prüft vorher die Build-Berichte von OVL, DLL und Setup.
+- **Besonderheiten:** Der Ordner `Mod/` ist Absicht: Die Planet-Coaster-2-Erweiterung von Vortex
+  nimmt mit ihrem „ACSE Mod“-Installer den Ordner mit `Main.ovl` und nur dessen Geschwister und
+  legt sie nach `Win64\ovldata`. Mit `Win64/` im ZIP hätte ihr „Root“-Installer Setup und Anleitung
+  in den Spielordner gelegt. Nachgebildet und geprüft in `tests/test_package_release.py`.
+

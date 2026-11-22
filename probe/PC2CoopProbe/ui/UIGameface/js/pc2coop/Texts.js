@@ -137,6 +137,15 @@ const EXACT = {
     'Zeit beenden, bewerten': 'End time, rate', 'Bewertung abschließen': 'Finish rating', 'Wettbewerb schließen': 'Close competition',
     'Für dich': 'For you', 'nur auf deinem PC': 'only on your PC', 'Mitspieler in der Welt zeigen': 'Show players in the world',
     'Chat unten links einblenden': 'Show chat bottom left',
+    // Problem report (FEAT-223)
+    'Problembericht erstellen': 'Create problem report', 'Bericht wird erstellt …': 'Creating the report …',
+    'Auf dem Desktop gespeichert:': 'Saved on your desktop:',
+    'Klappt etwas nicht? Schick den Bericht dem Entwickler. Steam-IDs und Namen sind darin ersetzt.':
+        'Something not working? Send the report to the developer. Steam IDs and names are replaced in it.',
+    'Der Desktop-Ordner wurde nicht gefunden.': 'The desktop folder was not found.',
+    'Die Datei ließ sich nicht schreiben.': 'The file could not be written.',
+    'Es gibt noch keine Log-Datei.': 'There is no log file yet.', 'Unbekannter Fehler.': 'Unknown error.',
+    'Keine Antwort von der Mod-DLL.': 'No answer from the mod DLL.', 'Die Mod-DLL ist nicht geladen.': 'The mod DLL is not loaded.',
     'Neue Nachrichten und was Mitspieler tun, kurz unten links. Enter öffnet den Chat trotzdem.':
         'New messages and what players do, briefly at the bottom left. Enter still opens the chat.',
     'Name, Blickrichtung, gehaltenes Objekt und Sperr-Färbung': 'Name, view direction, held object and lock colouring',
@@ -364,9 +373,10 @@ function englishTexts(tr) {
         [/^(.+) baut hier gerade$/, (m, who) => named(who) + ' is building here'],
         [/^(.+) war schneller$/, (m, who) => named(who) + ' was faster'],
         [/^„(.+)“ wird noch nicht an die anderen übertragen\.$/, (m, what) => '“' + what + '” is not sent to the others yet.'],
-        [/^(.+) hat PC2Coop (\S+), du (\S+)\. Beide führen UPDATE\.cmd aus\.$/, (m, who, a, b) => who + ' has PC2Coop ' + a + ', you have ' + b + '. Both of you run UPDATE.cmd.'],
+        [/^Bericht ging nicht: (.+)$/, (m, why) => 'The report did not work: ' + tr(why)],
+        [/^(.+) hat PC2Coop (\S+), du (\S+)\. Ihr braucht dieselbe Version: PC2Coop-Setup → „Nach Update suchen“\.$/, (m, who, a, b) => who + ' has PC2Coop ' + a + ', you have ' + b + '. You need the same version: PC2Coop Setup → “Check for update”.'],
         [/^(.+) hat Spielversion (\S+), du (\S+)\. Beide aktualisieren das Spiel in Steam\.$/, (m, who, a, b) => who + ' has game version ' + a + ', you have ' + b + '. Both of you update the game in Steam.'],
-        [/^Der Host hat PC2Coop (\S+), du (\S+)\. Beende das Spiel und führe UPDATE\.cmd aus\.$/, (m, a, b) => 'The host has PC2Coop ' + a + ', you have ' + b + '. Quit the game and run UPDATE.cmd.'],
+        [/^Der Host hat PC2Coop (\S+), du (\S+)\. Ihr braucht dieselbe Version: Spiel beenden, PC2Coop-Setup → „Nach Update suchen“\.$/, (m, a, b) => 'The host has PC2Coop ' + a + ', you have ' + b + '. You need the same version: quit the game, PC2Coop Setup → “Check for update”.'],
         [/^Der Host hat Spielversion (\S+), du (\S+)\. Aktualisiert beide Planet Coaster 2 in Steam\.$/, (m, a, b) => 'The host has game version ' + a + ', you have ' + b + '. Both of you update Planet Coaster 2 in Steam.'],
         [/^(.+) war kurz weg - der Park wird neu übertragen$/, (m, who) => who + ' was gone for a moment – the park is sent again'],
         [/^(.+) ist nicht mehr synchron$/, (m, who) => who + ' is out of sync'],

@@ -59,7 +59,7 @@ Eine Aufgabe ist erst fertig, wenn Code **und** Doku stimmen. Bei Widerspruch gi
 | Nachrichten | `docs/architecture/NETWORKING.md` |
 | Bedienelemente | `docs/ui-ux/UI_INVENTORY.md` |
 | Entscheidungen | `docs/decisions/` |
-| Pakete, Installer | `alpha-dist/`, `tools/package_release.py` |
+| Paket, Setup | `setup/`, `tools/build_setup.py`, `tools/package_release.py`, `alpha-dist/LIESMICH.txt` |
 | Tests | `tests/` |
 
 ## Befehle
